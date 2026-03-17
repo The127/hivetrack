@@ -19,11 +19,6 @@ import {
   PlusIcon,
   ListIcon,
   LayersIcon,
-  CircleIcon,
-  CircleDotIcon,
-  GitPullRequestIcon,
-  CheckCircle2Icon,
-  XCircleIcon,
   ChevronDownIcon,
   PlayIcon,
   CheckIcon,
@@ -36,6 +31,7 @@ import Spinner from '@/components/ui/Spinner.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import CreateIssueModal from '@/components/issue/CreateIssueModal.vue'
+import StatusSelect from '@/components/issue/StatusSelect.vue'
 import { fetchProject } from '@/api/projects'
 import { fetchIssues, createIssue, updateIssue } from '@/api/issues'
 import { fetchSprints, createSprint, updateSprint, deleteSprint } from '@/api/sprints'
@@ -253,22 +249,7 @@ const { mutate: moveIssue } = useMutation({
   },
 })
 
-// ── Status / priority display ─────────────────────────────────────────────────
-
-const STATUS_META = {
-  todo:        { label: 'To Do',       scheme: 'gray',   icon: CircleIcon },
-  in_progress: { label: 'In Progress', scheme: 'blue',   icon: CircleDotIcon },
-  in_review:   { label: 'In Review',   scheme: 'violet', icon: GitPullRequestIcon },
-  done:        { label: 'Done',        scheme: 'green',  icon: CheckCircle2Icon },
-  cancelled:   { label: 'Cancelled',   scheme: 'gray',   icon: XCircleIcon },
-  open:        { label: 'Open',        scheme: 'sky',    icon: CircleIcon },
-  resolved:    { label: 'Resolved',    scheme: 'teal',   icon: CheckCircle2Icon },
-  closed:      { label: 'Closed',      scheme: 'gray',   icon: XCircleIcon },
-}
-
-function statusMeta(status) {
-  return STATUS_META[status] ?? { label: status, scheme: 'gray', icon: CircleIcon }
-}
+// ── Priority / estimate display ───────────────────────────────────────────────
 
 const PRIORITY_SCHEME = {
   none: 'gray', low: 'sky', medium: 'amber', high: 'orange', critical: 'red',
@@ -294,17 +275,6 @@ function priorityScheme(priority) {
 
 function estimateLabel(estimate) {
   return ESTIMATE_LABEL[estimate] ?? null
-}
-
-function statusIconClass(scheme) {
-  return {
-    'text-slate-400':  scheme === 'gray',
-    'text-blue-500':   scheme === 'blue',
-    'text-violet-500': scheme === 'violet',
-    'text-green-500':  scheme === 'green',
-    'text-sky-500':    scheme === 'sky',
-    'text-teal-500':   scheme === 'teal',
-  }
 }
 
 // ── Sprint status mutations ───────────────────────────────────────────────────
@@ -393,6 +363,12 @@ function moveToSprint(issue, sprintId) {
 
 function moveToBacklog(issue) {
   moveIssue({ issueNumber: issue.number, sprintId: null })
+}
+
+// ── Inline status update ────────────────────────────────────────────────────
+
+function updateStatus(issue, newStatus) {
+  reorderIssue({ issueNumber: issue.number, data: { status: newStatus } })
 }
 
 // ── Inline issue creation (per-section) ─────────────────────────────────────
@@ -594,8 +570,7 @@ function formatDateRange(startDate, endDate) {
               </div>
               <router-link :to="`/projects/${slug}/issues/${issue.number}`" class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline">{{ issue.title }}</router-link>
               <span v-if="issue.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
-              <component :is="statusMeta(issue.status).icon" class="size-3.5 flex-shrink-0" :class="statusIconClass(statusMeta(issue.status).scheme)" />
-              <span class="flex-shrink-0 text-xs text-slate-500 w-20">{{ statusMeta(issue.status).label }}</span>
+              <StatusSelect :status="issue.status" :archetype="project.archetype" @update:status="updateStatus(issue, $event)" />
               <Badge v-if="issue.priority && issue.priority !== 'none'" :colorScheme="priorityScheme(issue.priority)" compact class="flex-shrink-0">{{ issue.priority }}</Badge>
               <span v-else class="w-14 flex-shrink-0" />
               <span v-if="estimateLabel(issue.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(issue.estimate) }}</span>
@@ -698,8 +673,7 @@ function formatDateRange(startDate, endDate) {
               </div>
               <router-link :to="`/projects/${slug}/issues/${issue.number}`" class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline">{{ issue.title }}</router-link>
               <span v-if="issue.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
-              <component :is="statusMeta(issue.status).icon" class="size-3.5 flex-shrink-0" :class="statusIconClass(statusMeta(issue.status).scheme)" />
-              <span class="flex-shrink-0 text-xs text-slate-500 w-20">{{ statusMeta(issue.status).label }}</span>
+              <StatusSelect :status="issue.status" :archetype="project.archetype" @update:status="updateStatus(issue, $event)" />
               <Badge v-if="issue.priority && issue.priority !== 'none'" :colorScheme="priorityScheme(issue.priority)" compact class="flex-shrink-0">{{ issue.priority }}</Badge>
               <span v-else class="w-14 flex-shrink-0" />
               <span v-if="estimateLabel(issue.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(issue.estimate) }}</span>
@@ -844,8 +818,7 @@ function formatDateRange(startDate, endDate) {
             </div>
             <span class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900">{{ issue.title }}</span>
             <span v-if="issue.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
-            <component :is="statusMeta(issue.status).icon" class="size-3.5 flex-shrink-0" :class="statusIconClass(statusMeta(issue.status).scheme)" />
-            <span class="flex-shrink-0 text-xs text-slate-500 w-20">{{ statusMeta(issue.status).label }}</span>
+            <StatusSelect :status="issue.status" :archetype="project.archetype" @update:status="updateStatus(issue, $event)" />
             <Badge v-if="issue.priority && issue.priority !== 'none'" :colorScheme="priorityScheme(issue.priority)" compact class="flex-shrink-0">{{ issue.priority }}</Badge>
             <span v-else class="w-14 flex-shrink-0" />
             <span v-if="estimateLabel(issue.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(issue.estimate) }}</span>

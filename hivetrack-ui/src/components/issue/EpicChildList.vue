@@ -29,11 +29,13 @@ import {
 import Badge from '@/components/ui/Badge.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
+import StatusSelect from '@/components/issue/StatusSelect.vue'
 import { fetchIssues, createIssue, updateIssue } from '@/api/issues'
 
 const props = defineProps({
   projectSlug: { type: String, required: true },
   epicId: { type: String, required: true },
+  archetype: { type: String, required: true },
   childCount: { type: Number, default: 0 },
   childDoneCount: { type: Number, default: 0 },
 })
@@ -149,6 +151,31 @@ const { mutate: attachTask } = useMutation({
     searchText.value = ''
   },
 })
+
+// ── Inline status update ──────────────────────────────────────────────────
+
+const { mutate: updateChildStatus } = useMutation({
+  mutationFn: ({ number, status }) => updateIssue(props.projectSlug, number, { status }),
+  onMutate: async ({ number, status }) => {
+    const key = ['issues', props.projectSlug, { parent_id: props.epicId }]
+    await queryClient.cancelQueries({ queryKey: key })
+    const previous = queryClient.getQueryData(key)
+    queryClient.setQueryData(key, old => {
+      if (!old) return old
+      return { ...old, items: old.items.map(i => i.number === number ? { ...i, status } : i) }
+    })
+    return { previous }
+  },
+  onError: (_err, _vars, context) => {
+    if (context?.previous) {
+      queryClient.setQueryData(['issues', props.projectSlug, { parent_id: props.epicId }], context.previous)
+    }
+  },
+  onSettled: () => {
+    queryClient.invalidateQueries({ queryKey: ['issues', props.projectSlug] })
+    queryClient.invalidateQueries({ queryKey: ['issue', props.projectSlug] })
+  },
+})
 </script>
 
 <template>
@@ -179,8 +206,7 @@ const { mutate: attachTask } = useMutation({
         </div>
         <span class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900">{{ child.title }}</span>
         <span v-if="child.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
-        <component :is="statusMeta(child.status).icon" class="size-3.5 flex-shrink-0" :class="statusIconClass(statusMeta(child.status).scheme)" />
-        <span class="flex-shrink-0 text-xs text-slate-500 w-20">{{ statusMeta(child.status).label }}</span>
+        <StatusSelect :status="child.status" :archetype="archetype" @update:status="updateChildStatus({ number: child.number, status: $event })" />
         <Badge v-if="child.priority && child.priority !== 'none'" :colorScheme="priorityScheme(child.priority)" compact class="flex-shrink-0">{{ child.priority }}</Badge>
         <span v-else class="w-14 flex-shrink-0" />
         <span v-if="estimateLabel(child.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(child.estimate) }}</span>

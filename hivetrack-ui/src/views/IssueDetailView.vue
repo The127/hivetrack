@@ -202,6 +202,7 @@ const { mutate: updateParent } = useMutation({
             <EpicChildList
               :project-slug="slug"
               :epic-id="issue.id"
+              :archetype="project?.archetype ?? 'software'"
               :child-count="issue.child_count"
               :child-done-count="issue.child_done_count"
             />
