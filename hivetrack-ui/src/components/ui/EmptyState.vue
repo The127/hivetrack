@@ -56,7 +56,7 @@ defineEmits([
     </div>
     <button
       v-if="actionLabel"
-      class="mt-1 inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3.5 h-8 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors"
+      class="mt-1 inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3.5 h-8 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"
       @click="$emit('action')"
     >
       {{ actionLabel }}

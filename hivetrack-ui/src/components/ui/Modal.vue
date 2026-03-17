@@ -85,7 +85,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
               <p v-if="description" class="mt-0.5 text-sm text-slate-500">{{ description }}</p>
             </div>
             <button
-              class="flex-shrink-0 rounded-md p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+              class="flex-shrink-0 rounded-md p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
               @click="emit('close')"
             >
               <XIcon class="size-4" />

@@ -145,7 +145,7 @@ function submit() {
           <button
             type="button"
             :class="[
-              'flex flex-col items-start gap-1.5 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+              'flex flex-col items-start gap-1.5 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer',
               archetype === 'software'
                 ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
                 : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50',
@@ -171,7 +171,7 @@ function submit() {
           <button
             type="button"
             :class="[
-              'flex flex-col items-start gap-1.5 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+              'flex flex-col items-start gap-1.5 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer',
               archetype === 'support'
                 ? 'border-teal-500 bg-teal-50 ring-1 ring-teal-500'
                 : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50',

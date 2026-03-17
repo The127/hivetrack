@@ -175,7 +175,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
       <!-- Search hint + bottom section -->
       <div class="px-2 py-2 border-t border-slate-800 space-y-0.5">
         <button
-          class="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 text-left"
+          class="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 text-left cursor-pointer"
           title="Press / to search"
           @click="() => {/* TODO: open search */}"
         >
@@ -199,7 +199,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
         <Avatar :name="userName" size="sm" :src="user?.profile?.picture" />
         <span class="text-sm text-slate-300 truncate flex-1 min-w-0">{{ userName }}</span>
         <button
-          class="flex-shrink-0 text-slate-500 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors duration-100"
+          class="flex-shrink-0 text-slate-500 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors duration-100 cursor-pointer"
           title="Sign out"
           @click="signOut"
         >
