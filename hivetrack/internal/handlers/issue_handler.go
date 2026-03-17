@@ -47,6 +47,15 @@ func (h *IssueHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	if text := r.URL.Query().Get("text"); text != "" {
 		q.Text = &text
 	}
+	if tp := r.URL.Query().Get("type"); tp != "" {
+		issueType := models.IssueType(tp)
+		q.Type = &issueType
+	}
+	if pid := r.URL.Query().Get("parent_id"); pid != "" {
+		if parentID, err := uuid.Parse(pid); err == nil {
+			q.ParentID = &parentID
+		}
+	}
 	if l := r.URL.Query().Get("limit"); l != "" {
 		limit, _ := strconv.Atoi(l)
 		q.Limit = limit
@@ -103,6 +112,7 @@ func (h *IssueHandler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		LabelIDs    []uuid.UUID           `json:"label_ids"`
 		SprintID    *uuid.UUID            `json:"sprint_id"`
 		MilestoneID *uuid.UUID            `json:"milestone_id"`
+		ParentID    *uuid.UUID            `json:"parent_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		RespondError(w, models.ErrBadRequest)
@@ -121,6 +131,7 @@ func (h *IssueHandler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		LabelIDs:    body.LabelIDs,
 		SprintID:    body.SprintID,
 		MilestoneID: body.MilestoneID,
+		ParentID:    body.ParentID,
 	})
 	if err != nil {
 		RespondError(w, err)
@@ -169,6 +180,7 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		LabelIDs    []uuid.UUID             `json:"label_ids"`
 		SprintID    *uuid.UUID              `json:"sprint_id"`
 		MilestoneID *uuid.UUID              `json:"milestone_id"`
+		ParentID    *uuid.UUID              `json:"parent_id"`
 		OnHold      *bool                   `json:"on_hold"`
 		HoldReason  *models.HoldReason      `json:"hold_reason"`
 		HoldNote    *string                 `json:"hold_note"`
@@ -180,12 +192,16 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Detect explicit null for sprint_id to distinguish "clear sprint" from "not provided".
+	// Detect explicit null for sprint_id/parent_id to distinguish "clear" from "not provided".
 	clearSprintID := false
+	clearParentID := false
 	var rawFields map[string]json.RawMessage
 	if err := json.Unmarshal(bodyBytes, &rawFields); err == nil {
 		if raw, ok := rawFields["sprint_id"]; ok && string(raw) == "null" {
 			clearSprintID = true
+		}
+		if raw, ok := rawFields["parent_id"]; ok && string(raw) == "null" {
+			clearParentID = true
 		}
 	}
 
@@ -201,6 +217,8 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		SprintID:      body.SprintID,
 		ClearSprintID: clearSprintID,
 		MilestoneID:   body.MilestoneID,
+		ParentID:      body.ParentID,
+		ClearParentID: clearParentID,
 		OnHold:        body.OnHold,
 		HoldReason:    body.HoldReason,
 		HoldNote:      body.HoldNote,

@@ -87,16 +87,19 @@ type IssueRepository interface {
 
 // IssueFilter supports composable issue queries.
 type IssueFilter struct {
-	ProjectID  *uuid.UUID
-	Status     *models.IssueStatus
-	Priority   *models.IssuePriority
-	SprintID   *uuid.UUID
-	InBacklog  *bool // true = sprint_id IS NULL
-	AssigneeID *uuid.UUID
-	Triaged    *bool
-	Text       *string
-	Limit      int
-	Offset     int
+	ProjectID   *uuid.UUID
+	Status      *models.IssueStatus
+	Priority    *models.IssuePriority
+	SprintID    *uuid.UUID
+	InBacklog   *bool // true = sprint_id IS NULL
+	AssigneeID  *uuid.UUID
+	Triaged     *bool
+	Text        *string
+	Type        *models.IssueType
+	ParentID    *uuid.UUID
+	HasNoParent *bool
+	Limit       int
+	Offset      int
 }
 
 func NewIssueFilter() *IssueFilter {
@@ -146,6 +149,22 @@ func (f *IssueFilter) WithText(t string) *IssueFilter {
 func (f *IssueFilter) WithPagination(limit, offset int) *IssueFilter {
 	f.Limit = limit
 	f.Offset = offset
+	return f
+}
+
+func (f *IssueFilter) ByType(t models.IssueType) *IssueFilter {
+	f.Type = &t
+	return f
+}
+
+func (f *IssueFilter) ByParentID(id uuid.UUID) *IssueFilter {
+	f.ParentID = &id
+	return f
+}
+
+func (f *IssueFilter) WithNoParent() *IssueFilter {
+	v := true
+	f.HasNoParent = &v
 	return f
 }
 

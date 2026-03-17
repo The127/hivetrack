@@ -170,6 +170,11 @@ func (r *IssueRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, issue *
 		args = append(args, issue.GetRank())
 		argIdx++
 	}
+	if issue.HasChange(models.IssueChangeParentID) {
+		setClauses = append(setClauses, fmt.Sprintf("parent_id=$%d", argIdx))
+		args = append(args, issue.GetParentID())
+		argIdx++
+	}
 
 	setClauses = append(setClauses, "version = version + 1")
 
@@ -272,6 +277,19 @@ func (r *IssueRepository) List(ctx context.Context, filter *repositories.IssueFi
 		baseQuery += fmt.Sprintf(` AND to_tsvector('english', i.title || ' ' || coalesce(i.description, '')) @@ plainto_tsquery('english', $%d)`, argIdx)
 		args = append(args, *filter.Text)
 		argIdx++
+	}
+	if filter.Type != nil {
+		baseQuery += fmt.Sprintf(` AND i.type=$%d`, argIdx)
+		args = append(args, *filter.Type)
+		argIdx++
+	}
+	if filter.ParentID != nil {
+		baseQuery += fmt.Sprintf(` AND i.parent_id=$%d`, argIdx)
+		args = append(args, *filter.ParentID)
+		argIdx++
+	}
+	if filter.HasNoParent != nil && *filter.HasNoParent {
+		baseQuery += ` AND i.parent_id IS NULL`
 	}
 
 	// Count total

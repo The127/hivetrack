@@ -47,6 +47,150 @@ func TestHandleUpdateIssue_ChangeTitle(t *testing.T) {
 	assert.Equal(t, "New title", updated.GetTitle())
 }
 
+func newTestEpic(projectID uuid.UUID, reporterID uuid.UUID, number int) *models.Issue {
+	return models.NewIssue(
+		projectID, number, models.IssueTypeEpic, "Test Epic",
+		models.IssueStatusTodo, models.IssuePriorityNone, models.IssueEstimateNone,
+		&reporterID, true, models.IssueVisibilityNormal,
+		nil, nil, nil, nil, nil,
+	)
+}
+
+func TestHandleUpdateIssue_AssignParent(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	epic := newTestEpic(project.GetId(), actor.GetId(), 1)
+	db.Issues().Insert(epic)
+	task := newTestIssue(project.GetId(), actor.GetId(), 2)
+	db.Issues().Insert(task)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	epicID := epic.GetId()
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID:  task.GetId(),
+		ParentID: &epicID,
+	})
+	require.NoError(t, err)
+
+	updated, err := db.Issues().GetByID(context.Background(), task.GetId())
+	require.NoError(t, err)
+	require.NotNil(t, updated.GetParentID())
+	assert.Equal(t, epic.GetId(), *updated.GetParentID())
+}
+
+func TestHandleUpdateIssue_ClearParent(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	epic := newTestEpic(project.GetId(), actor.GetId(), 1)
+	db.Issues().Insert(epic)
+	task := newTestIssue(project.GetId(), actor.GetId(), 2)
+	db.Issues().Insert(task)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	epicID := epic.GetId()
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID:  task.GetId(),
+		ParentID: &epicID,
+	})
+	require.NoError(t, err)
+
+	_, err = commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID:       task.GetId(),
+		ClearParentID: true,
+	})
+	require.NoError(t, err)
+
+	updated, err := db.Issues().GetByID(context.Background(), task.GetId())
+	require.NoError(t, err)
+	assert.Nil(t, updated.GetParentID())
+}
+
+func TestHandleUpdateIssue_EpicCantHaveParent(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	epic1 := newTestEpic(project.GetId(), actor.GetId(), 1)
+	epic2 := newTestEpic(project.GetId(), actor.GetId(), 2)
+	db.Issues().Insert(epic1)
+	db.Issues().Insert(epic2)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	parentID := epic1.GetId()
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID:  epic2.GetId(),
+		ParentID: &parentID,
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, models.ErrBadRequest)
+}
+
+func TestHandleUpdateIssue_ParentMustBeEpic(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	task1 := newTestIssue(project.GetId(), actor.GetId(), 1)
+	task2 := newTestIssue(project.GetId(), actor.GetId(), 2)
+	db.Issues().Insert(task1)
+	db.Issues().Insert(task2)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	parentID := task1.GetId()
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID:  task2.GetId(),
+		ParentID: &parentID,
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, models.ErrBadRequest)
+}
+
+func TestHandleUpdateIssue_ParentMustBeSameProject(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project1 := models.NewProject(actor.GetId(), "p1", "P1", models.ProjectArchetypeSoftware)
+	project2 := models.NewProject(actor.GetId(), "p2", "P2", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project1)
+	db.Projects().Insert(project2)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	epic := newTestEpic(project1.GetId(), actor.GetId(), 1)
+	task := newTestIssue(project2.GetId(), actor.GetId(), 1)
+	db.Issues().Insert(epic)
+	db.Issues().Insert(task)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	epicID := epic.GetId()
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID:  task.GetId(),
+		ParentID: &epicID,
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, models.ErrBadRequest)
+}
+
 func TestHandleUpdateIssue_SetOnHold(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")

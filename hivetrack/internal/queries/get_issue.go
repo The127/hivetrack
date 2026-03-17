@@ -16,30 +16,32 @@ type GetIssueQuery struct {
 }
 
 type IssueDetail struct {
-	ID          uuid.UUID
-	ProjectID   uuid.UUID
-	Number      int
-	Type        models.IssueType
-	Title       string
-	Description *string
-	Status      models.IssueStatus
-	Priority    models.IssuePriority
-	Estimate    models.IssueEstimate
-	Triaged     bool
-	Visibility  models.IssueVisibility
-	OnHold      bool
-	HoldReason  *models.HoldReason
-	HoldNote    *string
-	HoldSince   *time.Time
-	Assignees   []uuid.UUID
-	Labels      []uuid.UUID
-	SprintID    *uuid.UUID
-	MilestoneID *uuid.UUID
-	ParentID    *uuid.UUID
-	ReporterID  *uuid.UUID
-	Checklist   []models.ChecklistItem
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID             uuid.UUID              `json:"id"`
+	ProjectID      uuid.UUID              `json:"project_id"`
+	Number         int                    `json:"number"`
+	Type           models.IssueType       `json:"type"`
+	Title          string                 `json:"title"`
+	Description    *string                `json:"description,omitempty"`
+	Status         models.IssueStatus     `json:"status"`
+	Priority       models.IssuePriority   `json:"priority"`
+	Estimate       models.IssueEstimate   `json:"estimate"`
+	Triaged        bool                   `json:"triaged"`
+	Visibility     models.IssueVisibility `json:"visibility"`
+	OnHold         bool                   `json:"on_hold"`
+	HoldReason     *models.HoldReason     `json:"hold_reason,omitempty"`
+	HoldNote       *string                `json:"hold_note,omitempty"`
+	HoldSince      *time.Time             `json:"hold_since,omitempty"`
+	Assignees      []uuid.UUID            `json:"assignees"`
+	Labels         []uuid.UUID            `json:"labels"`
+	SprintID       *uuid.UUID             `json:"sprint_id,omitempty"`
+	MilestoneID    *uuid.UUID             `json:"milestone_id,omitempty"`
+	ParentID       *uuid.UUID             `json:"parent_id,omitempty"`
+	ReporterID     *uuid.UUID             `json:"reporter_id,omitempty"`
+	Checklist      []models.ChecklistItem `json:"checklist"`
+	ChildCount     int                    `json:"child_count"`
+	ChildDoneCount int                    `json:"child_done_count"`
+	CreatedAt      time.Time              `json:"created_at"`
+	UpdatedAt      time.Time              `json:"updated_at"`
 }
 
 func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) {
@@ -61,7 +63,7 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 		return nil, nil
 	}
 
-	return &IssueDetail{
+	detail := &IssueDetail{
 		ID:          issue.GetId(),
 		ProjectID:   issue.GetProjectID(),
 		Number:      issue.GetNumber(),
@@ -86,5 +88,20 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 		Checklist:   issue.GetChecklist(),
 		CreatedAt:   issue.GetCreatedAt(),
 		UpdatedAt:   issue.GetUpdatedAt(),
-	}, nil
+	}
+
+	if issue.GetType() == models.IssueTypeEpic {
+		children, _, err := db.Issues().List(ctx, repositories.NewIssueFilter().ByParentID(issue.GetId()))
+		if err != nil {
+			return nil, fmt.Errorf("listing child issues: %w", err)
+		}
+		detail.ChildCount = len(children)
+		for _, child := range children {
+			if child.IsTerminal() {
+				detail.ChildDoneCount++
+			}
+		}
+	}
+
+	return detail, nil
 }

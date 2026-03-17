@@ -122,5 +122,18 @@ func matchesIssueFilter(issue *models.Issue, filter *repositories.IssueFilter) b
 			return false
 		}
 	}
+	if filter.Type != nil && issue.GetType() != *filter.Type {
+		return false
+	}
+	if filter.ParentID != nil {
+		if issue.GetParentID() == nil || *issue.GetParentID() != *filter.ParentID {
+			return false
+		}
+	}
+	if filter.HasNoParent != nil && *filter.HasNoParent {
+		if issue.GetParentID() != nil {
+			return false
+		}
+	}
 	return true
 }

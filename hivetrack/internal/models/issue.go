@@ -108,6 +108,7 @@ const (
 	IssueChangeLabels            IssueChange = iota
 	IssueChangeRestrictedViewers IssueChange = iota
 	IssueChangeRank              IssueChange = iota
+	IssueChangeParentID          IssueChange = iota
 )
 
 type Issue struct {
@@ -355,6 +356,11 @@ func (i *Issue) SetRestrictedViewers(v []uuid.UUID) {
 func (i *Issue) SetRank(v *string) {
 	i.rank = v
 	i.TrackChange(IssueChangeRank)
+}
+
+func (i *Issue) SetParentID(v *uuid.UUID) {
+	i.parentID = v
+	i.TrackChange(IssueChangeParentID)
 }
 
 // IsTerminal returns true if the issue is in a terminal state.

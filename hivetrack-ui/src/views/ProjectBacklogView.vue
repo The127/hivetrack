@@ -44,6 +44,10 @@ const route = useRoute()
 const slug = computed(() => route.params.slug)
 const queryClient = useQueryClient()
 
+// ── Epic filter ──────────────────────────────────────────────────────────────
+
+const selectedEpicId = ref(null)
+
 // ── Data ─────────────────────────────────────────────────────────────────────
 
 const { data: project, isLoading: loadingProject } = useQuery({
@@ -57,11 +61,28 @@ const { data: sprintsResult, isLoading: loadingSprints } = useQuery({
   enabled: computed(() => !!slug.value),
 })
 
+const issueParams = computed(() => {
+  const params = { triaged: true, limit: 1000 }
+  if (selectedEpicId.value) {
+    params.parent_id = selectedEpicId.value
+  }
+  return params
+})
+
 const { data: issuesResult, isLoading: loadingIssues } = useQuery({
-  queryKey: ['issues', slug, { triaged: true }],
-  queryFn: () => fetchIssues(slug.value, { triaged: true, limit: 1000 }),
+  queryKey: computed(() => ['issues', slug.value, issueParams.value]),
+  queryFn: () => fetchIssues(slug.value, issueParams.value),
   enabled: computed(() => !!slug.value),
 })
+
+const { data: epicsResult } = useQuery({
+  queryKey: ['issues', slug, { type: 'epic' }],
+  queryFn: () => fetchIssues(slug.value, { type: 'epic', limit: 200 }),
+  enabled: computed(() => !!slug.value),
+})
+
+const epics = computed(() => epicsResult.value?.items ?? [])
+const selectedEpic = computed(() => epics.value.find(e => e.id === selectedEpicId.value) ?? null)
 
 const isLoading = computed(() => loadingProject.value || loadingSprints.value || loadingIssues.value)
 
@@ -466,12 +487,47 @@ function formatDateRange(startDate, endDate) {
           </div>
         </div>
 
-        <button
-          class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 h-8 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"
-          @click="showCreateIssue = true"
+        <div class="flex items-center gap-3">
+          <!-- Epic filter -->
+          <div v-if="epics.length" class="flex items-center gap-1.5">
+            <LayersIcon class="size-3.5 text-slate-400" />
+            <select
+              :value="selectedEpicId ?? ''"
+              class="rounded-md border border-slate-200 px-2 h-8 text-sm text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer bg-white"
+              @change="selectedEpicId = $event.target.value || null"
+            >
+              <option value="">All issues</option>
+              <option v-for="epic in epics" :key="epic.id" :value="epic.id">
+                {{ epic.title }}
+              </option>
+            </select>
+          </div>
+
+          <button
+            class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 h-8 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"
+            @click="showCreateIssue = true"
+          >
+            <PlusIcon class="size-4" />
+            New issue
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Epic filter banner ────────────────────────────────────────── -->
+      <div v-if="selectedEpic" class="flex-shrink-0 flex items-center gap-3 px-6 py-2 border-b border-violet-200 bg-violet-50">
+        <LayersIcon class="size-4 text-violet-500 flex-shrink-0" />
+        <span class="text-xs font-medium text-violet-600 uppercase tracking-wide">Filtered by epic</span>
+        <router-link
+          :to="`/projects/${slug}/issues/${selectedEpic.number}`"
+          class="font-medium text-sm text-violet-700 hover:underline"
         >
-          <PlusIcon class="size-4" />
-          New issue
+          {{ selectedEpic.title }}
+        </router-link>
+        <button
+          class="ml-auto text-xs text-violet-500 hover:text-violet-700 cursor-pointer"
+          @click="selectedEpicId = null"
+        >
+          Clear filter
         </button>
       </div>
 
@@ -536,7 +592,7 @@ function formatDateRange(startDate, endDate) {
                 <span class="text-[11px] font-mono text-slate-400">{{ slug.toUpperCase() }}-{{ issue.number }}</span>
                 <LayersIcon v-if="issue.type === 'epic'" class="size-3 text-violet-400 flex-shrink-0" />
               </div>
-              <span class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900">{{ issue.title }}</span>
+              <router-link :to="`/projects/${slug}/issues/${issue.number}`" class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline">{{ issue.title }}</router-link>
               <span v-if="issue.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
               <component :is="statusMeta(issue.status).icon" class="size-3.5 flex-shrink-0" :class="statusIconClass(statusMeta(issue.status).scheme)" />
               <span class="flex-shrink-0 text-xs text-slate-500 w-20">{{ statusMeta(issue.status).label }}</span>
@@ -640,7 +696,7 @@ function formatDateRange(startDate, endDate) {
                 <span class="text-[11px] font-mono text-slate-400">{{ slug.toUpperCase() }}-{{ issue.number }}</span>
                 <LayersIcon v-if="issue.type === 'epic'" class="size-3 text-violet-400 flex-shrink-0" />
               </div>
-              <span class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900">{{ issue.title }}</span>
+              <router-link :to="`/projects/${slug}/issues/${issue.number}`" class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline">{{ issue.title }}</router-link>
               <span v-if="issue.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
               <component :is="statusMeta(issue.status).icon" class="size-3.5 flex-shrink-0" :class="statusIconClass(statusMeta(issue.status).scheme)" />
               <span class="flex-shrink-0 text-xs text-slate-500 w-20">{{ statusMeta(issue.status).label }}</span>

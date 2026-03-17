@@ -56,8 +56,8 @@ const { data: sprintsResult, isLoading: loadingSprints } = useQuery({
 })
 
 const { data: issuesResult, isLoading: loadingIssues } = useQuery({
-  queryKey: ['issues', slug, { triaged: true }],
-  queryFn: () => fetchIssues(slug.value, { triaged: true, limit: 500 }),
+  queryKey: ['issues', slug, { triaged: true, type: 'task' }],
+  queryFn: () => fetchIssues(slug.value, { triaged: true, type: 'task', limit: 500 }),
   enabled: computed(() => !!slug.value),
 })
 

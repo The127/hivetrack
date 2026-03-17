@@ -22,6 +22,8 @@ type UpdateIssueCommand struct {
 	SprintID      *uuid.UUID
 	ClearSprintID bool
 	MilestoneID   *uuid.UUID
+	ParentID      *uuid.UUID
+	ClearParentID bool
 	OnHold        *bool
 	HoldReason    *models.HoldReason
 	HoldNote      *string
@@ -70,6 +72,27 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	}
 	if cmd.MilestoneID != nil {
 		issue.SetMilestoneID(cmd.MilestoneID)
+	}
+	if cmd.ClearParentID {
+		issue.SetParentID(nil)
+	} else if cmd.ParentID != nil {
+		if issue.GetType() != models.IssueTypeTask {
+			return nil, fmt.Errorf("only tasks can have a parent: %w", models.ErrBadRequest)
+		}
+		parent, err := db.Issues().GetByID(ctx, *cmd.ParentID)
+		if err != nil {
+			return nil, fmt.Errorf("getting parent issue: %w", err)
+		}
+		if parent == nil {
+			return nil, fmt.Errorf("parent issue %s: %w", cmd.ParentID, models.ErrNotFound)
+		}
+		if parent.GetType() != models.IssueTypeEpic {
+			return nil, fmt.Errorf("parent must be an epic: %w", models.ErrBadRequest)
+		}
+		if parent.GetProjectID() != issue.GetProjectID() {
+			return nil, fmt.Errorf("parent must be in the same project: %w", models.ErrBadRequest)
+		}
+		issue.SetParentID(cmd.ParentID)
 	}
 	if cmd.OnHold != nil {
 		if *cmd.OnHold {

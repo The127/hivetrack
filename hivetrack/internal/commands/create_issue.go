@@ -22,6 +22,7 @@ type CreateIssueCommand struct {
 	LabelIDs    []uuid.UUID
 	SprintID    *uuid.UUID
 	MilestoneID *uuid.UUID
+	ParentID    *uuid.UUID
 }
 
 type CreateIssueResult struct {
@@ -73,6 +74,25 @@ func HandleCreateIssue(ctx context.Context, cmd CreateIssueCommand) (*CreateIssu
 
 	reporterID := actor.ID
 
+	if cmd.ParentID != nil {
+		if cmd.Type != models.IssueTypeTask {
+			return nil, fmt.Errorf("only tasks can have a parent: %w", models.ErrBadRequest)
+		}
+		parent, err := db.Issues().GetByID(ctx, *cmd.ParentID)
+		if err != nil {
+			return nil, fmt.Errorf("getting parent issue: %w", err)
+		}
+		if parent == nil {
+			return nil, fmt.Errorf("parent issue %s: %w", cmd.ParentID, models.ErrNotFound)
+		}
+		if parent.GetType() != models.IssueTypeEpic {
+			return nil, fmt.Errorf("parent must be an epic: %w", models.ErrBadRequest)
+		}
+		if parent.GetProjectID() != project.GetId() {
+			return nil, fmt.Errorf("parent must be in the same project: %w", models.ErrBadRequest)
+		}
+	}
+
 	issue := models.NewIssue(
 		project.GetId(), number, cmd.Type, cmd.Title,
 		status, priority, estimate,
@@ -80,6 +100,10 @@ func HandleCreateIssue(ctx context.Context, cmd CreateIssueCommand) (*CreateIssu
 		cmd.Description, cmd.SprintID, cmd.MilestoneID,
 		cmd.AssigneeIDs, cmd.LabelIDs,
 	)
+
+	if cmd.ParentID != nil {
+		issue.SetParentID(cmd.ParentID)
+	}
 
 	db.Issues().Insert(issue)
 

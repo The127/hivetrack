@@ -7,6 +7,8 @@ export const fetchIssues = (slug, params = {}) => {
   if (params.triaged !== undefined) qs.set('triaged', String(params.triaged))
   if (params.backlog !== undefined) qs.set('backlog', String(params.backlog))
   if (params.text !== undefined) qs.set('text', params.text)
+  if (params.type !== undefined) qs.set('type', params.type)
+  if (params.parent_id !== undefined) qs.set('parent_id', params.parent_id)
   if (params.limit !== undefined) qs.set('limit', String(params.limit))
   if (params.offset !== undefined) qs.set('offset', String(params.offset))
   const query = qs.toString()

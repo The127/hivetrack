@@ -92,6 +92,61 @@ func TestHandleCreateIssue_WithAssignees(t *testing.T) {
 	assert.Len(t, issue.GetAssignees(), 2)
 }
 
+func TestHandleCreateIssue_WithParent(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := setupProject(t, db, actor)
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+
+	// Create epic via handler so the issue counter advances
+	epicResult, err := commands.HandleCreateIssue(ctx, commands.CreateIssueCommand{
+		ProjectSlug: project.GetSlug(),
+		Title:       "My Epic",
+		Type:        models.IssueTypeEpic,
+	})
+	require.NoError(t, err)
+
+	result, err := commands.HandleCreateIssue(ctx, commands.CreateIssueCommand{
+		ProjectSlug: project.GetSlug(),
+		Title:       "Child task",
+		Type:        models.IssueTypeTask,
+		ParentID:    &epicResult.ID,
+	})
+	require.NoError(t, err)
+
+	issue, err := db.Issues().GetByNumber(context.Background(), project.GetId(), result.Number)
+	require.NoError(t, err)
+	require.NotNil(t, issue.GetParentID())
+	assert.Equal(t, epicResult.ID, *issue.GetParentID())
+}
+
+func TestHandleCreateIssue_EpicCannotHaveParent(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := setupProject(t, db, actor)
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+
+	epicResult, err := commands.HandleCreateIssue(ctx, commands.CreateIssueCommand{
+		ProjectSlug: project.GetSlug(),
+		Title:       "My Epic",
+		Type:        models.IssueTypeEpic,
+	})
+	require.NoError(t, err)
+
+	_, err = commands.HandleCreateIssue(ctx, commands.CreateIssueCommand{
+		ProjectSlug: project.GetSlug(),
+		Title:       "Another epic",
+		Type:        models.IssueTypeEpic,
+		ParentID:    &epicResult.ID,
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, models.ErrBadRequest)
+}
+
 func TestHandleCreateIssue_ProjectNotFound(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")

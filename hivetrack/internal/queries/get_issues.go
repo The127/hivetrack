@@ -19,6 +19,8 @@ type GetIssuesQuery struct {
 	AssigneeID  *uuid.UUID
 	Triaged     *bool
 	Text        *string
+	Type        *models.IssueType
+	ParentID    *uuid.UUID
 	Limit       int
 	Offset      int
 }
@@ -36,6 +38,7 @@ type IssueSummary struct {
 	Labels      []uuid.UUID          `json:"labels"`
 	SprintID    *uuid.UUID           `json:"sprint_id,omitempty"`
 	MilestoneID *uuid.UUID           `json:"milestone_id,omitempty"`
+	ParentID    *uuid.UUID           `json:"parent_id,omitempty"`
 	Rank        *string              `json:"rank,omitempty"`
 	OnHold      bool                 `json:"on_hold"`
 	CreatedAt   time.Time            `json:"created_at"`
@@ -82,6 +85,12 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 	if q.Text != nil {
 		filter = filter.WithText(*q.Text)
 	}
+	if q.Type != nil {
+		filter = filter.ByType(*q.Type)
+	}
+	if q.ParentID != nil {
+		filter = filter.ByParentID(*q.ParentID)
+	}
 	if q.Limit > 0 || q.Offset > 0 {
 		filter = filter.WithPagination(q.Limit, q.Offset)
 	}
@@ -106,6 +115,7 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 			Labels:      i.GetLabels(),
 			SprintID:    i.GetSprintID(),
 			MilestoneID: i.GetMilestoneID(),
+			ParentID:    i.GetParentID(),
 			Rank:        i.GetRank(),
 			OnHold:      i.GetOnHold(),
 			CreatedAt:   i.GetCreatedAt(),
