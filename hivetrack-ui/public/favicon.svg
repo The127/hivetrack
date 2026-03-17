@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Hex body -->
+  <path d="M16 2 L29 9.5 L29 24.5 L16 32 L3 24.5 L3 9.5 Z" fill="#F59E0B" />
+  <!-- Stripes -->
+  <rect x="6" y="14" width="20" height="3" fill="#78350F" opacity="0.25" rx="0.5" />
+  <rect x="6" y="20" width="20" height="3" fill="#78350F" opacity="0.25" rx="0.5" />
+  <!-- Wings -->
+  <ellipse cx="8" cy="7" rx="5" ry="3" transform="rotate(-20 8 7)" fill="#FCD34D" opacity="0.65" />
+  <ellipse cx="24" cy="7" rx="5" ry="3" transform="rotate(20 24 7)" fill="#FCD34D" opacity="0.65" />
+</svg>

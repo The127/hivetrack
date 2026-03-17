@@ -76,6 +76,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
     >
       <!-- App identity -->
       <div class="flex items-center gap-2 px-4 py-3 border-b border-slate-800">
+        <img src="@/assets/logo.svg" alt="Hivetrack" class="size-6" />
         <span class="font-semibold tracking-tight text-white text-sm">Hivetrack</span>
       </div>
 
