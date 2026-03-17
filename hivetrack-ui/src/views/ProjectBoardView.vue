@@ -104,10 +104,15 @@ const isLoading = computed(() => loadingProject.value || loadingIssues.value)
 // ── New issue modal ───────────────────────────────────────────────────────────
 
 const showCreateIssue = ref(false)
+
+const defaultCreateStatus = computed(() => {
+  if (!project.value) return null
+  return project.value.archetype === 'support' ? 'open' : 'todo'
+})
 </script>
 
 <template>
-  <MainLayout>
+  <MainLayout @create-issue="showCreateIssue = true">
     <div class="flex flex-col h-full">
 
       <!-- ── Board header ───────────────────────────────────────────────── -->
@@ -255,6 +260,7 @@ const showCreateIssue = ref(false)
     <CreateIssueModal
       :open="showCreateIssue"
       :project-slug="slug"
+      :default-status="defaultCreateStatus"
       @close="showCreateIssue = false"
       @created="showCreateIssue = false"
     />
