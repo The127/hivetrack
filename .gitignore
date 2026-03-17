@@ -1,0 +1,29 @@
+# Go
+hivetrack/bin/
+bin/
+*.exe
+*.test
+*.out
+vendor/
+
+# Frontend
+hivetrack-ui/node_modules/
+hivetrack-ui/dist/
+
+# Config overrides (never commit secrets)
+hivetrack/config.local.yaml
+*.local.yaml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+coverage.out
+coverage.html

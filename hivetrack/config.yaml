@@ -1,0 +1,29 @@
+server:
+  host: 0.0.0.0
+  port: 8080
+  external_url: http://localhost:8080
+  allowed_origins:
+    - http://localhost:5173
+
+database:
+  url: postgres://hivetrack:hivetrack@localhost:5432/hivetrack?sslmode=disable
+
+oidc:
+  authority: http://localhost:8888  # point to your Keyline / Keycloak instance
+  client_id: hivetrack
+
+email:
+  smtp_host: localhost
+  smtp_port: 1025          # mailpit / mailhog for local dev
+  smtp_user: ""
+  smtp_password: ""
+  from_address: "Hivetrack <noreply@localhost>"
+
+ai:
+  enabled: false
+  provider: anthropic
+  model: claude-sonnet-4-6
+  api_key: ""
+
+initial_admin:
+  email: ""                # first login with this email gets instance_admin

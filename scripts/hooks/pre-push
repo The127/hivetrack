@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# pre-push hook — runs before every git push
+# Blocks the push if any check fails.
+#
+# Install: just install-hooks
+# Skip (emergency only): git push --no-verify
+
+set -e
+
+echo "→ running pre-push checks..."
+
+just check
+
+echo "✓ all checks passed"
