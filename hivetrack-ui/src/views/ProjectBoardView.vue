@@ -10,7 +10,7 @@
   live in the Triage view.
 -->
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { PlusIcon, CircleIcon, CircleDotIcon, GitPullRequestIcon, CheckCircle2Icon, XCircleIcon, InboxIcon, LayersIcon } from 'lucide-vue-next'
@@ -18,6 +18,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Spinner from '@/components/ui/Spinner.vue'
 import Avatar from '@/components/ui/Avatar.vue'
+import CreateIssueModal from '@/components/issue/CreateIssueModal.vue'
 import { fetchProject } from '@/api/projects'
 import { fetchIssues } from '@/api/issues'
 
@@ -99,6 +100,10 @@ function estimateLabel(estimate) {
 }
 
 const isLoading = computed(() => loadingProject.value || loadingIssues.value)
+
+// ── New issue modal ───────────────────────────────────────────────────────────
+
+const showCreateIssue = ref(false)
 </script>
 
 <template>
@@ -124,6 +129,7 @@ const isLoading = computed(() => loadingProject.value || loadingIssues.value)
 
         <button
           class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 h-8 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"
+          @click="showCreateIssue = true"
         >
           <PlusIcon class="size-4" />
           New issue
@@ -244,5 +250,13 @@ const isLoading = computed(() => loadingProject.value || loadingIssues.value)
       </div>
 
     </div>
+
+    <!-- ── Create issue modal ──────────────────────────────────────────── -->
+    <CreateIssueModal
+      :open="showCreateIssue"
+      :project-slug="slug"
+      @close="showCreateIssue = false"
+      @created="showCreateIssue = false"
+    />
   </MainLayout>
 </template>
