@@ -13,16 +13,16 @@ import (
 type GetProjectsQuery struct{}
 
 type ProjectSummary struct {
-	ID          uuid.UUID
-	Slug        string
-	Name        string
-	Description *string
-	Archetype   models.ProjectArchetype
-	Archived    bool
+	ID          uuid.UUID               `json:"id"`
+	Slug        string                  `json:"slug"`
+	Name        string                  `json:"name"`
+	Description *string                 `json:"description,omitempty"`
+	Archetype   models.ProjectArchetype `json:"archetype"`
+	Archived    bool                    `json:"archived"`
 }
 
 type GetProjectsResult struct {
-	Projects []ProjectSummary
+	Items []ProjectSummary `json:"items"`
 }
 
 func HandleGetProjects(ctx context.Context, _ GetProjectsQuery) (*GetProjectsResult, error) {
@@ -53,5 +53,5 @@ func HandleGetProjects(ctx context.Context, _ GetProjectsQuery) (*GetProjectsRes
 		})
 	}
 
-	return &GetProjectsResult{Projects: summaries}, nil
+	return &GetProjectsResult{Items: summaries}, nil
 }

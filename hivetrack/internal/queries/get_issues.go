@@ -23,28 +23,28 @@ type GetIssuesQuery struct {
 }
 
 type IssueSummary struct {
-	ID          uuid.UUID
-	Number      int
-	Type        models.IssueType
-	Title       string
-	Status      models.IssueStatus
-	Priority    models.IssuePriority
-	Estimate    models.IssueEstimate
-	Triaged     bool
-	Assignees   []uuid.UUID
-	Labels      []uuid.UUID
-	SprintID    *uuid.UUID
-	MilestoneID *uuid.UUID
-	OnHold      bool
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID          uuid.UUID            `json:"id"`
+	Number      int                  `json:"number"`
+	Type        models.IssueType     `json:"type"`
+	Title       string               `json:"title"`
+	Status      models.IssueStatus   `json:"status"`
+	Priority    models.IssuePriority `json:"priority"`
+	Estimate    models.IssueEstimate `json:"estimate"`
+	Triaged     bool                 `json:"triaged"`
+	Assignees   []uuid.UUID          `json:"assignees"`
+	Labels      []uuid.UUID          `json:"labels"`
+	SprintID    *uuid.UUID           `json:"sprint_id,omitempty"`
+	MilestoneID *uuid.UUID           `json:"milestone_id,omitempty"`
+	OnHold      bool                 `json:"on_hold"`
+	CreatedAt   time.Time            `json:"created_at"`
+	UpdatedAt   time.Time            `json:"updated_at"`
 }
 
 type GetIssuesResult struct {
-	Items  []IssueSummary
-	Total  int
-	Limit  int
-	Offset int
+	Items  []IssueSummary `json:"items"`
+	Total  int            `json:"total"`
+	Limit  int            `json:"limit"`
+	Offset int            `json:"offset"`
 }
 
 func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, error) {

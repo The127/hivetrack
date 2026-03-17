@@ -19,8 +19,8 @@ type CreateProjectCommand struct {
 }
 
 type CreateProjectResult struct {
-	ID   uuid.UUID
-	Slug string
+	ID   uuid.UUID `json:"id"`
+	Slug string    `json:"slug"`
 }
 
 func HandleCreateProject(ctx context.Context, cmd CreateProjectCommand) (*CreateProjectResult, error) {

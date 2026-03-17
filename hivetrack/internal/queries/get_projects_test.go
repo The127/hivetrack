@@ -33,8 +33,8 @@ func TestHandleGetProjects_MemberSeesOwnProjects(t *testing.T) {
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 	result, err := queries.HandleGetProjects(ctx, queries.GetProjectsQuery{})
 	require.NoError(t, err)
-	require.Len(t, result.Projects, 1)
-	assert.Equal(t, "p1", result.Projects[0].Slug)
+	require.Len(t, result.Items, 1)
+	assert.Equal(t, "p1", result.Items[0].Slug)
 }
 
 func TestHandleGetProjects_AdminSeesAll(t *testing.T) {
@@ -50,5 +50,5 @@ func TestHandleGetProjects_AdminSeesAll(t *testing.T) {
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), admin)
 	result, err := queries.HandleGetProjects(ctx, queries.GetProjectsQuery{})
 	require.NoError(t, err)
-	assert.Len(t, result.Projects, 2)
+	assert.Len(t, result.Items, 2)
 }

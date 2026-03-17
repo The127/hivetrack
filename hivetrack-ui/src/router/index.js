@@ -13,6 +13,11 @@ const router = createRouter({
       meta: { requiresAuth: true, layout: 'main' },
     },
     {
+      path: '/projects/:slug/board',
+      component: () => import('@/views/ProjectBoardView.vue'),
+      meta: { requiresAuth: true, layout: 'main' },
+    },
+    {
       path: '/auth/callback',
       component: () => import('@/views/AuthCallbackView.vue'),
       meta: { requiresAuth: false },

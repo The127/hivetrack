@@ -14,19 +14,19 @@ type GetProjectQuery struct {
 }
 
 type ProjectMemberInfo struct {
-	UserID uuid.UUID
-	Role   models.ProjectRole
+	UserID uuid.UUID          `json:"user_id"`
+	Role   models.ProjectRole `json:"role"`
 }
 
 type GetProjectResult struct {
-	ID          uuid.UUID
-	Slug        string
-	Name        string
-	Description *string
-	Archetype   models.ProjectArchetype
-	Archived    bool
-	CreatedBy   uuid.UUID
-	Members     []ProjectMemberInfo
+	ID          uuid.UUID               `json:"id"`
+	Slug        string                  `json:"slug"`
+	Name        string                  `json:"name"`
+	Description *string                 `json:"description,omitempty"`
+	Archetype   models.ProjectArchetype `json:"archetype"`
+	Archived    bool                    `json:"archived"`
+	CreatedBy   uuid.UUID               `json:"created_by"`
+	Members     []ProjectMemberInfo     `json:"members"`
 }
 
 func HandleGetProject(ctx context.Context, q GetProjectQuery) (*GetProjectResult, error) {
