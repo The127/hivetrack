@@ -28,12 +28,13 @@ import {
   SettingsIcon,
   SearchIcon,
   ChevronRightIcon,
+  LogOutIcon,
 } from 'lucide-vue-next'
 import Avatar from '@/components/ui/Avatar.vue'
 import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
-const { user } = useAuth()
+const { user, signOut } = useAuth()
 
 // True when navigated inside a project (route has a :slug param).
 const projectSlug = computed(() => route.params.slug ?? null)
@@ -197,6 +198,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
       <div class="px-3 py-2.5 border-t border-slate-800 flex items-center gap-2.5 min-w-0">
         <Avatar :name="userName" size="sm" :src="user?.profile?.picture" />
         <span class="text-sm text-slate-300 truncate flex-1 min-w-0">{{ userName }}</span>
+        <button
+          class="flex-shrink-0 text-slate-500 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors duration-100"
+          title="Sign out"
+          @click="signOut"
+        >
+          <LogOutIcon class="size-4" />
+        </button>
       </div>
     </aside>
 
