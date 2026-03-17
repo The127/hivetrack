@@ -12,17 +12,28 @@
     C  → create new issue
 -->
 <script setup>
+import { ref } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
+import { useRouter } from 'vue-router'
 import { PlusIcon, InboxIcon, FolderKanbanIcon, CircleDotIcon } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import Badge from '@/components/ui/Badge.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Spinner from '@/components/ui/Spinner.vue'
+import CreateProjectModal from '@/components/project/CreateProjectModal.vue'
 import { apiFetch } from '@/composables/useApi'
 import { useAuth } from '@/composables/useAuth'
 
 const { user } = useAuth()
+const router = useRouter()
+
+const showCreateProject = ref(false)
+
+function onProjectCreated(result) {
+  showCreateProject.value = false
+  router.push(`/projects/${result.slug}/board`)
+}
 
 const userName = user.value?.profile?.name ?? user.value?.profile?.email ?? 'You'
 
@@ -90,6 +101,13 @@ function formatStatus(s) {
         >
           <PlusIcon class="size-4" />
           New issue
+        </button>
+        <button
+          class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 h-8 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors"
+          @click="showCreateProject = true"
+        >
+          <PlusIcon class="size-4" />
+          New project
         </button>
       </div>
 
@@ -222,6 +240,7 @@ function formatStatus(s) {
           title="No projects yet"
           description="Create your first project to start tracking work."
           action-label="New project"
+          @action="showCreateProject = true"
         >
           <template #icon>
             <FolderKanbanIcon class="size-8" />
@@ -242,4 +261,10 @@ function formatStatus(s) {
       </div>
     </div>
   </MainLayout>
+
+  <CreateProjectModal
+    :open="showCreateProject"
+    @close="showCreateProject = false"
+    @created="onProjectCreated"
+  />
 </template>
