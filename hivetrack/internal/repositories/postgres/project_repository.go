@@ -35,19 +35,19 @@ func (r *ProjectRepository) Delete(project *models.Project) {
 }
 
 func (r *ProjectRepository) ExecuteInsert(ctx context.Context, tx *sql.Tx, project *models.Project) error {
-	var xmin uint32
+	var version int
 	err := tx.QueryRowContext(ctx,
 		`INSERT INTO projects (id, slug, name, description, archetype, archived, created_by, created_at, auto_archive_done_after_days)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-		RETURNING xmin`,
+		RETURNING version`,
 		project.GetId(), project.GetSlug(), project.GetName(), project.GetDescription(),
 		project.GetArchetype(), project.GetArchived(), project.GetCreatedBy(), project.GetCreatedAt(),
 		project.GetAutoArchiveDoneAfterDays(),
-	).Scan(&xmin)
+	).Scan(&version)
 	if err != nil {
 		return fmt.Errorf("inserting project: %w", err)
 	}
-	project.SetVersion(xmin)
+	project.SetVersion(version)
 
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO project_issue_counters (project_id, next_number) VALUES ($1, 1)`,
@@ -100,19 +100,21 @@ func (r *ProjectRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, proje
 		return nil
 	}
 
+	setClauses = append(setClauses, "version = version + 1")
+
 	query := fmt.Sprintf("UPDATE projects SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
 	args = append(args, project.GetId())
 	argIdx++
 
 	if project.GetVersion() != nil {
-		query += fmt.Sprintf(" AND xmin=$%d::xid", argIdx)
-		args = append(args, project.GetVersion().(uint32))
+		query += fmt.Sprintf(" AND version=$%d", argIdx)
+		args = append(args, project.GetVersion().(int))
 		argIdx++
 	}
-	query += " RETURNING xmin"
+	query += " RETURNING version"
 
-	var xmin uint32
-	err := tx.QueryRowContext(ctx, query, args...).Scan(&xmin)
+	var version int
+	err := tx.QueryRowContext(ctx, query, args...).Scan(&version)
 	if errors.Is(err, sql.ErrNoRows) {
 		if project.GetVersion() != nil {
 			return fmt.Errorf("project %s: %w", project.GetId(), models.ErrConcurrentUpdate)
@@ -123,7 +125,7 @@ func (r *ProjectRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, proje
 		return fmt.Errorf("updating project: %w", err)
 	}
 
-	project.SetVersion(xmin)
+	project.SetVersion(version)
 	project.ClearChanges()
 	return nil
 }
@@ -138,14 +140,14 @@ func (r *ProjectRepository) ExecuteDelete(ctx context.Context, tx *sql.Tx, proje
 
 func (r *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Project, error) {
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
-		`SELECT id, slug, name, description, archetype, archived, created_by, created_at, auto_archive_done_after_days, xmin
+		`SELECT id, slug, name, description, archetype, archived, created_by, created_at, auto_archive_done_after_days, version
 		FROM projects WHERE id=$1`, id)
 	return scanProject(row)
 }
 
 func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (*models.Project, error) {
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
-		`SELECT id, slug, name, description, archetype, archived, created_by, created_at, auto_archive_done_after_days, xmin
+		`SELECT id, slug, name, description, archetype, archived, created_by, created_at, auto_archive_done_after_days, version
 		FROM projects WHERE slug=$1`, slug)
 	return scanProject(row)
 }
@@ -154,7 +156,7 @@ func (r *ProjectRepository) List(ctx context.Context, filter *repositories.Proje
 	var rows *sql.Rows
 	var err error
 
-	const selectCols = `SELECT id, slug, name, description, archetype, archived, created_by, created_at, auto_archive_done_after_days, xmin`
+	const selectCols = `SELECT id, slug, name, description, archetype, archived, created_by, created_at, auto_archive_done_after_days, version`
 
 	if filter.IsAdmin {
 		rows, err = r.ctx.queryContext(ctx).QueryContext(ctx,
@@ -202,24 +204,10 @@ func (r *ProjectRepository) UpdateMember(ctx context.Context, member *models.Pro
 func (r *ProjectRepository) RemoveMember(ctx context.Context, projectID, userID uuid.UUID) error {
 	return r.ctx.execDirect(ctx, func(tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
-			`DELETE FROM project_members WHERE project_id=$1 AND user_id=$2`, projectID, userID)
+			`DELETE FROM project_members WHERE project_id=$1 AND user_id=$2`,
+			projectID, userID)
 		return err
 	})
-}
-
-func (r *ProjectRepository) GetMember(ctx context.Context, projectID, userID uuid.UUID) (*models.ProjectMember, error) {
-	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
-		`SELECT project_id, user_id, role FROM project_members WHERE project_id=$1 AND user_id=$2`,
-		projectID, userID)
-	var m models.ProjectMember
-	err := row.Scan(&m.ProjectID, &m.UserID, &m.Role)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("scanning member: %w", err)
-	}
-	return &m, nil
 }
 
 func (r *ProjectRepository) ListMembers(ctx context.Context, projectID uuid.UUID) ([]*models.ProjectMember, error) {
@@ -241,18 +229,29 @@ func (r *ProjectRepository) ListMembers(ctx context.Context, projectID uuid.UUID
 	return members, rows.Err()
 }
 
+func (r *ProjectRepository) GetMember(ctx context.Context, projectID, userID uuid.UUID) (*models.ProjectMember, error) {
+	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
+		`SELECT project_id, user_id, role FROM project_members WHERE project_id=$1 AND user_id=$2`,
+		projectID, userID)
+	var m models.ProjectMember
+	err := row.Scan(&m.ProjectID, &m.UserID, &m.Role)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("scanning member: %w", err)
+	}
+	return &m, nil
+}
+
 func (r *ProjectRepository) NextIssueNumber(ctx context.Context, projectID uuid.UUID) (int, error) {
-	var number int
+	var num int
 	err := r.ctx.execDirect(ctx, func(tx *sql.Tx) error {
 		return tx.QueryRowContext(ctx,
-			`UPDATE project_issue_counters SET next_number = next_number + 1
-			WHERE project_id = $1
-			RETURNING next_number - 1`, projectID).Scan(&number)
+			`UPDATE project_issue_counters SET next_number = next_number + 1 WHERE project_id=$1 RETURNING next_number - 1`,
+			projectID).Scan(&num)
 	})
-	if err != nil {
-		return 0, fmt.Errorf("getting next issue number: %w", err)
-	}
-	return number, nil
+	return num, err
 }
 
 func scanProject(row *sql.Row) (*models.Project, error) {
@@ -264,9 +263,9 @@ func scanProject(row *sql.Row) (*models.Project, error) {
 	var createdBy uuid.UUID
 	var createdAt time.Time
 	var autoArchive sql.NullInt32
-	var xmin uint32
+	var version int
 
-	err := row.Scan(&id, &slug, &name, &desc, &archetype, &archived, &createdBy, &createdAt, &autoArchive, &xmin)
+	err := row.Scan(&id, &slug, &name, &desc, &archetype, &archived, &createdBy, &createdAt, &autoArchive, &version)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -284,7 +283,7 @@ func scanProject(row *sql.Row) (*models.Project, error) {
 		autoArchivePtr = &n
 	}
 
-	return models.NewProjectFromDB(id, createdAt, xmin, slug, name, descPtr, archetype, archived, createdBy, autoArchivePtr), nil
+	return models.NewProjectFromDB(id, createdAt, version, slug, name, descPtr, archetype, archived, createdBy, autoArchivePtr), nil
 }
 
 func scanProjectRow(rows *sql.Rows) (*models.Project, error) {
@@ -296,9 +295,9 @@ func scanProjectRow(rows *sql.Rows) (*models.Project, error) {
 	var createdBy uuid.UUID
 	var createdAt time.Time
 	var autoArchive sql.NullInt32
-	var xmin uint32
+	var version int
 
-	err := rows.Scan(&id, &slug, &name, &desc, &archetype, &archived, &createdBy, &createdAt, &autoArchive, &xmin)
+	err := rows.Scan(&id, &slug, &name, &desc, &archetype, &archived, &createdBy, &createdAt, &autoArchive, &version)
 	if err != nil {
 		return nil, fmt.Errorf("scanning project: %w", err)
 	}
@@ -313,5 +312,5 @@ func scanProjectRow(rows *sql.Rows) (*models.Project, error) {
 		autoArchivePtr = &n
 	}
 
-	return models.NewProjectFromDB(id, createdAt, xmin, slug, name, descPtr, archetype, archived, createdBy, autoArchivePtr), nil
+	return models.NewProjectFromDB(id, createdAt, version, slug, name, descPtr, archetype, archived, createdBy, autoArchivePtr), nil
 }

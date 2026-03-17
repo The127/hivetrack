@@ -21,21 +21,21 @@ func NewUserRepository(ctx *DbContext) *UserRepository {
 
 func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
-		`SELECT id, sub, email, display_name, avatar_url, is_admin, created_at, last_login_at, xmin
+		`SELECT id, sub, email, display_name, avatar_url, is_admin, created_at, last_login_at, version
 		FROM users WHERE id=$1`, id)
 	return scanUser(row)
 }
 
 func (r *UserRepository) GetBySub(ctx context.Context, sub string) (*models.User, error) {
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
-		`SELECT id, sub, email, display_name, avatar_url, is_admin, created_at, last_login_at, xmin
+		`SELECT id, sub, email, display_name, avatar_url, is_admin, created_at, last_login_at, version
 		FROM users WHERE sub=$1`, sub)
 	return scanUser(row)
 }
 
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
-		`SELECT id, sub, email, display_name, avatar_url, is_admin, created_at, last_login_at, xmin
+		`SELECT id, sub, email, display_name, avatar_url, is_admin, created_at, last_login_at, version
 		FROM users WHERE email=$1`, email)
 	return scanUser(row)
 }
@@ -62,7 +62,7 @@ func (r *UserRepository) Upsert(ctx context.Context, user *models.User) error {
 
 func (r *UserRepository) List(ctx context.Context) ([]*models.User, error) {
 	rows, err := r.ctx.queryContext(ctx).QueryContext(ctx,
-		`SELECT id, sub, email, display_name, avatar_url, is_admin, created_at, last_login_at, xmin FROM users ORDER BY email`)
+		`SELECT id, sub, email, display_name, avatar_url, is_admin, created_at, last_login_at, version FROM users ORDER BY email`)
 	if err != nil {
 		return nil, fmt.Errorf("listing users: %w", err)
 	}
@@ -75,15 +75,15 @@ func (r *UserRepository) List(ctx context.Context) ([]*models.User, error) {
 		var avatarURL sql.NullString
 		var isAdmin bool
 		var createdAt, lastLoginAt time.Time
-		var xmin uint32
-		if err := rows.Scan(&id, &sub, &email, &displayName, &avatarURL, &isAdmin, &createdAt, &lastLoginAt, &xmin); err != nil {
+		var version int
+		if err := rows.Scan(&id, &sub, &email, &displayName, &avatarURL, &isAdmin, &createdAt, &lastLoginAt, &version); err != nil {
 			return nil, fmt.Errorf("scanning user: %w", err)
 		}
 		var avatarURLPtr *string
 		if avatarURL.Valid {
 			avatarURLPtr = &avatarURL.String
 		}
-		users = append(users, models.NewUserFromDB(id, createdAt, xmin, sub, email, displayName, avatarURLPtr, isAdmin, lastLoginAt))
+		users = append(users, models.NewUserFromDB(id, createdAt, version, sub, email, displayName, avatarURLPtr, isAdmin, lastLoginAt))
 	}
 	return users, rows.Err()
 }
@@ -94,9 +94,9 @@ func scanUser(row *sql.Row) (*models.User, error) {
 	var avatarURL sql.NullString
 	var isAdmin bool
 	var createdAt, lastLoginAt time.Time
-	var xmin uint32
+	var version int
 
-	err := row.Scan(&id, &sub, &email, &displayName, &avatarURL, &isAdmin, &createdAt, &lastLoginAt, &xmin)
+	err := row.Scan(&id, &sub, &email, &displayName, &avatarURL, &isAdmin, &createdAt, &lastLoginAt, &version)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -109,5 +109,5 @@ func scanUser(row *sql.Row) (*models.User, error) {
 		avatarURLPtr = &avatarURL.String
 	}
 
-	return models.NewUserFromDB(id, createdAt, xmin, sub, email, displayName, avatarURLPtr, isAdmin, lastLoginAt), nil
+	return models.NewUserFromDB(id, createdAt, version, sub, email, displayName, avatarURLPtr, isAdmin, lastLoginAt), nil
 }

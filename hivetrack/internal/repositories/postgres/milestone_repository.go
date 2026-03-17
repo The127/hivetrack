@@ -34,18 +34,18 @@ func (r *MilestoneRepository) Delete(milestone *models.Milestone) {
 }
 
 func (r *MilestoneRepository) ExecuteInsert(ctx context.Context, tx *sql.Tx, m *models.Milestone) error {
-	var xmin uint32
+	var version int
 	err := tx.QueryRowContext(ctx,
 		`INSERT INTO milestones (id, project_id, title, description, target_date, closed_at, created_at)
 		VALUES ($1,$2,$3,$4,$5,$6,$7)
-		RETURNING xmin`,
+		RETURNING version`,
 		m.GetId(), m.GetProjectID(), m.GetTitle(), m.GetDescription(),
 		m.GetTargetDate(), m.GetClosedAt(), m.GetCreatedAt(),
-	).Scan(&xmin)
+	).Scan(&version)
 	if err != nil {
 		return fmt.Errorf("inserting milestone: %w", err)
 	}
-	m.SetVersion(xmin)
+	m.SetVersion(version)
 	m.ClearChanges()
 	return nil
 }
@@ -84,19 +84,21 @@ func (r *MilestoneRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, m *
 		return nil
 	}
 
+	setClauses = append(setClauses, "version = version + 1")
+
 	query := fmt.Sprintf("UPDATE milestones SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
 	args = append(args, m.GetId())
 	argIdx++
 
 	if m.GetVersion() != nil {
-		query += fmt.Sprintf(" AND xmin=$%d::xid", argIdx)
-		args = append(args, m.GetVersion().(uint32))
+		query += fmt.Sprintf(" AND version=$%d", argIdx)
+		args = append(args, m.GetVersion().(int))
 		argIdx++
 	}
-	query += " RETURNING xmin"
+	query += " RETURNING version"
 
-	var xmin uint32
-	err := tx.QueryRowContext(ctx, query, args...).Scan(&xmin)
+	var version int
+	err := tx.QueryRowContext(ctx, query, args...).Scan(&version)
 	if errors.Is(err, sql.ErrNoRows) {
 		if m.GetVersion() != nil {
 			return fmt.Errorf("milestone %s: %w", m.GetId(), models.ErrConcurrentUpdate)
@@ -107,7 +109,7 @@ func (r *MilestoneRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, m *
 		return fmt.Errorf("updating milestone: %w", err)
 	}
 
-	m.SetVersion(xmin)
+	m.SetVersion(version)
 	m.ClearChanges()
 	return nil
 }
@@ -122,13 +124,13 @@ func (r *MilestoneRepository) ExecuteDelete(ctx context.Context, tx *sql.Tx, m *
 
 func (r *MilestoneRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Milestone, error) {
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
-		`SELECT id, project_id, title, description, target_date, closed_at, created_at, xmin FROM milestones WHERE id=$1`, id)
+		`SELECT id, project_id, title, description, target_date, closed_at, created_at, version FROM milestones WHERE id=$1`, id)
 	return scanMilestone(row)
 }
 
 func (r *MilestoneRepository) List(ctx context.Context, projectID uuid.UUID) ([]*models.Milestone, error) {
 	rows, err := r.ctx.queryContext(ctx).QueryContext(ctx,
-		`SELECT id, project_id, title, description, target_date, closed_at, created_at, xmin FROM milestones WHERE project_id=$1 ORDER BY created_at`,
+		`SELECT id, project_id, title, description, target_date, closed_at, created_at, version FROM milestones WHERE project_id=$1 ORDER BY created_at`,
 		projectID)
 	if err != nil {
 		return nil, fmt.Errorf("listing milestones: %w", err)
@@ -142,8 +144,8 @@ func (r *MilestoneRepository) List(ctx context.Context, projectID uuid.UUID) ([]
 		var desc sql.NullString
 		var targetDate, closedAt sql.NullTime
 		var createdAt time.Time
-		var xmin uint32
-		if err := rows.Scan(&id, &projectID, &title, &desc, &targetDate, &closedAt, &createdAt, &xmin); err != nil {
+		var version int
+		if err := rows.Scan(&id, &projectID, &title, &desc, &targetDate, &closedAt, &createdAt, &version); err != nil {
 			return nil, fmt.Errorf("scanning milestone: %w", err)
 		}
 		var descPtr *string
@@ -158,7 +160,7 @@ func (r *MilestoneRepository) List(ctx context.Context, projectID uuid.UUID) ([]
 		if closedAt.Valid {
 			closedAtPtr = &closedAt.Time
 		}
-		milestones = append(milestones, models.NewMilestoneFromDB(id, createdAt, xmin, projectID, title, descPtr, targetDatePtr, closedAtPtr))
+		milestones = append(milestones, models.NewMilestoneFromDB(id, createdAt, version, projectID, title, descPtr, targetDatePtr, closedAtPtr))
 	}
 	return milestones, rows.Err()
 }
@@ -169,9 +171,9 @@ func scanMilestone(row *sql.Row) (*models.Milestone, error) {
 	var desc sql.NullString
 	var targetDate, closedAt sql.NullTime
 	var createdAt time.Time
-	var xmin uint32
+	var version int
 
-	err := row.Scan(&id, &projectID, &title, &desc, &targetDate, &closedAt, &createdAt, &xmin)
+	err := row.Scan(&id, &projectID, &title, &desc, &targetDate, &closedAt, &createdAt, &version)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -192,5 +194,5 @@ func scanMilestone(row *sql.Row) (*models.Milestone, error) {
 		closedAtPtr = &closedAt.Time
 	}
 
-	return models.NewMilestoneFromDB(id, createdAt, xmin, projectID, title, descPtr, targetDatePtr, closedAtPtr), nil
+	return models.NewMilestoneFromDB(id, createdAt, version, projectID, title, descPtr, targetDatePtr, closedAtPtr), nil
 }

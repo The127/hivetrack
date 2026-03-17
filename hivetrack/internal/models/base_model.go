@@ -6,12 +6,12 @@ import (
 	"github.com/google/uuid"
 )
 
-// BaseModel provides id, createdAt, updatedAt, and xmin version to all entity models.
+// BaseModel provides id, createdAt, updatedAt, and version to all entity models.
 type BaseModel struct {
 	id        uuid.UUID
 	createdAt time.Time
 	updatedAt time.Time
-	version   any // holds postgres xmin (uint32)
+	version   any // explicit integer version column for optimistic concurrency
 }
 
 func NewBaseModel() BaseModel {
@@ -32,9 +32,9 @@ func NewBaseModelFromDB(id uuid.UUID, createdAt, updatedAt time.Time, version an
 	}
 }
 
-func (b BaseModel) GetId() uuid.UUID        { return b.id }
-func (b BaseModel) GetCreatedAt() time.Time { return b.createdAt }
-func (b BaseModel) GetUpdatedAt() time.Time { return b.updatedAt }
-func (b BaseModel) GetVersion() any         { return b.version }
-func (b *BaseModel) SetVersion(v any)       { b.version = v }
+func (b BaseModel) GetId() uuid.UUID          { return b.id }
+func (b BaseModel) GetCreatedAt() time.Time   { return b.createdAt }
+func (b BaseModel) GetUpdatedAt() time.Time   { return b.updatedAt }
+func (b BaseModel) GetVersion() any           { return b.version }
+func (b *BaseModel) SetVersion(v any)         { b.version = v }
 func (b *BaseModel) SetUpdatedAt(t time.Time) { b.updatedAt = t }

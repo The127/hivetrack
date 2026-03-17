@@ -6,7 +6,15 @@ import (
 	"net/http"
 
 	"github.com/the127/hivetrack/internal/models"
+	"go.uber.org/zap"
 )
+
+var logger *zap.Logger = zap.NewNop()
+
+// SetLogger configures the package-level logger used by RespondError.
+func SetLogger(l *zap.Logger) {
+	logger = l
+}
 
 type errorResponse struct {
 	Errors []apiError `json:"errors"`
@@ -48,6 +56,12 @@ func RespondError(w http.ResponseWriter, err error) {
 	default:
 		status = http.StatusInternalServerError
 		code = "internal"
+	}
+
+	if status >= 500 {
+		logger.Error("internal server error", zap.Error(err))
+	} else if status >= 400 {
+		logger.Warn("client error", zap.Int("status", status), zap.String("code", code), zap.Error(err))
 	}
 
 	RespondJSON(w, status, errorResponse{

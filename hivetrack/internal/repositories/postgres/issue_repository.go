@@ -41,14 +41,14 @@ func (r *IssueRepository) ExecuteInsert(ctx context.Context, tx *sql.Tx, issue *
 		return fmt.Errorf("marshaling checklist: %w", err)
 	}
 
-	var xmin uint32
+	var version int
 	err = tx.QueryRowContext(ctx,
 		`INSERT INTO issues (id, project_id, number, type, title, description, status,
 		on_hold, hold_reason, hold_since, hold_note,
 		priority, estimate, reporter_id, parent_id, milestone_id, sprint_id, sprint_carry_count,
-		triaged, visibility, customer_email, customer_name, customer_token, rank, checklist, created_at, updated_at)
+		triaged, visibility, customer_email, customer_name, customer_token, "rank", checklist, created_at, updated_at)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
-		RETURNING xmin`,
+		RETURNING version`,
 		issue.GetId(), issue.GetProjectID(), issue.GetNumber(), issue.GetType(),
 		issue.GetTitle(), issue.GetDescription(), issue.GetStatus(),
 		issue.GetOnHold(), issue.GetHoldReason(), issue.GetHoldSince(), issue.GetHoldNote(),
@@ -57,7 +57,7 @@ func (r *IssueRepository) ExecuteInsert(ctx context.Context, tx *sql.Tx, issue *
 		issue.GetTriaged(), issue.GetVisibility(),
 		issue.GetCustomerEmail(), issue.GetCustomerName(), issue.GetCustomerToken(),
 		issue.GetRank(), checklistJSON, issue.GetCreatedAt(), issue.GetUpdatedAt(),
-	).Scan(&xmin)
+	).Scan(&version)
 	if err != nil {
 		return fmt.Errorf("inserting issue: %w", err)
 	}
@@ -69,7 +69,7 @@ func (r *IssueRepository) ExecuteInsert(ctx context.Context, tx *sql.Tx, issue *
 		return err
 	}
 
-	issue.SetVersion(xmin)
+	issue.SetVersion(version)
 	issue.ClearChanges()
 	return nil
 }
@@ -166,24 +166,26 @@ func (r *IssueRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, issue *
 		argIdx++
 	}
 	if issue.HasChange(models.IssueChangeRank) {
-		setClauses = append(setClauses, fmt.Sprintf("rank=$%d", argIdx))
+		setClauses = append(setClauses, fmt.Sprintf(`"rank"=$%d`, argIdx))
 		args = append(args, issue.GetRank())
 		argIdx++
 	}
+
+	setClauses = append(setClauses, "version = version + 1")
 
 	query := fmt.Sprintf("UPDATE issues SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
 	args = append(args, issue.GetId())
 	argIdx++
 
 	if issue.GetVersion() != nil {
-		query += fmt.Sprintf(" AND xmin=$%d::xid", argIdx)
-		args = append(args, issue.GetVersion().(uint32))
+		query += fmt.Sprintf(" AND version=$%d", argIdx)
+		args = append(args, issue.GetVersion().(int))
 		argIdx++
 	}
-	query += " RETURNING xmin"
+	query += " RETURNING version"
 
-	var xmin uint32
-	err := tx.QueryRowContext(ctx, query, args...).Scan(&xmin)
+	var version int
+	err := tx.QueryRowContext(ctx, query, args...).Scan(&version)
 	if errors.Is(err, sql.ErrNoRows) {
 		if issue.GetVersion() != nil {
 			return fmt.Errorf("issue %s: %w", issue.GetId(), models.ErrConcurrentUpdate)
@@ -205,7 +207,7 @@ func (r *IssueRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, issue *
 		}
 	}
 
-	issue.SetVersion(xmin)
+	issue.SetVersion(version)
 	issue.ClearChanges()
 	return nil
 }
@@ -279,7 +281,7 @@ func (r *IssueRepository) List(ctx context.Context, filter *repositories.IssueFi
 		return nil, 0, fmt.Errorf("counting issues: %w", err)
 	}
 
-	baseQuery += ` ORDER BY i.rank ASC NULLS LAST, i.created_at DESC`
+	baseQuery += ` ORDER BY i."rank" ASC NULLS LAST, i.created_at DESC`
 
 	if filter.Limit > 0 {
 		baseQuery += fmt.Sprintf(` LIMIT %d`, filter.Limit)
@@ -334,7 +336,7 @@ const issueSelectQuery = `
 		i.on_hold, i.hold_reason, i.hold_since, i.hold_note,
 		i.priority, i.estimate, i.reporter_id, i.parent_id, i.milestone_id, i.sprint_id, i.sprint_carry_count,
 		i.triaged, i.visibility, i.customer_email, i.customer_name, i.customer_token,
-		i.rank, i.checklist, i.created_at, i.updated_at, i.xmin,
+		i."rank", i.checklist, i.created_at, i.updated_at, i.version,
 		COALESCE((SELECT array_agg(user_id) FROM issue_assignees WHERE issue_id=i.id), '{}'),
 		COALESCE((SELECT array_agg(label_id) FROM issue_labels WHERE issue_id=i.id), '{}')
 	FROM issues i`
@@ -357,7 +359,7 @@ func scanIssue(row *sql.Row) (*models.Issue, error) {
 	var visibility models.IssueVisibility
 	var checklistJSON []byte
 	var createdAt, updatedAt time.Time
-	var xmin uint32
+	var version int
 	var assigneeArr, labelArr []byte
 
 	err := row.Scan(
@@ -365,7 +367,7 @@ func scanIssue(row *sql.Row) (*models.Issue, error) {
 		&onHold, &holdReason, &holdSince, &holdNote,
 		&priority, &estimate, &reporterID, &parentID, &milestoneID, &sprintID, &sprintCarryCount,
 		&triaged, &visibility, &customerEmail, &customerName, &customerToken,
-		&rankStr, &checklistJSON, &createdAt, &updatedAt, &xmin,
+		&rankStr, &checklistJSON, &createdAt, &updatedAt, &version,
 		&assigneeArr, &labelArr,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -382,7 +384,7 @@ func scanIssue(row *sql.Row) (*models.Issue, error) {
 		priority, estimate,
 		reporterID, parentID, milestoneID, sprintID,
 		sprintCarryCount, triaged, visibility,
-		rankStr, checklistJSON, createdAt, updatedAt, xmin,
+		rankStr, checklistJSON, createdAt, updatedAt, version,
 		assigneeArr, labelArr,
 	), nil
 }
@@ -405,7 +407,7 @@ func scanIssueRow(rows *sql.Rows) (*models.Issue, error) {
 	var visibility models.IssueVisibility
 	var checklistJSON []byte
 	var createdAt, updatedAt time.Time
-	var xmin uint32
+	var version int
 	var assigneeArr, labelArr []byte
 
 	err := rows.Scan(
@@ -413,7 +415,7 @@ func scanIssueRow(rows *sql.Rows) (*models.Issue, error) {
 		&onHold, &holdReason, &holdSince, &holdNote,
 		&priority, &estimate, &reporterID, &parentID, &milestoneID, &sprintID, &sprintCarryCount,
 		&triaged, &visibility, &customerEmail, &customerName, &customerToken,
-		&rankStr, &checklistJSON, &createdAt, &updatedAt, &xmin,
+		&rankStr, &checklistJSON, &createdAt, &updatedAt, &version,
 		&assigneeArr, &labelArr,
 	)
 	if err != nil {
@@ -427,7 +429,7 @@ func scanIssueRow(rows *sql.Rows) (*models.Issue, error) {
 		priority, estimate,
 		reporterID, parentID, milestoneID, sprintID,
 		sprintCarryCount, triaged, visibility,
-		rankStr, checklistJSON, createdAt, updatedAt, xmin,
+		rankStr, checklistJSON, createdAt, updatedAt, version,
 		assigneeArr, labelArr,
 	), nil
 }
@@ -441,7 +443,7 @@ func buildIssue(
 	reporterID, parentID, milestoneID, sprintID uuid.NullUUID,
 	sprintCarryCount int, triaged bool, visibility models.IssueVisibility,
 	rankStr sql.NullString,
-	checklistJSON []byte, createdAt, updatedAt time.Time, xmin uint32,
+	checklistJSON []byte, createdAt, updatedAt time.Time, version int,
 	assigneeArr, labelArr []byte,
 ) *models.Issue {
 	var descPtr *string
@@ -503,7 +505,7 @@ func buildIssue(
 	labels := parseUUIDArray(labelArr)
 
 	return models.NewIssueFromDB(
-		id, createdAt, updatedAt, xmin,
+		id, createdAt, updatedAt, version,
 		projectID, number, issueType, title, descPtr, status,
 		onHold, holdReasonPtr, holdSincePtr, holdNotePtr,
 		priority, estimate,

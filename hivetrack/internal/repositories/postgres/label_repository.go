@@ -33,15 +33,15 @@ func (r *LabelRepository) Delete(label *models.Label) {
 }
 
 func (r *LabelRepository) ExecuteInsert(ctx context.Context, tx *sql.Tx, l *models.Label) error {
-	var xmin uint32
+	var version int
 	err := tx.QueryRowContext(ctx,
-		`INSERT INTO labels (id, project_id, name, color) VALUES ($1,$2,$3,$4) RETURNING xmin`,
+		`INSERT INTO labels (id, project_id, name, color) VALUES ($1,$2,$3,$4) RETURNING version`,
 		l.GetId(), l.GetProjectID(), l.GetName(), l.GetColor(),
-	).Scan(&xmin)
+	).Scan(&version)
 	if err != nil {
 		return fmt.Errorf("inserting label: %w", err)
 	}
-	l.SetVersion(xmin)
+	l.SetVersion(version)
 	l.ClearChanges()
 	return nil
 }
@@ -70,19 +70,21 @@ func (r *LabelRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, l *mode
 		return nil
 	}
 
+	setClauses = append(setClauses, "version = version + 1")
+
 	query := fmt.Sprintf("UPDATE labels SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
 	args = append(args, l.GetId())
 	argIdx++
 
 	if l.GetVersion() != nil {
-		query += fmt.Sprintf(" AND xmin=$%d::xid", argIdx)
-		args = append(args, l.GetVersion().(uint32))
+		query += fmt.Sprintf(" AND version=$%d", argIdx)
+		args = append(args, l.GetVersion().(int))
 		argIdx++
 	}
-	query += " RETURNING xmin"
+	query += " RETURNING version"
 
-	var xmin uint32
-	err := tx.QueryRowContext(ctx, query, args...).Scan(&xmin)
+	var version int
+	err := tx.QueryRowContext(ctx, query, args...).Scan(&version)
 	if errors.Is(err, sql.ErrNoRows) {
 		if l.GetVersion() != nil {
 			return fmt.Errorf("label %s: %w", l.GetId(), models.ErrConcurrentUpdate)
@@ -93,7 +95,7 @@ func (r *LabelRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, l *mode
 		return fmt.Errorf("updating label: %w", err)
 	}
 
-	l.SetVersion(xmin)
+	l.SetVersion(version)
 	l.ClearChanges()
 	return nil
 }
@@ -108,23 +110,23 @@ func (r *LabelRepository) ExecuteDelete(ctx context.Context, tx *sql.Tx, l *mode
 
 func (r *LabelRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Label, error) {
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
-		`SELECT id, project_id, name, color, xmin FROM labels WHERE id=$1`, id)
+		`SELECT id, project_id, name, color, version FROM labels WHERE id=$1`, id)
 	var labelID, projectID uuid.UUID
 	var name, color string
-	var xmin uint32
-	err := row.Scan(&labelID, &projectID, &name, &color, &xmin)
+	var version int
+	err := row.Scan(&labelID, &projectID, &name, &color, &version)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("scanning label: %w", err)
 	}
-	return models.NewLabelFromDB(labelID, xmin, projectID, name, color), nil
+	return models.NewLabelFromDB(labelID, version, projectID, name, color), nil
 }
 
 func (r *LabelRepository) List(ctx context.Context, projectID uuid.UUID) ([]*models.Label, error) {
 	rows, err := r.ctx.queryContext(ctx).QueryContext(ctx,
-		`SELECT id, project_id, name, color, xmin FROM labels WHERE project_id=$1 ORDER BY name`, projectID)
+		`SELECT id, project_id, name, color, version FROM labels WHERE project_id=$1 ORDER BY name`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("listing labels: %w", err)
 	}
@@ -134,11 +136,11 @@ func (r *LabelRepository) List(ctx context.Context, projectID uuid.UUID) ([]*mod
 	for rows.Next() {
 		var labelID, lProjectID uuid.UUID
 		var name, color string
-		var xmin uint32
-		if err := rows.Scan(&labelID, &lProjectID, &name, &color, &xmin); err != nil {
+		var version int
+		if err := rows.Scan(&labelID, &lProjectID, &name, &color, &version); err != nil {
 			return nil, fmt.Errorf("scanning label: %w", err)
 		}
-		labels = append(labels, models.NewLabelFromDB(labelID, xmin, lProjectID, name, color))
+		labels = append(labels, models.NewLabelFromDB(labelID, version, lProjectID, name, color))
 	}
 	return labels, rows.Err()
 }

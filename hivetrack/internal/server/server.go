@@ -22,6 +22,9 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 	verifier := ioc.GetDependency[*authentication.OIDCVerifier](dp)
 	med := ioc.GetDependency[mediatr.Mediator](dp)
 
+	// Wire the handlers package logger for error logging in RespondError
+	handlers.SetLogger(logger)
+
 	r := mux.NewRouter()
 
 	// Global middleware (order matters)

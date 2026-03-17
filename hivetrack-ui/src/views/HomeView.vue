@@ -88,27 +88,11 @@ function formatStatus(s) {
   <MainLayout>
     <div class="max-w-3xl mx-auto px-6 py-8">
       <!-- Page header -->
-      <div class="flex items-center justify-between mb-8">
-        <div>
-          <h1 class="text-xl font-semibold text-slate-900">My Work</h1>
-          <p class="text-sm text-slate-500 mt-0.5">
-            Welcome back, {{ userName }}
-          </p>
-        </div>
-        <button
-          class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 h-8 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"
-          title="Create issue (C)"
-        >
-          <PlusIcon class="size-4" />
-          New issue
-        </button>
-        <button
-          class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 h-8 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"
-          @click="showCreateProject = true"
-        >
-          <PlusIcon class="size-4" />
-          New project
-        </button>
+      <div class="mb-8">
+        <h1 class="text-xl font-semibold text-slate-900">My Work</h1>
+        <p class="text-sm text-slate-500 mt-0.5">
+          Welcome back, {{ userName }}
+        </p>
       </div>
 
       <!-- ── My open issues ────────────────────────────────────────────── -->
@@ -188,16 +172,25 @@ function formatStatus(s) {
 
       <!-- ── Projects ──────────────────────────────────────────────────── -->
       <section>
-        <h2 class="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
-          <FolderKanbanIcon class="size-4 text-slate-500" />
-          Projects
-          <span
-            v-if="projects?.items?.length"
-            class="text-xs font-normal text-slate-500"
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-medium text-slate-700 flex items-center gap-2">
+            <FolderKanbanIcon class="size-4 text-slate-500" />
+            Projects
+            <span
+              v-if="projects?.items?.length"
+              class="text-xs font-normal text-slate-500"
+            >
+              {{ projects.items.length }}
+            </span>
+          </h2>
+          <button
+            class="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"
+            @click="showCreateProject = true"
           >
-            {{ projects.items.length }}
-          </span>
-        </h2>
+            <PlusIcon class="size-3.5" />
+            New project
+          </button>
+        </div>
 
         <div v-if="loadingProjects" class="flex justify-center py-8">
           <Spinner class="size-5 text-slate-400" />
