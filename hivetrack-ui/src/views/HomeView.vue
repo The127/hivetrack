@@ -22,6 +22,7 @@ import Badge from '@/components/ui/Badge.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Spinner from '@/components/ui/Spinner.vue'
 import CreateProjectModal from '@/components/project/CreateProjectModal.vue'
+import CreateIssueModal from '@/components/issue/CreateIssueModal.vue'
 import { apiFetch } from '@/composables/useApi'
 import { useAuth } from '@/composables/useAuth'
 
@@ -29,10 +30,15 @@ const { user } = useAuth()
 const router = useRouter()
 
 const showCreateProject = ref(false)
+const showCreateIssue = ref(false)
 
 function onProjectCreated(result) {
   showCreateProject.value = false
   router.push(`/projects/${result.slug}/board`)
+}
+
+function onIssueCreated() {
+  showCreateIssue.value = false
 }
 
 const userName = user.value?.profile?.name ?? user.value?.profile?.email ?? 'You'
@@ -85,14 +91,23 @@ function formatStatus(s) {
 </script>
 
 <template>
-  <MainLayout>
+  <MainLayout @create-issue="showCreateIssue = true">
     <div class="max-w-3xl mx-auto px-6 py-8">
       <!-- Page header -->
-      <div class="mb-8">
-        <h1 class="text-xl font-semibold text-slate-900">My Work</h1>
-        <p class="text-sm text-slate-500 mt-0.5">
-          Welcome back, {{ userName }}
-        </p>
+      <div class="mb-8 flex items-start justify-between">
+        <div>
+          <h1 class="text-xl font-semibold text-slate-900">My Work</h1>
+          <p class="text-sm text-slate-500 mt-0.5">
+            Welcome back, {{ userName }}
+          </p>
+        </div>
+        <button
+          class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 h-8 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"
+          @click="showCreateIssue = true"
+        >
+          <PlusIcon class="size-4" />
+          New issue
+        </button>
       </div>
 
       <!-- ── My open issues ────────────────────────────────────────────── -->
@@ -259,5 +274,11 @@ function formatStatus(s) {
     :open="showCreateProject"
     @close="showCreateProject = false"
     @created="onProjectCreated"
+  />
+
+  <CreateIssueModal
+    :open="showCreateIssue"
+    @close="showCreateIssue = false"
+    @created="onIssueCreated"
   />
 </template>

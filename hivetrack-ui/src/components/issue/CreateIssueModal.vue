@@ -8,7 +8,7 @@
 
   Props:
     open        — controls visibility
-    projectSlug — project to create the issue in
+    projectSlug — project to create the issue in (optional — shows project picker when omitted)
 
   Emits:
     close   — close without creating
@@ -16,11 +16,12 @@
 -->
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import Modal from '@/components/ui/Modal.vue'
 import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
 import { createIssue } from '@/api/issues'
+import { apiFetch } from '@/composables/useApi'
 
 const props = defineProps({
   open: {
@@ -29,7 +30,7 @@ const props = defineProps({
   },
   projectSlug: {
     type: String,
-    required: true,
+    default: null,
   },
   // When set, the issue is created with this status (landing triaged in backlog,
   // not in the inbox). Used by the backlog view.
@@ -42,6 +43,19 @@ const props = defineProps({
 const emit = defineEmits(['close', 'created'])
 
 const queryClient = useQueryClient()
+
+// ── Project picker (only when projectSlug is not provided) ──────────────────
+
+const needsProjectPicker = computed(() => !props.projectSlug)
+
+const { data: projectList } = useQuery({
+  queryKey: ['projects'],
+  queryFn: () => apiFetch('/api/v1/projects'),
+  enabled: needsProjectPicker,
+})
+
+const selectedProject = ref('')
+const resolvedSlug = computed(() => props.projectSlug ?? selectedProject.value)
 
 // ── Form state ──────────────────────────────────────────────────────────────
 
@@ -59,6 +73,7 @@ watch(
       title.value = ''
       type.value = 'task'
       priority.value = 'none'
+      selectedProject.value = ''
       errors.value = {}
     }
   },
@@ -82,6 +97,7 @@ function priorityActiveClass(p) {
 
 function validate() {
   const e = {}
+  if (needsProjectPicker.value && !selectedProject.value) e.project = 'Select a project.'
   if (!title.value.trim()) e.title = 'Title is required.'
   errors.value = e
   return Object.keys(e).length === 0
@@ -90,9 +106,10 @@ function validate() {
 // ── Mutation ────────────────────────────────────────────────────────────────
 
 const { mutate, isPending, error: serverError } = useMutation({
-  mutationFn: (data) => createIssue(props.projectSlug, data),
+  mutationFn: (data) => createIssue(resolvedSlug.value, data),
   onSuccess: (result) => {
-    queryClient.invalidateQueries({ queryKey: ['issues', props.projectSlug] })
+    queryClient.invalidateQueries({ queryKey: ['issues', resolvedSlug.value] })
+    queryClient.invalidateQueries({ queryKey: ['me', 'issues'] })
     emit('created', result)
   },
 })
@@ -121,6 +138,29 @@ function submit() {
     @close="emit('close')"
   >
     <form class="flex flex-col gap-5" @submit.prevent="submit">
+      <!-- Project (only when no projectSlug prop) -->
+      <div v-if="needsProjectPicker" class="flex flex-col gap-1.5">
+        <label class="text-sm font-medium text-slate-700" for="create-issue-project">Project</label>
+        <select
+          id="create-issue-project"
+          v-model="selectedProject"
+          :class="[
+            'w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer',
+            errors.project ? 'border-red-300' : 'border-slate-200',
+          ]"
+        >
+          <option value="" disabled>Select a project…</option>
+          <option
+            v-for="p in projectList?.items"
+            :key="p.id"
+            :value="p.slug"
+          >
+            {{ p.name }} ({{ p.slug }})
+          </option>
+        </select>
+        <p v-if="errors.project" class="text-sm text-red-600">{{ errors.project }}</p>
+      </div>
+
       <!-- Title -->
       <Input
         label="Title"
