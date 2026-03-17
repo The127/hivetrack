@@ -388,11 +388,9 @@ const defaultCreateStatus = computed(() => {
               <!-- Empty column placeholder (positioned over the draggable area) -->
               <div
                 v-if="!columnIssues[col.key]?.length && !isDragging"
-                class="absolute inset-0 flex items-start pt-4"
+                class="absolute inset-0 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center"
               >
-                <div class="w-full rounded-lg border-2 border-dashed border-slate-200 py-8 text-center">
-                  <p class="text-xs text-slate-400">No issues</p>
-                </div>
+                <p class="text-xs text-slate-400">No issues</p>
               </div>
             </div>
 
