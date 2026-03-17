@@ -217,7 +217,7 @@ link_type       enum  blocks | duplicates | relates_to
 `is_blocked_by` and `is_duplicated_by` are the inverse views of `blocks` and `duplicates` — stored as one record, rendered bidirectionally. `relates_to` is symmetric.
 
 When a `blocks` link is created: target issue's `on_hold` is set to `true`, `hold_reason` to `blocked_by_issue` (if not already on hold for another reason).
-When source issue reaches `done` or `cancelled`: scan for `blocks` links originating from it and clear `blocked_by_issue` hold on all targets.
+When source issue reaches `done` or `cancelled`: scan for `blocks` links originating from it. For each target, **only clear the hold if all other blocking issues are also in a terminal state** (`done` or `cancelled`). An issue blocked by both A and B must not be unblocked when only A closes.
 
 ### Comment
 ```
@@ -261,14 +261,15 @@ error        string?
 
 ### software
 ```
-backlog      → issue exists but not yet scheduled
-todo         → scheduled, not started
+todo         → default status for new issues (scheduled, not started)
 in_progress  → actively being worked on
 in_review    → in code review / QA
 done         → complete
 cancelled    → will not be completed
 ```
 Terminal states: `done`, `cancelled`.
+
+**Note:** There is no `backlog` status. "Backlog" is not a workflow state — it is the set of issues where `sprint_id IS NULL`. An issue is in the backlog by virtue of not being assigned to a sprint, not by having a special status. The board has a Backlog section filtered by `sprint_id IS NULL AND triaged = true`. This avoids the ambiguity of `status = backlog` conflicting with `sprint_id = NULL`.
 
 ### support
 ```
@@ -283,7 +284,22 @@ Terminal states: `closed`.
 
 ## Issue Number Generation
 
-Issue numbers are sequential integers scoped to a project. Generated using a PostgreSQL sequence per project (`issues_seq_{project_id}`). The human-readable identifier is `{PROJECT_SLUG_UPPERCASE}-{number}` (e.g. `HT-42`, `BACKEND-107`).
+Issue numbers are sequential integers scoped to a project. The human-readable identifier is `{PROJECT_SLUG_UPPERCASE}-{number}` (e.g. `HT-42`, `BACKEND-107`).
+
+**Implementation:** A `project_issue_counters` table with one row per project:
+```sql
+CREATE TABLE project_issue_counters (
+    project_id uuid PRIMARY KEY REFERENCES projects(id),
+    next_number int NOT NULL DEFAULT 1
+);
+```
+On issue creation, within the same transaction:
+```sql
+UPDATE project_issue_counters SET next_number = next_number + 1
+WHERE project_id = $1
+RETURNING next_number - 1 AS issue_number;
+```
+The `FOR UPDATE` is implicit via the transaction. No DDL per project, no sequences to manage.
 
 Numbers are immutable. If an issue is deleted, its number is not reused.
 

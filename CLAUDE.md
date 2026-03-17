@@ -85,7 +85,7 @@ One deployment = one organization. Simplifies auth, URLs, and the entire data mo
 **3. Project archetypes, not custom workflows.**
 Projects have one of two archetypes: `software` or `support`. The archetype determines default statuses, available features, and visibility model. No custom workflows. Teams cannot misconfigure what they don't need.
 
-- `software` archetype: team-only, statuses = `backlog | todo | in_progress | in_review | done | cancelled`, features = sprints + backlog + board + milestones
+- `software` archetype: team-only, statuses = `todo | in_progress | in_review | done | cancelled`, features = sprints + backlog (sprint_id IS NULL) + board + milestones
 - `support` archetype: public-facing, statuses = `open | in_progress | resolved | closed`, features = email submission + token tracking + link to software issues
 
 **4. Fixed status sets per archetype.**
