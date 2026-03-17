@@ -21,6 +21,7 @@ func Mediator(dc *ioc.DependencyCollection) {
 	mediatr.RegisterHandler(m, commands.HandleTriageIssue)
 	mediatr.RegisterHandler(m, commands.HandleCreateSprint)
 	mediatr.RegisterHandler(m, commands.HandleUpdateSprint)
+	mediatr.RegisterHandler(m, commands.HandleDeleteSprint)
 
 	// Queries
 	mediatr.RegisterHandler(m, queries.HandleGetProjects)

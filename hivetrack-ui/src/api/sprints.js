@@ -14,3 +14,6 @@ export const updateSprint = (slug, id, data) =>
     method: 'PATCH',
     body: JSON.stringify(data),
   })
+
+export const deleteSprint = (slug, id) =>
+  apiFetch(`/api/v1/projects/${slug}/sprints/${id}`, { method: 'DELETE' })

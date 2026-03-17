@@ -21,6 +21,7 @@ import {
   ChevronDownIcon,
   PlayIcon,
   CheckIcon,
+  Trash2Icon,
 } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -30,7 +31,7 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import CreateIssueModal from '@/components/issue/CreateIssueModal.vue'
 import { fetchProject } from '@/api/projects'
 import { fetchIssues, updateIssue } from '@/api/issues'
-import { fetchSprints, createSprint, updateSprint } from '@/api/sprints'
+import { fetchSprints, createSprint, updateSprint, deleteSprint } from '@/api/sprints'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug)
@@ -204,6 +205,17 @@ const { mutate: completeSprint } = useMutation({
   },
 })
 
+const { mutate: doDeleteSprint } = useMutation({
+  mutationFn: (sprintId) => deleteSprint(slug.value, sprintId),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['sprints', slug.value] })
+    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+  },
+  onError: () => {
+    queryClient.invalidateQueries({ queryKey: ['sprints', slug.value] })
+  },
+})
+
 // ── New sprint form ───────────────────────────────────────────────────────────
 
 const showNewSprintForm = ref(false)
@@ -331,13 +343,22 @@ function formatDateRange(startDate, endDate) {
                 {{ issuesForSprint(activeSprint.id).length }} issues
               </span>
             </div>
-            <button
-              class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer flex-shrink-0"
-              @click="completeSprint(activeSprint.id)"
-            >
-              <CheckIcon class="size-3.5" />
-              Complete sprint
-            </button>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button
+                class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
+                @click="completeSprint(activeSprint.id)"
+              >
+                <CheckIcon class="size-3.5" />
+                Complete sprint
+              </button>
+              <button
+                class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 h-7 text-slate-400 hover:text-red-600 hover:border-red-300 focus-visible:outline-none transition-colors cursor-pointer"
+                title="Delete sprint (moves issues to backlog)"
+                @click="doDeleteSprint(activeSprint.id)"
+              >
+                <Trash2Icon class="size-3.5" />
+              </button>
+            </div>
           </div>
 
           <div v-if="issuesForSprint(activeSprint.id).length" class="divide-y divide-slate-100">
@@ -394,6 +415,13 @@ function formatDateRange(startDate, endDate) {
               >
                 <PlayIcon class="size-3.5" />
                 Activate
+              </button>
+              <button
+                class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 h-7 text-slate-400 hover:text-red-600 hover:border-red-300 focus-visible:outline-none transition-colors cursor-pointer"
+                title="Delete sprint (moves issues to backlog)"
+                @click="doDeleteSprint(sprint.id)"
+              >
+                <Trash2Icon class="size-3.5" />
               </button>
             </div>
           </div>
