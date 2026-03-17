@@ -374,47 +374,58 @@ function moveToBacklog(issue) {
   moveIssue({ issueNumber: issue.number, sprintId: null })
 }
 
-// ── Inline issue creation ────────────────────────────────────────────────────
+// ── Inline issue creation (per-section) ─────────────────────────────────────
 
-const showInlineCreate = ref(false)
+const activeInlineCreate = ref(null) // section ID currently being edited
 const inlineCreateTitle = ref('')
 const inlineCreateError = ref('')
-const inlineCreateInput = ref(null)
+const inlineCreateInputs = ref({})
 
-watch(showInlineCreate, (show) => {
-  if (show) {
-    nextTick(() => inlineCreateInput.value?.focus())
-  }
-})
+function setInlineCreateRef(sectionId) {
+  return (el) => { inlineCreateInputs.value[sectionId] = el }
+}
+
+function activateInlineCreate(sectionId) {
+  activeInlineCreate.value = sectionId
+  inlineCreateTitle.value = ''
+  inlineCreateError.value = ''
+  nextTick(() => inlineCreateInputs.value[sectionId]?.focus())
+}
 
 const { mutate: inlineCreate, isPending: inlineCreatePending } = useMutation({
   mutationFn: (data) => createIssue(slug.value, data),
-  onSuccess: () => {
+  onSuccess: (_result, variables) => {
     inlineCreateTitle.value = ''
     inlineCreateError.value = ''
     queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
-    nextTick(() => inlineCreateInput.value?.focus())
+    nextTick(() => {
+      if (activeInlineCreate.value) {
+        inlineCreateInputs.value[activeInlineCreate.value]?.focus()
+      }
+    })
   },
   onError: () => {
     inlineCreateError.value = 'Failed'
   },
 })
 
-function submitInlineCreate() {
+function submitInlineCreate(sectionId) {
   const title = inlineCreateTitle.value.trim()
   if (!title) return
   if (inlineCreatePending.value) return
   const status = project.value?.archetype === 'support' ? 'open' : 'todo'
-  inlineCreate({ title, type: 'task', status })
+  const sprintId = sectionId === BACKLOG_KEY ? undefined : sectionId
+  inlineCreate({ title, type: 'task', status, sprint_id: sprintId })
 }
 
 function cancelInlineCreate() {
-  showInlineCreate.value = false
+  if (inlineCreatePending.value) return
+  activeInlineCreate.value = null
   inlineCreateTitle.value = ''
   inlineCreateError.value = ''
 }
 
-// ── Default status for issue creation (modal) ───────────────────────────────
+// ── Default status for issue creation (modal — header button) ───────────────
 
 const defaultCreateStatus = computed(() => {
   if (!project.value) return null
@@ -455,13 +466,6 @@ function formatDateRange(startDate, endDate) {
           </div>
         </div>
 
-        <button
-          class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 h-8 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"
-          @click="showCreateIssue = true"
-        >
-          <PlusIcon class="size-4" />
-          New issue
-        </button>
       </div>
 
       <!-- ── Loading ────────────────────────────────────────────────────── -->
@@ -544,7 +548,36 @@ function formatDateRange(startDate, endDate) {
               </button>
             </div>
           </VueDraggable>
-          <div v-if="!(sectionIssues[activeSprint.id] ?? []).length" class="px-6 py-3 text-sm text-slate-400 italic">No issues in this sprint.</div>
+          <!-- Inline create row for active sprint -->
+          <div
+            v-if="activeInlineCreate === activeSprint.id"
+            class="flex items-center gap-3 px-6 py-2.5 border-b border-slate-100 border-l-4 border-l-blue-400 bg-blue-50/30"
+          >
+            <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
+              <PlusIcon class="size-3 text-blue-400" />
+            </div>
+            <input
+              :ref="setInlineCreateRef(activeSprint.id)"
+              v-model="inlineCreateTitle"
+              type="text"
+              placeholder="Issue title — Enter to create, Esc to close"
+              class="flex-1 min-w-0 text-sm text-slate-800 bg-transparent placeholder:text-slate-400 focus:outline-none"
+              @keydown.enter.prevent="submitInlineCreate(activeSprint.id)"
+              @keydown.escape="cancelInlineCreate"
+              @blur="cancelInlineCreate"
+            />
+            <span v-if="inlineCreateError" class="flex-shrink-0 text-xs text-red-500">{{ inlineCreateError }}</span>
+          </div>
+          <div
+            v-else
+            class="flex items-center gap-3 px-6 py-2 border-b border-slate-100 border-l-4 border-l-transparent cursor-text group/create"
+            @click="activateInlineCreate(activeSprint.id)"
+          >
+            <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
+              <PlusIcon class="size-3 text-slate-300 group-hover/create:text-slate-400" />
+            </div>
+            <span class="text-sm text-slate-300 group-hover/create:text-slate-400">Create issue</span>
+          </div>
         </template>
 
         <!-- ── Planning Sprints ──────────────────────────────────────────── -->
@@ -619,7 +652,36 @@ function formatDateRange(startDate, endDate) {
               </button>
             </div>
           </VueDraggable>
-          <div v-if="!(sectionIssues[sprint.id] ?? []).length" class="px-6 py-3 text-sm text-slate-400 italic">No issues in this sprint.</div>
+          <!-- Inline create row for planning sprint -->
+          <div
+            v-if="activeInlineCreate === sprint.id"
+            class="flex items-center gap-3 px-6 py-2.5 border-b border-slate-100 border-l-4 border-l-blue-400 bg-blue-50/30"
+          >
+            <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
+              <PlusIcon class="size-3 text-blue-400" />
+            </div>
+            <input
+              :ref="setInlineCreateRef(sprint.id)"
+              v-model="inlineCreateTitle"
+              type="text"
+              placeholder="Issue title — Enter to create, Esc to close"
+              class="flex-1 min-w-0 text-sm text-slate-800 bg-transparent placeholder:text-slate-400 focus:outline-none"
+              @keydown.enter.prevent="submitInlineCreate(sprint.id)"
+              @keydown.escape="cancelInlineCreate"
+              @blur="cancelInlineCreate"
+            />
+            <span v-if="inlineCreateError" class="flex-shrink-0 text-xs text-red-500">{{ inlineCreateError }}</span>
+          </div>
+          <div
+            v-else
+            class="flex items-center gap-3 px-6 py-2 border-b border-slate-100 border-l-4 border-l-transparent cursor-text group/create"
+            @click="activateInlineCreate(sprint.id)"
+          >
+            <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
+              <PlusIcon class="size-3 text-slate-300 group-hover/create:text-slate-400" />
+            </div>
+            <span class="text-sm text-slate-300 group-hover/create:text-slate-400">Create issue</span>
+          </div>
         </template>
 
         <!-- ── Backlog section header ─────────────────────────────────────── -->
@@ -628,45 +690,12 @@ function formatDateRange(startDate, endDate) {
             <span class="font-semibold text-slate-900 text-sm">Backlog</span>
             <span class="text-xs text-slate-400 tabular-nums">{{ (sectionIssues[BACKLOG_KEY] ?? []).length }} issues</span>
           </div>
-          <div class="flex items-center gap-2">
-            <button
-              class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
-              @click="showNewSprintForm = !showNewSprintForm"
-            >
-              <PlusIcon class="size-3.5" />
-              New sprint
-            </button>
-            <button
-              v-if="!showInlineCreate"
-              class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-2.5 h-7 text-xs font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
-              @click="showInlineCreate = true"
-            >
-              <PlusIcon class="size-3.5" />
-              New issue
-            </button>
-          </div>
-        </div>
-
-        <!-- Inline issue creation -->
-        <div v-if="showInlineCreate" class="flex items-center gap-3 px-6 py-2 border-b border-blue-100 bg-blue-50/50 border-l-4 border-l-blue-400">
-          <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
-            <span class="text-[11px] font-mono text-slate-300">NEW</span>
-          </div>
-          <input
-            ref="inlineCreateInput"
-            v-model="inlineCreateTitle"
-            type="text"
-            placeholder="Issue title — Enter to create, Escape to cancel"
-            class="flex-1 min-w-0 text-sm text-slate-800 bg-transparent placeholder:text-slate-400 focus:outline-none"
-            @keydown.enter.prevent="submitInlineCreate"
-            @keydown.escape="cancelInlineCreate"
-          />
-          <span v-if="inlineCreateError" class="flex-shrink-0 text-xs text-red-500">{{ inlineCreateError }}</span>
           <button
-            class="flex-shrink-0 text-[11px] text-slate-400 hover:text-slate-600 cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-100"
-            @click="cancelInlineCreate"
+            class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
+            @click="showNewSprintForm = !showNewSprintForm"
           >
-            Cancel
+            <PlusIcon class="size-3.5" />
+            New sprint
           </button>
         </div>
 
@@ -786,6 +815,36 @@ function formatDateRange(startDate, endDate) {
             </div>
           </div>
         </VueDraggable>
+        <!-- Inline create row for backlog -->
+        <div
+          v-if="activeInlineCreate === BACKLOG_KEY"
+          class="flex items-center gap-3 px-6 py-2.5 border-b border-slate-100 border-l-4 border-l-blue-400 bg-blue-50/30"
+        >
+          <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
+            <PlusIcon class="size-3 text-blue-400" />
+          </div>
+          <input
+            :ref="setInlineCreateRef(BACKLOG_KEY)"
+            v-model="inlineCreateTitle"
+            type="text"
+            placeholder="Issue title — Enter to create, Esc to close"
+            class="flex-1 min-w-0 text-sm text-slate-800 bg-transparent placeholder:text-slate-400 focus:outline-none"
+            @keydown.enter.prevent="submitInlineCreate(BACKLOG_KEY)"
+            @keydown.escape="cancelInlineCreate"
+            @blur="cancelInlineCreate"
+          />
+          <span v-if="inlineCreateError" class="flex-shrink-0 text-xs text-red-500">{{ inlineCreateError }}</span>
+        </div>
+        <div
+          v-else
+          class="flex items-center gap-3 px-6 py-2 border-b border-slate-100 border-l-4 border-l-transparent cursor-text group/create"
+          @click="activateInlineCreate(BACKLOG_KEY)"
+        >
+          <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
+            <PlusIcon class="size-3 text-slate-300 group-hover/create:text-slate-400" />
+          </div>
+          <span class="text-sm text-slate-300 group-hover/create:text-slate-400">Create issue</span>
+        </div>
 
         <!-- Empty state when nothing anywhere -->
         <div
@@ -796,7 +855,7 @@ function formatDateRange(startDate, endDate) {
             title="Backlog is empty"
             description="Triaged issues not assigned to a sprint will appear here."
             action-label="New issue"
-            @action="showCreateIssue = true"
+            @action="activateInlineCreate(BACKLOG_KEY)"
           >
             <template #icon>
               <ListIcon class="size-8" />
