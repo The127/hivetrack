@@ -37,7 +37,7 @@ import Avatar from '@/components/ui/Avatar.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import CreateIssueModal from '@/components/issue/CreateIssueModal.vue'
 import { fetchProject } from '@/api/projects'
-import { fetchIssues, updateIssue } from '@/api/issues'
+import { fetchIssues, createIssue, updateIssue } from '@/api/issues'
 import { fetchSprints, createSprint, updateSprint, deleteSprint } from '@/api/sprints'
 
 const route = useRoute()
@@ -374,7 +374,47 @@ function moveToBacklog(issue) {
   moveIssue({ issueNumber: issue.number, sprintId: null })
 }
 
-// ── Default status for issue creation ────────────────────────────────────────
+// ── Inline issue creation ────────────────────────────────────────────────────
+
+const showInlineCreate = ref(false)
+const inlineCreateTitle = ref('')
+const inlineCreateError = ref('')
+const inlineCreateInput = ref(null)
+
+watch(showInlineCreate, (show) => {
+  if (show) {
+    nextTick(() => inlineCreateInput.value?.focus())
+  }
+})
+
+const { mutate: inlineCreate, isPending: inlineCreatePending } = useMutation({
+  mutationFn: (data) => createIssue(slug.value, data),
+  onSuccess: () => {
+    inlineCreateTitle.value = ''
+    inlineCreateError.value = ''
+    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+    nextTick(() => inlineCreateInput.value?.focus())
+  },
+  onError: () => {
+    inlineCreateError.value = 'Failed'
+  },
+})
+
+function submitInlineCreate() {
+  const title = inlineCreateTitle.value.trim()
+  if (!title) return
+  if (inlineCreatePending.value) return
+  const status = project.value?.archetype === 'support' ? 'open' : 'todo'
+  inlineCreate({ title, type: 'task', status })
+}
+
+function cancelInlineCreate() {
+  showInlineCreate.value = false
+  inlineCreateTitle.value = ''
+  inlineCreateError.value = ''
+}
+
+// ── Default status for issue creation (modal) ───────────────────────────────
 
 const defaultCreateStatus = computed(() => {
   if (!project.value) return null
@@ -588,12 +628,45 @@ function formatDateRange(startDate, endDate) {
             <span class="font-semibold text-slate-900 text-sm">Backlog</span>
             <span class="text-xs text-slate-400 tabular-nums">{{ (sectionIssues[BACKLOG_KEY] ?? []).length }} issues</span>
           </div>
+          <div class="flex items-center gap-2">
+            <button
+              class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
+              @click="showNewSprintForm = !showNewSprintForm"
+            >
+              <PlusIcon class="size-3.5" />
+              New sprint
+            </button>
+            <button
+              v-if="!showInlineCreate"
+              class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-2.5 h-7 text-xs font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
+              @click="showInlineCreate = true"
+            >
+              <PlusIcon class="size-3.5" />
+              New issue
+            </button>
+          </div>
+        </div>
+
+        <!-- Inline issue creation -->
+        <div v-if="showInlineCreate" class="flex items-center gap-3 px-6 py-2 border-b border-blue-100 bg-blue-50/50 border-l-4 border-l-blue-400">
+          <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
+            <span class="text-[11px] font-mono text-slate-300">NEW</span>
+          </div>
+          <input
+            ref="inlineCreateInput"
+            v-model="inlineCreateTitle"
+            type="text"
+            placeholder="Issue title — Enter to create, Escape to cancel"
+            class="flex-1 min-w-0 text-sm text-slate-800 bg-transparent placeholder:text-slate-400 focus:outline-none"
+            @keydown.enter.prevent="submitInlineCreate"
+            @keydown.escape="cancelInlineCreate"
+          />
+          <span v-if="inlineCreateError" class="flex-shrink-0 text-xs text-red-500">{{ inlineCreateError }}</span>
           <button
-            class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
-            @click="showNewSprintForm = !showNewSprintForm"
+            class="flex-shrink-0 text-[11px] text-slate-400 hover:text-slate-600 cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-100"
+            @click="cancelInlineCreate"
           >
-            <PlusIcon class="size-3.5" />
-            New sprint
+            Cancel
           </button>
         </div>
 
