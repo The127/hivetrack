@@ -31,6 +31,7 @@ import Spinner from '@/components/ui/Spinner.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import CreateIssueModal from '@/components/issue/CreateIssueModal.vue'
+import CompleteSprintModal from '@/components/sprint/CompleteSprintModal.vue'
 import StatusSelect from '@/components/issue/StatusSelect.vue'
 import { fetchProject } from '@/api/projects'
 import { fetchIssues, createIssue, updateIssue } from '@/api/issues'
@@ -295,9 +296,35 @@ const { mutate: activateSprint } = useMutation({
   },
 })
 
-const { mutate: completeSprint } = useMutation({
-  mutationFn: (sprintId) => updateSprint(slug.value, sprintId, { status: 'completed' }),
+const showCompleteSprintModal = ref(false)
+
+const TERMINAL_STATUSES_SOFTWARE = new Set(['done', 'cancelled'])
+const TERMINAL_STATUSES_SUPPORT = new Set(['resolved', 'closed'])
+
+const openIssuesInActiveSprint = computed(() => {
+  if (!activeSprint.value) return []
+  const terminal = project.value?.archetype === 'support' ? TERMINAL_STATUSES_SUPPORT : TERMINAL_STATUSES_SOFTWARE
+  const sprintIssues = sectionIssues.value[activeSprint.value.id] ?? []
+  return sprintIssues.filter(i => !terminal.has(i.status))
+})
+
+const completionTargetSprints = computed(() => planningSprints.value)
+
+function requestCompleteSprint() {
+  if (openIssuesInActiveSprint.value.length > 0) {
+    showCompleteSprintModal.value = true
+  } else {
+    doCompleteSprint({ moveToSprintId: null })
+  }
+}
+
+const { mutate: completeSprintMutation } = useMutation({
+  mutationFn: ({ sprintId, moveToSprintId }) => updateSprint(slug.value, sprintId, {
+    status: 'completed',
+    ...(moveToSprintId ? { move_open_issues_to_sprint_id: moveToSprintId } : {}),
+  }),
   onSuccess: () => {
+    showCompleteSprintModal.value = false
     queryClient.invalidateQueries({ queryKey: ['sprints', slug.value] })
     queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
   },
@@ -305,6 +332,10 @@ const { mutate: completeSprint } = useMutation({
     queryClient.invalidateQueries({ queryKey: ['sprints', slug.value] })
   },
 })
+
+function doCompleteSprint({ moveToSprintId }) {
+  completeSprintMutation({ sprintId: activeSprint.value.id, moveToSprintId })
+}
 
 const { mutate: doDeleteSprint } = useMutation({
   mutationFn: (sprintId) => deleteSprint(slug.value, sprintId),
@@ -532,7 +563,7 @@ function formatDateRange(startDate, endDate) {
             <div class="flex items-center gap-2 flex-shrink-0">
               <button
                 class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
-                @click="completeSprint(activeSprint.id)"
+                @click="requestCompleteSprint()"
               >
                 <CheckIcon class="size-3.5" />
                 Complete sprint
@@ -960,6 +991,15 @@ function formatDateRange(startDate, endDate) {
       :default-status="defaultCreateStatus"
       @close="showCreateIssue = false"
       @created="showCreateIssue = false"
+    />
+
+    <!-- ── Complete sprint modal ─────────────────────────────────────── -->
+    <CompleteSprintModal
+      :open="showCompleteSprintModal"
+      :open-issue-count="openIssuesInActiveSprint.length"
+      :sprints="completionTargetSprints"
+      @close="showCompleteSprintModal = false"
+      @confirm="doCompleteSprint"
     />
   </MainLayout>
 </template>

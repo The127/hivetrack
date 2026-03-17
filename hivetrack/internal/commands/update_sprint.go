@@ -11,12 +11,13 @@ import (
 )
 
 type UpdateSprintCommand struct {
-	SprintID  uuid.UUID
-	Name      *string
-	Goal      *string
-	StartDate *time.Time
-	EndDate   *time.Time
-	Status    *models.SprintStatus
+	SprintID                  uuid.UUID
+	Name                      *string
+	Goal                      *string
+	StartDate                 *time.Time
+	EndDate                   *time.Time
+	Status                    *models.SprintStatus
+	MoveOpenIssuesToSprintID *uuid.UUID // only used when completing; nil = backlog
 }
 
 type UpdateSprintResult struct{}
@@ -68,6 +69,20 @@ func HandleUpdateSprint(ctx context.Context, cmd UpdateSprintCommand) (*UpdateSp
 				return nil, fmt.Errorf("project not found: %w", models.ErrNotFound)
 			}
 
+			// Validate target sprint if specified.
+			if cmd.MoveOpenIssuesToSprintID != nil {
+				if *cmd.MoveOpenIssuesToSprintID == sprint.GetId() {
+					return nil, fmt.Errorf("cannot move issues to the sprint being completed: %w", models.ErrBadRequest)
+				}
+				targetSprint, err := db.Sprints().GetByID(ctx, *cmd.MoveOpenIssuesToSprintID)
+				if err != nil {
+					return nil, fmt.Errorf("getting target sprint: %w", err)
+				}
+				if targetSprint == nil {
+					return nil, fmt.Errorf("target sprint %s: %w", *cmd.MoveOpenIssuesToSprintID, models.ErrNotFound)
+				}
+			}
+
 			filter := repositories.NewIssueFilter().BySprintID(sprint.GetId())
 			issues, _, err := db.Issues().List(ctx, filter)
 			if err != nil {
@@ -77,7 +92,7 @@ func HandleUpdateSprint(ctx context.Context, cmd UpdateSprintCommand) (*UpdateSp
 			isTerminal := terminalChecker(project.GetArchetype())
 			for _, issue := range issues {
 				if !isTerminal(issue) {
-					issue.SetSprintID(nil)
+					issue.SetSprintID(cmd.MoveOpenIssuesToSprintID)
 					issue.SetSprintCarryCount(issue.GetSprintCarryCount() + 1)
 					issue.SetUpdatedAt(time.Now())
 					db.Issues().Update(issue)

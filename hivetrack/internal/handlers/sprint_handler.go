@@ -94,11 +94,12 @@ func (h *SprintHandler) UpdateSprint(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Name      *string              `json:"name"`
-		Goal      *string              `json:"goal"`
-		StartDate *time.Time           `json:"start_date"`
-		EndDate   *time.Time           `json:"end_date"`
-		Status    *models.SprintStatus `json:"status"`
+		Name                     *string              `json:"name"`
+		Goal                     *string              `json:"goal"`
+		StartDate                *time.Time           `json:"start_date"`
+		EndDate                  *time.Time           `json:"end_date"`
+		Status                   *models.SprintStatus `json:"status"`
+		MoveOpenIssuesToSprintID *uuid.UUID           `json:"move_open_issues_to_sprint_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		RespondError(w, models.ErrBadRequest)
@@ -106,12 +107,13 @@ func (h *SprintHandler) UpdateSprint(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = mediatr.Send[*commands.UpdateSprintResult](r.Context(), h.mediator, commands.UpdateSprintCommand{
-		SprintID:  sprintID,
-		Name:      body.Name,
-		Goal:      body.Goal,
-		StartDate: body.StartDate,
-		EndDate:   body.EndDate,
-		Status:    body.Status,
+		SprintID:                 sprintID,
+		Name:                     body.Name,
+		Goal:                     body.Goal,
+		StartDate:                body.StartDate,
+		EndDate:                  body.EndDate,
+		Status:                   body.Status,
+		MoveOpenIssuesToSprintID: body.MoveOpenIssuesToSprintID,
 	})
 	if err != nil {
 		RespondError(w, err)

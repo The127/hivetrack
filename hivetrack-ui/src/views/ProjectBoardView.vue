@@ -34,6 +34,7 @@ import Spinner from '@/components/ui/Spinner.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import Alert from '@/components/ui/Alert.vue'
 import CreateIssueModal from '@/components/issue/CreateIssueModal.vue'
+import CompleteSprintModal from '@/components/sprint/CompleteSprintModal.vue'
 import { fetchProject } from '@/api/projects'
 import { fetchIssues, updateIssue } from '@/api/issues'
 import { fetchSprints, updateSprint } from '@/api/sprints'
@@ -77,15 +78,45 @@ const boardIssues = computed(() => {
   return all.filter(i => i.sprint_id == null)
 })
 
-// ── Complete sprint mutation ──────────────────────────────────────────────────
+// ── Complete sprint ──────────────────────────────────────────────────────────
 
-const { mutate: completeSprint } = useMutation({
-  mutationFn: (sprintId) => updateSprint(slug.value, sprintId, { status: 'completed' }),
+const showCompleteSprintModal = ref(false)
+
+const TERMINAL_STATUSES_SOFTWARE = new Set(['done', 'cancelled'])
+const TERMINAL_STATUSES_SUPPORT = new Set(['resolved', 'closed'])
+
+const openIssuesInSprint = computed(() => {
+  const terminal = project.value?.archetype === 'support' ? TERMINAL_STATUSES_SUPPORT : TERMINAL_STATUSES_SOFTWARE
+  return boardIssues.value.filter(i => !terminal.has(i.status))
+})
+
+const otherSprints = computed(() =>
+  (sprintsResult.value?.sprints ?? []).filter(s => s.status === 'planning')
+)
+
+function requestCompleteSprint() {
+  if (openIssuesInSprint.value.length > 0) {
+    showCompleteSprintModal.value = true
+  } else {
+    doCompleteSprint({ moveToSprintId: null })
+  }
+}
+
+const { mutate: completeSprintMutation } = useMutation({
+  mutationFn: ({ sprintId, moveToSprintId }) => updateSprint(slug.value, sprintId, {
+    status: 'completed',
+    ...(moveToSprintId ? { move_open_issues_to_sprint_id: moveToSprintId } : {}),
+  }),
   onSuccess: () => {
+    showCompleteSprintModal.value = false
     queryClient.invalidateQueries({ queryKey: ['sprints', slug.value] })
     queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
   },
 })
+
+function doCompleteSprint({ moveToSprintId }) {
+  completeSprintMutation({ sprintId: activeSprint.value.id, moveToSprintId })
+}
 
 // ── Status column config ──────────────────────────────────────────────────────
 
@@ -270,7 +301,7 @@ const defaultCreateStatus = computed(() => {
           </div>
           <button
             class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer flex-shrink-0"
-            @click="completeSprint(activeSprint.id)"
+            @click="requestCompleteSprint()"
           >
             <CheckIcon class="size-3.5" />
             Complete sprint
@@ -424,6 +455,15 @@ const defaultCreateStatus = computed(() => {
       :default-status="defaultCreateStatus"
       @close="showCreateIssue = false"
       @created="showCreateIssue = false"
+    />
+
+    <!-- ── Complete sprint modal ─────────────────────────────────────── -->
+    <CompleteSprintModal
+      :open="showCompleteSprintModal"
+      :open-issue-count="openIssuesInSprint.length"
+      :sprints="otherSprints"
+      @close="showCompleteSprintModal = false"
+      @confirm="doCompleteSprint"
     />
   </MainLayout>
 </template>
