@@ -326,71 +326,74 @@ const defaultCreateStatus = computed(() => {
             </div>
 
             <!-- Draggable issue cards -->
-            <VueDraggable
-              v-model="columnIssues[col.key]"
-              :group="{ name: 'board' }"
-              :animation="150"
-              ghost-class="opacity-30"
-              class="flex-1 overflow-y-auto space-y-2 pb-4 pr-1 -mr-1"
-              :class="!columnIssues[col.key]?.length ? 'min-h-24' : ''"
-              @start="onDragStart"
-              @end="onDragEnd"
-              @update="(evt) => onWithinColumnDrag(evt, col.key)"
-              @add="(evt) => onCrossColumnDrop(evt, col.key)"
-            >
-              <div
-                v-for="issue in columnIssues[col.key]"
-                :key="issue.id"
-                class="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-grab active:cursor-grabbing border-l-4"
-                :class="priorityBorder(issue.priority)"
+            <div class="flex-1 overflow-y-auto pb-4 pr-1 -mr-1 relative">
+              <VueDraggable
+                v-model="columnIssues[col.key]"
+                :group="{ name: 'board' }"
+                :animation="150"
+                ghost-class="opacity-30"
+                class="space-y-2 min-h-full"
+                @start="onDragStart"
+                @end="onDragEnd"
+                @update="(evt) => onWithinColumnDrag(evt, col.key)"
+                @add="(evt) => onCrossColumnDrop(evt, col.key)"
               >
-                <!-- Issue number + type -->
-                <div class="flex items-center gap-1.5 mb-1.5">
-                  <span class="text-[11px] font-mono text-slate-400">
-                    {{ slug.toUpperCase() }}-{{ issue.number }}
-                  </span>
-                  <LayersIcon v-if="issue.type === 'epic'" class="size-3 text-violet-400 ml-auto" />
-                  <span
-                    v-if="issue.on_hold"
-                    class="ml-auto text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded"
-                  >
-                    on hold
-                  </span>
-                </div>
-
-                <!-- Title -->
-                <p class="text-sm text-slate-800 leading-snug line-clamp-2 group-hover:text-slate-900 mb-2">
-                  {{ issue.title }}
-                </p>
-
-                <!-- Footer: estimate + assignees -->
-                <div class="flex items-center gap-1.5">
-                  <span
-                    v-if="estimateLabel(issue.estimate)"
-                    class="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded"
-                  >
-                    {{ estimateLabel(issue.estimate) }}
-                  </span>
-                  <span class="flex-1" />
-                  <div
-                    v-if="issue.assignees?.length"
-                    class="flex items-center gap-1 text-xs text-slate-400"
-                  >
-                    <Avatar :name="`${issue.assignees.length}`" size="xs" />
-                    <span v-if="issue.assignees.length > 1" class="text-[11px]">
-                      +{{ issue.assignees.length - 1 }}
+                <div
+                  v-for="issue in columnIssues[col.key]"
+                  :key="issue.id"
+                  class="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-grab active:cursor-grabbing border-l-4"
+                  :class="priorityBorder(issue.priority)"
+                >
+                  <!-- Issue number + type -->
+                  <div class="flex items-center gap-1.5 mb-1.5">
+                    <span class="text-[11px] font-mono text-slate-400">
+                      {{ slug.toUpperCase() }}-{{ issue.number }}
+                    </span>
+                    <LayersIcon v-if="issue.type === 'epic'" class="size-3 text-violet-400 ml-auto" />
+                    <span
+                      v-if="issue.on_hold"
+                      class="ml-auto text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded"
+                    >
+                      on hold
                     </span>
                   </div>
+
+                  <!-- Title -->
+                  <p class="text-sm text-slate-800 leading-snug line-clamp-2 group-hover:text-slate-900 mb-2">
+                    {{ issue.title }}
+                  </p>
+
+                  <!-- Footer: estimate + assignees -->
+                  <div class="flex items-center gap-1.5">
+                    <span
+                      v-if="estimateLabel(issue.estimate)"
+                      class="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded"
+                    >
+                      {{ estimateLabel(issue.estimate) }}
+                    </span>
+                    <span class="flex-1" />
+                    <div
+                      v-if="issue.assignees?.length"
+                      class="flex items-center gap-1 text-xs text-slate-400"
+                    >
+                      <Avatar :name="`${issue.assignees.length}`" size="xs" />
+                      <span v-if="issue.assignees.length > 1" class="text-[11px]">
+                        +{{ issue.assignees.length - 1 }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </VueDraggable>
+
+              <!-- Empty column placeholder (positioned over the draggable area) -->
+              <div
+                v-if="!columnIssues[col.key]?.length && !isDragging"
+                class="absolute inset-0 flex items-start pt-4"
+              >
+                <div class="w-full rounded-lg border-2 border-dashed border-slate-200 py-8 text-center">
+                  <p class="text-xs text-slate-400">No issues</p>
                 </div>
               </div>
-            </VueDraggable>
-
-            <!-- Empty column placeholder -->
-            <div
-              v-if="!columnIssues[col.key]?.length && !isDragging"
-              class="rounded-lg border-2 border-dashed border-slate-200 py-8 text-center -mt-24"
-            >
-              <p class="text-xs text-slate-400">No issues</p>
             </div>
 
           </div>
