@@ -22,12 +22,12 @@ import {
   InboxIcon,
   LayersIcon,
   CheckIcon,
-  InfoIcon,
 } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Spinner from '@/components/ui/Spinner.vue'
 import Avatar from '@/components/ui/Avatar.vue'
+import Alert from '@/components/ui/Alert.vue'
 import CreateIssueModal from '@/components/issue/CreateIssueModal.vue'
 import { fetchProject } from '@/api/projects'
 import { fetchIssues } from '@/api/issues'
@@ -202,15 +202,16 @@ const defaultCreateStatus = computed(() => {
         </div>
 
         <!-- No active sprint — showing backlog -->
-        <div v-else class="flex-shrink-0 flex items-center gap-2 px-6 py-2 bg-slate-50 border-b border-slate-100">
-          <InfoIcon class="size-3.5 text-slate-400 flex-shrink-0" />
-          <span class="text-xs text-slate-500">Showing backlog — no active sprint.</span>
-          <RouterLink
-            :to="`/projects/${slug}/backlog`"
-            class="text-xs text-blue-600 hover:text-blue-700 hover:underline"
-          >
-            Go to Backlog to create and activate a sprint.
-          </RouterLink>
+        <div v-else class="flex-shrink-0 px-6 py-2 border-b border-slate-100">
+          <Alert>
+            Showing backlog — no active sprint.
+            <RouterLink
+              :to="`/projects/${slug}/backlog`"
+              class="ml-1 text-blue-600 hover:text-blue-700 hover:underline"
+            >
+              Go to Backlog to create and activate a sprint.
+            </RouterLink>
+          </Alert>
         </div>
       </template>
 
