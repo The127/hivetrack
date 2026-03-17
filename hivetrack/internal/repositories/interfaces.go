@@ -91,6 +91,7 @@ type IssueFilter struct {
 	Status     *models.IssueStatus
 	Priority   *models.IssuePriority
 	SprintID   *uuid.UUID
+	InBacklog  *bool // true = sprint_id IS NULL
 	AssigneeID *uuid.UUID
 	Triaged    *bool
 	Text       *string
@@ -119,6 +120,11 @@ func (f *IssueFilter) ByPriority(p models.IssuePriority) *IssueFilter {
 
 func (f *IssueFilter) BySprintID(id uuid.UUID) *IssueFilter {
 	f.SprintID = &id
+	return f
+}
+
+func (f *IssueFilter) WithInBacklog(v bool) *IssueFilter {
+	f.InBacklog = &v
 	return f
 }
 

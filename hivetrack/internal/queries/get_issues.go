@@ -15,6 +15,7 @@ type GetIssuesQuery struct {
 	Status      *models.IssueStatus
 	Priority    *models.IssuePriority
 	SprintID    *uuid.UUID
+	InBacklog   *bool
 	AssigneeID  *uuid.UUID
 	Triaged     *bool
 	Text        *string
@@ -67,6 +68,9 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 	}
 	if q.SprintID != nil {
 		filter = filter.BySprintID(*q.SprintID)
+	}
+	if q.InBacklog != nil {
+		filter = filter.WithInBacklog(*q.InBacklog)
 	}
 	if q.AssigneeID != nil {
 		filter = filter.ByAssigneeID(*q.AssigneeID)

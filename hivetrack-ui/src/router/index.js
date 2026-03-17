@@ -18,6 +18,11 @@ const router = createRouter({
       meta: { requiresAuth: true, layout: 'main' },
     },
     {
+      path: '/projects/:slug/backlog',
+      component: () => import('@/views/ProjectBacklogView.vue'),
+      meta: { requiresAuth: true, layout: 'main' },
+    },
+    {
       path: '/auth/callback',
       component: () => import('@/views/AuthCallbackView.vue'),
       meta: { requiresAuth: false },

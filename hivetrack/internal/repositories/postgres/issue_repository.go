@@ -248,6 +248,9 @@ func (r *IssueRepository) List(ctx context.Context, filter *repositories.IssueFi
 		args = append(args, *filter.SprintID)
 		argIdx++
 	}
+	if filter.InBacklog != nil && *filter.InBacklog {
+		baseQuery += ` AND i.sprint_id IS NULL`
+	}
 	if filter.Triaged != nil {
 		baseQuery += fmt.Sprintf(` AND i.triaged=$%d`, argIdx)
 		args = append(args, *filter.Triaged)

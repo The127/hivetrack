@@ -96,6 +96,11 @@ func matchesIssueFilter(issue *models.Issue, filter *repositories.IssueFilter) b
 			return false
 		}
 	}
+	if filter.InBacklog != nil && *filter.InBacklog {
+		if issue.GetSprintID() != nil {
+			return false
+		}
+	}
 	if filter.AssigneeID != nil {
 		found := false
 		for _, a := range issue.GetAssignees() {

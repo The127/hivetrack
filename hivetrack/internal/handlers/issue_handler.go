@@ -38,6 +38,10 @@ func (h *IssueHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
 		triaged := t == "true"
 		q.Triaged = &triaged
 	}
+	if b := r.URL.Query().Get("backlog"); b != "" {
+		inBacklog := b == "true"
+		q.InBacklog = &inBacklog
+	}
 	if text := r.URL.Query().Get("text"); text != "" {
 		q.Text = &text
 	}

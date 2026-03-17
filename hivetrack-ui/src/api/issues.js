@@ -5,6 +5,7 @@ export const fetchIssues = (slug, params = {}) => {
   if (params.status !== undefined) qs.set('status', params.status)
   if (params.priority !== undefined) qs.set('priority', params.priority)
   if (params.triaged !== undefined) qs.set('triaged', String(params.triaged))
+  if (params.backlog !== undefined) qs.set('backlog', String(params.backlog))
   if (params.text !== undefined) qs.set('text', params.text)
   if (params.limit !== undefined) qs.set('limit', String(params.limit))
   if (params.offset !== undefined) qs.set('offset', String(params.offset))

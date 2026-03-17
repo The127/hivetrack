@@ -31,6 +31,12 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  // When set, the issue is created with this status (landing triaged in backlog,
+  // not in the inbox). Used by the backlog view.
+  defaultStatus: {
+    type: String,
+    default: null,
+  },
 })
 
 const emit = defineEmits(['close', 'created'])
@@ -102,6 +108,7 @@ function submit() {
     title: title.value.trim(),
     type: type.value,
     priority: priority.value !== 'none' ? priority.value : undefined,
+    status: props.defaultStatus ?? undefined,
   })
 }
 </script>
