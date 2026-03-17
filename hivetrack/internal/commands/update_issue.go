@@ -41,57 +41,50 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	}
 
 	if cmd.Title != nil {
-		issue.Title = *cmd.Title
+		issue.SetTitle(*cmd.Title)
 	}
 	if cmd.Description != nil {
-		issue.Description = cmd.Description
+		issue.SetDescription(cmd.Description)
 	}
 	if cmd.Status != nil {
-		issue.Status = *cmd.Status
+		issue.SetStatus(*cmd.Status)
 	}
 	if cmd.Priority != nil {
-		issue.Priority = *cmd.Priority
+		issue.SetPriority(*cmd.Priority)
 	}
 	if cmd.Estimate != nil {
-		issue.Estimate = *cmd.Estimate
+		issue.SetEstimate(*cmd.Estimate)
 	}
 	if cmd.AssigneeIDs != nil {
-		issue.Assignees = cmd.AssigneeIDs
+		issue.SetAssignees(cmd.AssigneeIDs)
 	}
 	if cmd.LabelIDs != nil {
-		issue.Labels = cmd.LabelIDs
+		issue.SetLabels(cmd.LabelIDs)
 	}
 	if cmd.SprintID != nil {
-		issue.SprintID = cmd.SprintID
+		issue.SetSprintID(cmd.SprintID)
 	}
 	if cmd.MilestoneID != nil {
-		issue.MilestoneID = cmd.MilestoneID
+		issue.SetMilestoneID(cmd.MilestoneID)
 	}
 	if cmd.OnHold != nil {
-		issue.OnHold = *cmd.OnHold
 		if *cmd.OnHold {
 			now := time.Now()
-			issue.HoldSince = &now
-			issue.HoldReason = cmd.HoldReason
-			issue.HoldNote = cmd.HoldNote
+			issue.SetHold(true, cmd.HoldReason, &now, cmd.HoldNote)
 		} else {
-			issue.HoldSince = nil
-			issue.HoldReason = nil
-			issue.HoldNote = nil
+			issue.SetHold(false, nil, nil, nil)
 		}
 	}
 	if cmd.Visibility != nil {
-		issue.Visibility = *cmd.Visibility
+		issue.SetVisibility(*cmd.Visibility)
 	}
 
-	issue.UpdatedAt = time.Now()
+	issue.SetUpdatedAt(time.Now())
 
-	if err := db.Issues().Update(ctx, issue); err != nil {
-		return nil, fmt.Errorf("updating issue: %w", err)
-	}
+	db.Issues().Update(issue)
 
-	if err := db.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("committing: %w", err)
+	if err := db.SaveChanges(ctx); err != nil {
+		return nil, fmt.Errorf("saving issue: %w", err)
 	}
 
 	return &UpdateIssueResult{}, nil

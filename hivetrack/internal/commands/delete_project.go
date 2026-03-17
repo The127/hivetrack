@@ -26,12 +26,10 @@ func HandleDeleteProject(ctx context.Context, cmd DeleteProjectCommand) (*Delete
 		return nil, fmt.Errorf("project %s: %w", cmd.ID, models.ErrNotFound)
 	}
 
-	if err := db.Projects().Delete(ctx, cmd.ID); err != nil {
-		return nil, fmt.Errorf("deleting project: %w", err)
-	}
+	db.Projects().Delete(project)
 
-	if err := db.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("committing: %w", err)
+	if err := db.SaveChanges(ctx); err != nil {
+		return nil, fmt.Errorf("deleting project: %w", err)
 	}
 
 	return &DeleteProjectResult{}, nil

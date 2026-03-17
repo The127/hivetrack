@@ -30,21 +30,19 @@ func HandleUpdateProject(ctx context.Context, cmd UpdateProjectCommand) (*Update
 	}
 
 	if cmd.Name != nil {
-		project.Name = *cmd.Name
+		project.SetName(*cmd.Name)
 	}
 	if cmd.Description != nil {
-		project.Description = cmd.Description
+		project.SetDescription(cmd.Description)
 	}
 	if cmd.Archived != nil {
-		project.Archived = *cmd.Archived
+		project.SetArchived(*cmd.Archived)
 	}
 
-	if err := db.Projects().Update(ctx, project); err != nil {
-		return nil, fmt.Errorf("updating project: %w", err)
-	}
+	db.Projects().Update(project)
 
-	if err := db.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("committing: %w", err)
+	if err := db.SaveChanges(ctx); err != nil {
+		return nil, fmt.Errorf("saving project: %w", err)
 	}
 
 	return &UpdateProjectResult{}, nil

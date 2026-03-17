@@ -53,7 +53,7 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 		return nil, fmt.Errorf("project %q: %w", q.ProjectSlug, models.ErrNotFound)
 	}
 
-	issue, err := db.Issues().GetByNumber(ctx, project.ID, q.Number)
+	issue, err := db.Issues().GetByNumber(ctx, project.GetId(), q.Number)
 	if err != nil {
 		return nil, fmt.Errorf("getting issue: %w", err)
 	}
@@ -62,29 +62,29 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 	}
 
 	return &IssueDetail{
-		ID:          issue.ID,
-		ProjectID:   issue.ProjectID,
-		Number:      issue.Number,
-		Type:        issue.Type,
-		Title:       issue.Title,
-		Description: issue.Description,
-		Status:      issue.Status,
-		Priority:    issue.Priority,
-		Estimate:    issue.Estimate,
-		Triaged:     issue.Triaged,
-		Visibility:  issue.Visibility,
-		OnHold:      issue.OnHold,
-		HoldReason:  issue.HoldReason,
-		HoldNote:    issue.HoldNote,
-		HoldSince:   issue.HoldSince,
-		Assignees:   issue.Assignees,
-		Labels:      issue.Labels,
-		SprintID:    issue.SprintID,
-		MilestoneID: issue.MilestoneID,
-		ParentID:    issue.ParentID,
-		ReporterID:  issue.ReporterID,
-		Checklist:   issue.Checklist,
-		CreatedAt:   issue.CreatedAt,
-		UpdatedAt:   issue.UpdatedAt,
+		ID:          issue.GetId(),
+		ProjectID:   issue.GetProjectID(),
+		Number:      issue.GetNumber(),
+		Type:        issue.GetType(),
+		Title:       issue.GetTitle(),
+		Description: issue.GetDescription(),
+		Status:      issue.GetStatus(),
+		Priority:    issue.GetPriority(),
+		Estimate:    issue.GetEstimate(),
+		Triaged:     issue.GetTriaged(),
+		Visibility:  issue.GetVisibility(),
+		OnHold:      issue.GetOnHold(),
+		HoldReason:  issue.GetHoldReason(),
+		HoldNote:    issue.GetHoldNote(),
+		HoldSince:   issue.GetHoldSince(),
+		Assignees:   issue.GetAssignees(),
+		Labels:      issue.GetLabels(),
+		SprintID:    issue.GetSprintID(),
+		MilestoneID: issue.GetMilestoneID(),
+		ParentID:    issue.GetParentID(),
+		ReporterID:  issue.GetReporterID(),
+		Checklist:   issue.GetChecklist(),
+		CreatedAt:   issue.GetCreatedAt(),
+		UpdatedAt:   issue.GetUpdatedAt(),
 	}, nil
 }

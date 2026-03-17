@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/the127/hivetrack/internal/models"
@@ -15,13 +14,14 @@ import (
 
 func TestHandleGetProject_Success(t *testing.T) {
 	db := inmemory.NewDbContext()
-	actor := models.User{ID: uuid.New(), Sub: "sub1", Email: "test@example.com"}
-	require.NoError(t, db.Users().Upsert(context.Background(), &actor))
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
 
-	project := &models.Project{ID: uuid.New(), Slug: "backend", Name: "Backend", Archetype: models.ProjectArchetypeSoftware, CreatedBy: actor.ID}
-	require.NoError(t, db.Projects().Insert(context.Background(), project))
+	project := models.NewProject(actor.GetId(), "backend", "Backend", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
 	require.NoError(t, db.Projects().AddMember(context.Background(), &models.ProjectMember{
-		ProjectID: project.ID, UserID: actor.ID, Role: models.ProjectRoleAdmin,
+		ProjectID: project.GetId(), UserID: actor.GetId(), Role: models.ProjectRoleAdmin,
 	}))
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
@@ -34,8 +34,8 @@ func TestHandleGetProject_Success(t *testing.T) {
 
 func TestHandleGetProject_NotFound(t *testing.T) {
 	db := inmemory.NewDbContext()
-	actor := models.User{ID: uuid.New(), Sub: "sub1", Email: "test@example.com"}
-	require.NoError(t, db.Users().Upsert(context.Background(), &actor))
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 	result, err := queries.HandleGetProject(ctx, queries.GetProjectQuery{Slug: "nope"})

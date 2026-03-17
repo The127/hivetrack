@@ -1,7 +1,6 @@
 package setup
 
 import (
-	"context"
 	"database/sql"
 
 	"github.com/The127/ioc"
@@ -20,7 +19,4 @@ func Database(dc *ioc.DependencyCollection, db *sql.DB) {
 		return postgres.NewDbContext(sqlDB)
 	})
 
-	ioc.RegisterCloseHandler(dc, func(dbCtx repositories.DbContext) error {
-		return dbCtx.Rollback(context.Background())
-	})
 }

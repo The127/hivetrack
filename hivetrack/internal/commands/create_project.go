@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/the127/hivetrack/internal/authentication"
@@ -27,22 +26,19 @@ func HandleCreateProject(ctx context.Context, cmd CreateProjectCommand) (*Create
 	db := repositories.GetDbContext(ctx)
 	actor := authentication.MustGetCurrentUser(ctx)
 
-	project := &models.Project{
-		ID:          uuid.New(),
-		Slug:        cmd.Slug,
-		Name:        cmd.Name,
-		Archetype:   cmd.Archetype,
-		Description: cmd.Description,
-		CreatedBy:   actor.ID,
-		CreatedAt:   time.Now(),
+	project := models.NewProject(actor.ID, cmd.Slug, cmd.Name, cmd.Archetype)
+	if cmd.Description != nil {
+		project.SetDescription(cmd.Description)
 	}
 
-	if err := db.Projects().Insert(ctx, project); err != nil {
-		return nil, fmt.Errorf("inserting project: %w", err)
+	db.Projects().Insert(project)
+
+	if err := db.SaveChanges(ctx); err != nil {
+		return nil, fmt.Errorf("saving project: %w", err)
 	}
 
 	member := &models.ProjectMember{
-		ProjectID: project.ID,
+		ProjectID: project.GetId(),
 		UserID:    actor.ID,
 		Role:      models.ProjectRoleAdmin,
 	}
@@ -50,12 +46,8 @@ func HandleCreateProject(ctx context.Context, cmd CreateProjectCommand) (*Create
 		return nil, fmt.Errorf("adding creator as admin: %w", err)
 	}
 
-	if err := db.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("committing: %w", err)
-	}
-
 	return &CreateProjectResult{
-		ID:   project.ID,
-		Slug: project.Slug,
+		ID:   project.GetId(),
+		Slug: project.GetSlug(),
 	}, nil
 }

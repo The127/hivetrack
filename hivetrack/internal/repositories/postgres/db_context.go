@@ -5,13 +5,17 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/the127/hivetrack/internal/change"
+	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
 )
 
-// DbContext wraps a postgres transaction and implements repositories.DbContext.
+// DbContext wraps a postgres connection and implements repositories.DbContext.
+// Insert/Update/Delete calls are queued and flushed atomically by SaveChanges.
+// Direct-execute operations (AddMember, Upsert, Enqueue, etc.) open their own mini-transactions.
 type DbContext struct {
-	db *sql.DB
-	tx *sql.Tx
+	db            *sql.DB
+	changeTracker *change.Tracker
 
 	users      *UserRepository
 	projects   *ProjectRepository
@@ -22,21 +26,12 @@ type DbContext struct {
 	outbox     *OutboxRepository
 }
 
-// NewDbContext creates a new DbContext with a lazy transaction.
+// NewDbContext creates a new DbContext.
 func NewDbContext(db *sql.DB) *DbContext {
-	return &DbContext{db: db}
-}
-
-func (d *DbContext) getTx(ctx context.Context) (*sql.Tx, error) {
-	if d.tx != nil {
-		return d.tx, nil
+	return &DbContext{
+		db:            db,
+		changeTracker: change.NewTracker(),
 	}
-	tx, err := d.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("beginning transaction: %w", err)
-	}
-	d.tx = tx
-	return tx, nil
 }
 
 func (d *DbContext) Users() repositories.UserRepository {
@@ -88,40 +83,105 @@ func (d *DbContext) Outbox() repositories.OutboxRepository {
 	return d.outbox
 }
 
-func (d *DbContext) Commit(ctx context.Context) error {
-	if d.tx == nil {
+// SaveChanges executes all queued Insert/Update/Delete operations in a single transaction.
+func (d *DbContext) SaveChanges(ctx context.Context) error {
+	entries := d.changeTracker.GetChanges()
+	if len(entries) == 0 {
 		return nil
 	}
-	if err := d.tx.Commit(); err != nil {
+
+	tx, err := d.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	for _, entry := range entries {
+		if err := d.applyChange(ctx, tx, entry); err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("committing transaction: %w", err)
 	}
-	d.tx = nil
+
+	d.changeTracker.Clear()
 	return nil
 }
 
-func (d *DbContext) Rollback(_ context.Context) error {
-	if d.tx == nil {
-		return nil
+func (d *DbContext) applyChange(ctx context.Context, tx *sql.Tx, entry change.Entry) error {
+	switch entry.GetItemType() {
+	case projectEntityType:
+		proj := entry.GetItem().(*models.Project)
+		switch entry.GetChangeType() {
+		case change.Added:
+			return d.Projects().(*ProjectRepository).ExecuteInsert(ctx, tx, proj)
+		case change.Updated:
+			return d.Projects().(*ProjectRepository).ExecuteUpdate(ctx, tx, proj)
+		case change.Deleted:
+			return d.Projects().(*ProjectRepository).ExecuteDelete(ctx, tx, proj)
+		}
+	case issueEntityType:
+		issue := entry.GetItem().(*models.Issue)
+		switch entry.GetChangeType() {
+		case change.Added:
+			return d.Issues().(*IssueRepository).ExecuteInsert(ctx, tx, issue)
+		case change.Updated:
+			return d.Issues().(*IssueRepository).ExecuteUpdate(ctx, tx, issue)
+		case change.Deleted:
+			return d.Issues().(*IssueRepository).ExecuteDelete(ctx, tx, issue)
+		}
+	case sprintEntityType:
+		sprint := entry.GetItem().(*models.Sprint)
+		switch entry.GetChangeType() {
+		case change.Added:
+			return d.Sprints().(*SprintRepository).ExecuteInsert(ctx, tx, sprint)
+		case change.Updated:
+			return d.Sprints().(*SprintRepository).ExecuteUpdate(ctx, tx, sprint)
+		case change.Deleted:
+			return d.Sprints().(*SprintRepository).ExecuteDelete(ctx, tx, sprint)
+		}
+	case milestoneEntityType:
+		ms := entry.GetItem().(*models.Milestone)
+		switch entry.GetChangeType() {
+		case change.Added:
+			return d.Milestones().(*MilestoneRepository).ExecuteInsert(ctx, tx, ms)
+		case change.Updated:
+			return d.Milestones().(*MilestoneRepository).ExecuteUpdate(ctx, tx, ms)
+		case change.Deleted:
+			return d.Milestones().(*MilestoneRepository).ExecuteDelete(ctx, tx, ms)
+		}
+	case labelEntityType:
+		lbl := entry.GetItem().(*models.Label)
+		switch entry.GetChangeType() {
+		case change.Added:
+			return d.Labels().(*LabelRepository).ExecuteInsert(ctx, tx, lbl)
+		case change.Updated:
+			return d.Labels().(*LabelRepository).ExecuteUpdate(ctx, tx, lbl)
+		case change.Deleted:
+			return d.Labels().(*LabelRepository).ExecuteDelete(ctx, tx, lbl)
+		}
 	}
-	if err := d.tx.Rollback(); err != nil && err != sql.ErrTxDone {
-		return fmt.Errorf("rolling back transaction: %w", err)
-	}
-	d.tx = nil
 	return nil
 }
 
-// queryContext returns the current transaction if one exists, otherwise the db pool.
-// Used for read operations that don't need to be in the write transaction.
-func (d *DbContext) queryContext(ctx context.Context) queryRunner {
-	if d.tx != nil {
-		return d.tx
+// execDirect runs fn in a fresh transaction. Used by direct-execute repository methods.
+func (d *DbContext) execDirect(ctx context.Context, fn func(*sql.Tx) error) error {
+	tx, err := d.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
 	}
+	defer tx.Rollback() //nolint:errcheck
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// queryContext returns the db pool for read operations.
+func (d *DbContext) queryContext(_ context.Context) queryRunner {
 	return d.db
-}
-
-// execContext starts a transaction if one doesn't exist, then returns it.
-func (d *DbContext) execContext(ctx context.Context) (*sql.Tx, error) {
-	return d.getTx(ctx)
 }
 
 // queryRunner is an abstraction over *sql.DB and *sql.Tx for read ops.

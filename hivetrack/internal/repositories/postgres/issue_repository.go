@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/the127/hivetrack/internal/change"
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
 )
@@ -20,93 +23,194 @@ func NewIssueRepository(ctx *DbContext) *IssueRepository {
 	return &IssueRepository{ctx: ctx}
 }
 
-func (r *IssueRepository) Insert(ctx context.Context, issue *models.Issue) error {
-	tx, err := r.ctx.execContext(ctx)
-	if err != nil {
-		return err
-	}
+func (r *IssueRepository) Insert(issue *models.Issue) {
+	r.ctx.changeTracker.Add(change.NewEntry(issueEntityType, issue, change.Added))
+}
 
-	checklistJSON, err := json.Marshal(issue.Checklist)
+func (r *IssueRepository) Update(issue *models.Issue) {
+	r.ctx.changeTracker.Add(change.NewEntry(issueEntityType, issue, change.Updated))
+}
+
+func (r *IssueRepository) Delete(issue *models.Issue) {
+	r.ctx.changeTracker.Add(change.NewEntry(issueEntityType, issue, change.Deleted))
+}
+
+func (r *IssueRepository) ExecuteInsert(ctx context.Context, tx *sql.Tx, issue *models.Issue) error {
+	checklistJSON, err := json.Marshal(issue.GetChecklist())
 	if err != nil {
 		return fmt.Errorf("marshaling checklist: %w", err)
 	}
 
-	q := `INSERT INTO issues (id, project_id, number, type, title, description, status,
+	var xmin uint32
+	err = tx.QueryRowContext(ctx,
+		`INSERT INTO issues (id, project_id, number, type, title, description, status,
 		on_hold, hold_reason, hold_since, hold_note,
 		priority, estimate, reporter_id, parent_id, milestone_id, sprint_id, sprint_carry_count,
 		triaged, visibility, customer_email, customer_name, customer_token, checklist, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)`
-
-	_, err = tx.ExecContext(ctx, q,
-		issue.ID, issue.ProjectID, issue.Number, issue.Type, issue.Title, issue.Description, issue.Status,
-		issue.OnHold, issue.HoldReason, issue.HoldSince, issue.HoldNote,
-		issue.Priority, issue.Estimate, issue.ReporterID, issue.ParentID, issue.MilestoneID, issue.SprintID, issue.SprintCarryCount,
-		issue.Triaged, issue.Visibility, issue.CustomerEmail, issue.CustomerName, issue.CustomerToken, checklistJSON,
-		issue.CreatedAt, issue.UpdatedAt,
-	)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
+		RETURNING xmin`,
+		issue.GetId(), issue.GetProjectID(), issue.GetNumber(), issue.GetType(),
+		issue.GetTitle(), issue.GetDescription(), issue.GetStatus(),
+		issue.GetOnHold(), issue.GetHoldReason(), issue.GetHoldSince(), issue.GetHoldNote(),
+		issue.GetPriority(), issue.GetEstimate(), issue.GetReporterID(), issue.GetParentID(),
+		issue.GetMilestoneID(), issue.GetSprintID(), issue.GetSprintCarryCount(),
+		issue.GetTriaged(), issue.GetVisibility(),
+		issue.GetCustomerEmail(), issue.GetCustomerName(), issue.GetCustomerToken(),
+		checklistJSON, issue.GetCreatedAt(), issue.GetUpdatedAt(),
+	).Scan(&xmin)
 	if err != nil {
 		return fmt.Errorf("inserting issue: %w", err)
 	}
 
-	if err := r.syncAssignees(ctx, tx, issue.ID, issue.Assignees); err != nil {
+	if err := r.syncAssignees(ctx, tx, issue.GetId(), issue.GetAssignees()); err != nil {
 		return err
 	}
-	if err := r.syncLabels(ctx, tx, issue.ID, issue.Labels); err != nil {
+	if err := r.syncLabels(ctx, tx, issue.GetId(), issue.GetLabels()); err != nil {
 		return err
 	}
 
+	issue.SetVersion(xmin)
+	issue.ClearChanges()
 	return nil
 }
 
-func (r *IssueRepository) Update(ctx context.Context, issue *models.Issue) error {
-	tx, err := r.ctx.execContext(ctx)
-	if err != nil {
-		return err
+func (r *IssueRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, issue *models.Issue) error {
+	if !issue.HasChanges() {
+		return nil
 	}
 
-	checklistJSON, err := json.Marshal(issue.Checklist)
-	if err != nil {
-		return fmt.Errorf("marshaling checklist: %w", err)
+	// Capture junction table needs before building query
+	doSyncAssignees := issue.HasChange(models.IssueChangeAssignees)
+	doSyncLabels := issue.HasChange(models.IssueChangeLabels)
+
+	var setClauses []string
+	var args []any
+	argIdx := 1
+
+	// updated_at is always included on update
+	setClauses = append(setClauses, fmt.Sprintf("updated_at=$%d", argIdx))
+	args = append(args, issue.GetUpdatedAt())
+	argIdx++
+
+	if issue.HasChange(models.IssueChangeTitle) {
+		setClauses = append(setClauses, fmt.Sprintf("title=$%d", argIdx))
+		args = append(args, issue.GetTitle())
+		argIdx++
+	}
+	if issue.HasChange(models.IssueChangeDescription) {
+		setClauses = append(setClauses, fmt.Sprintf("description=$%d", argIdx))
+		args = append(args, issue.GetDescription())
+		argIdx++
+	}
+	if issue.HasChange(models.IssueChangeStatus) {
+		setClauses = append(setClauses, fmt.Sprintf("status=$%d", argIdx))
+		args = append(args, issue.GetStatus())
+		argIdx++
+	}
+	if issue.HasChange(models.IssueChangeHold) {
+		setClauses = append(setClauses, fmt.Sprintf("on_hold=$%d", argIdx))
+		args = append(args, issue.GetOnHold())
+		argIdx++
+		setClauses = append(setClauses, fmt.Sprintf("hold_reason=$%d", argIdx))
+		args = append(args, issue.GetHoldReason())
+		argIdx++
+		setClauses = append(setClauses, fmt.Sprintf("hold_since=$%d", argIdx))
+		args = append(args, issue.GetHoldSince())
+		argIdx++
+		setClauses = append(setClauses, fmt.Sprintf("hold_note=$%d", argIdx))
+		args = append(args, issue.GetHoldNote())
+		argIdx++
+	}
+	if issue.HasChange(models.IssueChangePriority) {
+		setClauses = append(setClauses, fmt.Sprintf("priority=$%d", argIdx))
+		args = append(args, issue.GetPriority())
+		argIdx++
+	}
+	if issue.HasChange(models.IssueChangeEstimate) {
+		setClauses = append(setClauses, fmt.Sprintf("estimate=$%d", argIdx))
+		args = append(args, issue.GetEstimate())
+		argIdx++
+	}
+	if issue.HasChange(models.IssueChangeMilestoneID) {
+		setClauses = append(setClauses, fmt.Sprintf("milestone_id=$%d", argIdx))
+		args = append(args, issue.GetMilestoneID())
+		argIdx++
+	}
+	if issue.HasChange(models.IssueChangeSprintID) {
+		setClauses = append(setClauses, fmt.Sprintf("sprint_id=$%d", argIdx))
+		args = append(args, issue.GetSprintID())
+		argIdx++
+	}
+	if issue.HasChange(models.IssueChangeSprintCarryCount) {
+		setClauses = append(setClauses, fmt.Sprintf("sprint_carry_count=$%d", argIdx))
+		args = append(args, issue.GetSprintCarryCount())
+		argIdx++
+	}
+	if issue.HasChange(models.IssueChangeTriaged) {
+		setClauses = append(setClauses, fmt.Sprintf("triaged=$%d", argIdx))
+		args = append(args, issue.GetTriaged())
+		argIdx++
+	}
+	if issue.HasChange(models.IssueChangeVisibility) {
+		setClauses = append(setClauses, fmt.Sprintf("visibility=$%d", argIdx))
+		args = append(args, issue.GetVisibility())
+		argIdx++
+	}
+	if issue.HasChange(models.IssueChangeChecklist) {
+		checklistJSON, err := json.Marshal(issue.GetChecklist())
+		if err != nil {
+			return fmt.Errorf("marshaling checklist: %w", err)
+		}
+		setClauses = append(setClauses, fmt.Sprintf("checklist=$%d", argIdx))
+		args = append(args, checklistJSON)
+		argIdx++
 	}
 
-	q := `UPDATE issues SET title=$1, description=$2, status=$3,
-		on_hold=$4, hold_reason=$5, hold_since=$6, hold_note=$7,
-		priority=$8, estimate=$9, milestone_id=$10, sprint_id=$11, sprint_carry_count=$12,
-		triaged=$13, visibility=$14, checklist=$15, updated_at=$16
-		WHERE id=$17`
+	query := fmt.Sprintf("UPDATE issues SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
+	args = append(args, issue.GetId())
+	argIdx++
 
-	res, err := tx.ExecContext(ctx, q,
-		issue.Title, issue.Description, issue.Status,
-		issue.OnHold, issue.HoldReason, issue.HoldSince, issue.HoldNote,
-		issue.Priority, issue.Estimate, issue.MilestoneID, issue.SprintID, issue.SprintCarryCount,
-		issue.Triaged, issue.Visibility, checklistJSON, issue.UpdatedAt,
-		issue.ID,
-	)
+	if issue.GetVersion() != nil {
+		query += fmt.Sprintf(" AND xmin=$%d::xid", argIdx)
+		args = append(args, issue.GetVersion().(uint32))
+		argIdx++
+	}
+	query += " RETURNING xmin"
+
+	var xmin uint32
+	err := tx.QueryRowContext(ctx, query, args...).Scan(&xmin)
+	if errors.Is(err, sql.ErrNoRows) {
+		if issue.GetVersion() != nil {
+			return fmt.Errorf("issue %s: %w", issue.GetId(), models.ErrConcurrentUpdate)
+		}
+		return fmt.Errorf("issue %s: %w", issue.GetId(), models.ErrNotFound)
+	}
 	if err != nil {
 		return fmt.Errorf("updating issue: %w", err)
 	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return fmt.Errorf("issue %s: %w", issue.ID, models.ErrNotFound)
+
+	if doSyncAssignees {
+		if err := r.syncAssignees(ctx, tx, issue.GetId(), issue.GetAssignees()); err != nil {
+			return err
+		}
+	}
+	if doSyncLabels {
+		if err := r.syncLabels(ctx, tx, issue.GetId(), issue.GetLabels()); err != nil {
+			return err
+		}
 	}
 
-	if err := r.syncAssignees(ctx, tx, issue.ID, issue.Assignees); err != nil {
-		return err
-	}
-	if err := r.syncLabels(ctx, tx, issue.ID, issue.Labels); err != nil {
-		return err
-	}
-
+	issue.SetVersion(xmin)
+	issue.ClearChanges()
 	return nil
 }
 
-func (r *IssueRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	tx, err := r.ctx.execContext(ctx)
+func (r *IssueRepository) ExecuteDelete(ctx context.Context, tx *sql.Tx, issue *models.Issue) error {
+	_, err := tx.ExecContext(ctx, `DELETE FROM issues WHERE id=$1`, issue.GetId())
 	if err != nil {
-		return err
+		return fmt.Errorf("deleting issue: %w", err)
 	}
-	_, err = tx.ExecContext(ctx, `DELETE FROM issues WHERE id=$1`, id)
-	return err
+	return nil
 }
 
 func (r *IssueRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Issue, error) {
@@ -222,26 +326,38 @@ const issueSelectQuery = `
 		i.on_hold, i.hold_reason, i.hold_since, i.hold_note,
 		i.priority, i.estimate, i.reporter_id, i.parent_id, i.milestone_id, i.sprint_id, i.sprint_carry_count,
 		i.triaged, i.visibility, i.customer_email, i.customer_name, i.customer_token,
-		i.checklist, i.created_at, i.updated_at,
+		i.checklist, i.created_at, i.updated_at, i.xmin,
 		COALESCE((SELECT array_agg(user_id) FROM issue_assignees WHERE issue_id=i.id), '{}'),
 		COALESCE((SELECT array_agg(label_id) FROM issue_labels WHERE issue_id=i.id), '{}')
 	FROM issues i`
 
 func scanIssue(row *sql.Row) (*models.Issue, error) {
-	var i models.Issue
+	var id, projectID uuid.UUID
+	var number int
+	var issueType models.IssueType
+	var title string
 	var desc, holdReason, holdNote, customerEmail, customerName sql.NullString
+	var status models.IssueStatus
+	var onHold bool
 	var holdSince sql.NullTime
-	var customerToken uuid.NullUUID
+	var priority models.IssuePriority
+	var estimate models.IssueEstimate
 	var reporterID, parentID, milestoneID, sprintID uuid.NullUUID
+	var customerToken uuid.NullUUID
+	var sprintCarryCount int
+	var triaged bool
+	var visibility models.IssueVisibility
 	var checklistJSON []byte
-	var assigneeArr, labelArr []byte // will parse as postgres array
+	var createdAt, updatedAt time.Time
+	var xmin uint32
+	var assigneeArr, labelArr []byte
 
 	err := row.Scan(
-		&i.ID, &i.ProjectID, &i.Number, &i.Type, &i.Title, &desc, &i.Status,
-		&i.OnHold, &holdReason, &holdSince, &holdNote,
-		&i.Priority, &i.Estimate, &reporterID, &parentID, &milestoneID, &sprintID, &i.SprintCarryCount,
-		&i.Triaged, &i.Visibility, &customerEmail, &customerName, &customerToken,
-		&checklistJSON, &i.CreatedAt, &i.UpdatedAt,
+		&id, &projectID, &number, &issueType, &title, &desc, &status,
+		&onHold, &holdReason, &holdSince, &holdNote,
+		&priority, &estimate, &reporterID, &parentID, &milestoneID, &sprintID, &sprintCarryCount,
+		&triaged, &visibility, &customerEmail, &customerName, &customerToken,
+		&checklistJSON, &createdAt, &updatedAt, &xmin,
 		&assigneeArr, &labelArr,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -251,116 +367,138 @@ func scanIssue(row *sql.Row) (*models.Issue, error) {
 		return nil, fmt.Errorf("scanning issue: %w", err)
 	}
 
-	if desc.Valid {
-		i.Description = &desc.String
-	}
-	if holdReason.Valid {
-		hr := models.HoldReason(holdReason.String)
-		i.HoldReason = &hr
-	}
-	if holdSince.Valid {
-		i.HoldSince = &holdSince.Time
-	}
-	if holdNote.Valid {
-		i.HoldNote = &holdNote.String
-	}
-	if reporterID.Valid {
-		i.ReporterID = &reporterID.UUID
-	}
-	if parentID.Valid {
-		i.ParentID = &parentID.UUID
-	}
-	if milestoneID.Valid {
-		i.MilestoneID = &milestoneID.UUID
-	}
-	if sprintID.Valid {
-		i.SprintID = &sprintID.UUID
-	}
-	if customerToken.Valid {
-		i.CustomerToken = &customerToken.UUID
-	}
-	if customerEmail.Valid {
-		i.CustomerEmail = &customerEmail.String
-	}
-	if customerName.Valid {
-		i.CustomerName = &customerName.String
-	}
-
-	if err := json.Unmarshal(checklistJSON, &i.Checklist); err != nil {
-		i.Checklist = []models.ChecklistItem{}
-	}
-
-	// Parse UUID arrays from postgres format
-	i.Assignees = parseUUIDArray(assigneeArr)
-	i.Labels = parseUUIDArray(labelArr)
-
-	return &i, nil
+	return buildIssue(
+		id, projectID, number, issueType, title,
+		desc, holdReason, holdNote, customerEmail, customerName,
+		status, onHold, holdSince, customerToken,
+		priority, estimate,
+		reporterID, parentID, milestoneID, sprintID,
+		sprintCarryCount, triaged, visibility,
+		checklistJSON, createdAt, updatedAt, xmin,
+		assigneeArr, labelArr,
+	), nil
 }
 
 func scanIssueRow(rows *sql.Rows) (*models.Issue, error) {
-	var i models.Issue
+	var id, projectID uuid.UUID
+	var number int
+	var issueType models.IssueType
+	var title string
 	var desc, holdReason, holdNote, customerEmail, customerName sql.NullString
+	var status models.IssueStatus
+	var onHold bool
 	var holdSince sql.NullTime
-	var customerToken uuid.NullUUID
+	var priority models.IssuePriority
+	var estimate models.IssueEstimate
 	var reporterID, parentID, milestoneID, sprintID uuid.NullUUID
+	var customerToken uuid.NullUUID
+	var sprintCarryCount int
+	var triaged bool
+	var visibility models.IssueVisibility
 	var checklistJSON []byte
+	var createdAt, updatedAt time.Time
+	var xmin uint32
 	var assigneeArr, labelArr []byte
 
 	err := rows.Scan(
-		&i.ID, &i.ProjectID, &i.Number, &i.Type, &i.Title, &desc, &i.Status,
-		&i.OnHold, &holdReason, &holdSince, &holdNote,
-		&i.Priority, &i.Estimate, &reporterID, &parentID, &milestoneID, &sprintID, &i.SprintCarryCount,
-		&i.Triaged, &i.Visibility, &customerEmail, &customerName, &customerToken,
-		&checklistJSON, &i.CreatedAt, &i.UpdatedAt,
+		&id, &projectID, &number, &issueType, &title, &desc, &status,
+		&onHold, &holdReason, &holdSince, &holdNote,
+		&priority, &estimate, &reporterID, &parentID, &milestoneID, &sprintID, &sprintCarryCount,
+		&triaged, &visibility, &customerEmail, &customerName, &customerToken,
+		&checklistJSON, &createdAt, &updatedAt, &xmin,
 		&assigneeArr, &labelArr,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("scanning issue row: %w", err)
 	}
 
+	return buildIssue(
+		id, projectID, number, issueType, title,
+		desc, holdReason, holdNote, customerEmail, customerName,
+		status, onHold, holdSince, customerToken,
+		priority, estimate,
+		reporterID, parentID, milestoneID, sprintID,
+		sprintCarryCount, triaged, visibility,
+		checklistJSON, createdAt, updatedAt, xmin,
+		assigneeArr, labelArr,
+	), nil
+}
+
+func buildIssue(
+	id, projectID uuid.UUID, number int, issueType models.IssueType, title string,
+	desc, holdReason, holdNote, customerEmail, customerName sql.NullString,
+	status models.IssueStatus, onHold bool, holdSince sql.NullTime,
+	customerToken uuid.NullUUID,
+	priority models.IssuePriority, estimate models.IssueEstimate,
+	reporterID, parentID, milestoneID, sprintID uuid.NullUUID,
+	sprintCarryCount int, triaged bool, visibility models.IssueVisibility,
+	checklistJSON []byte, createdAt, updatedAt time.Time, xmin uint32,
+	assigneeArr, labelArr []byte,
+) *models.Issue {
+	var descPtr *string
 	if desc.Valid {
-		i.Description = &desc.String
+		descPtr = &desc.String
 	}
+	var holdReasonPtr *models.HoldReason
 	if holdReason.Valid {
 		hr := models.HoldReason(holdReason.String)
-		i.HoldReason = &hr
+		holdReasonPtr = &hr
 	}
+	var holdSincePtr *time.Time
 	if holdSince.Valid {
-		i.HoldSince = &holdSince.Time
+		holdSincePtr = &holdSince.Time
 	}
+	var holdNotePtr *string
 	if holdNote.Valid {
-		i.HoldNote = &holdNote.String
+		holdNotePtr = &holdNote.String
 	}
+	var reporterIDPtr *uuid.UUID
 	if reporterID.Valid {
-		i.ReporterID = &reporterID.UUID
+		reporterIDPtr = &reporterID.UUID
 	}
+	var parentIDPtr *uuid.UUID
 	if parentID.Valid {
-		i.ParentID = &parentID.UUID
+		parentIDPtr = &parentID.UUID
 	}
+	var milestoneIDPtr *uuid.UUID
 	if milestoneID.Valid {
-		i.MilestoneID = &milestoneID.UUID
+		milestoneIDPtr = &milestoneID.UUID
 	}
+	var sprintIDPtr *uuid.UUID
 	if sprintID.Valid {
-		i.SprintID = &sprintID.UUID
+		sprintIDPtr = &sprintID.UUID
 	}
+	var customerTokenPtr *uuid.UUID
 	if customerToken.Valid {
-		i.CustomerToken = &customerToken.UUID
+		customerTokenPtr = &customerToken.UUID
 	}
+	var customerEmailPtr *string
 	if customerEmail.Valid {
-		i.CustomerEmail = &customerEmail.String
+		customerEmailPtr = &customerEmail.String
 	}
+	var customerNamePtr *string
 	if customerName.Valid {
-		i.CustomerName = &customerName.String
+		customerNamePtr = &customerName.String
 	}
 
-	if err := json.Unmarshal(checklistJSON, &i.Checklist); err != nil {
-		i.Checklist = []models.ChecklistItem{}
+	var checklist []models.ChecklistItem
+	if err := json.Unmarshal(checklistJSON, &checklist); err != nil {
+		checklist = []models.ChecklistItem{}
 	}
 
-	i.Assignees = parseUUIDArray(assigneeArr)
-	i.Labels = parseUUIDArray(labelArr)
+	assignees := parseUUIDArray(assigneeArr)
+	labels := parseUUIDArray(labelArr)
 
-	return &i, nil
+	return models.NewIssueFromDB(
+		id, createdAt, updatedAt, xmin,
+		projectID, number, issueType, title, descPtr, status,
+		onHold, holdReasonPtr, holdSincePtr, holdNotePtr,
+		priority, estimate,
+		reporterIDPtr, parentIDPtr, milestoneIDPtr, sprintIDPtr,
+		sprintCarryCount, triaged, visibility,
+		customerEmailPtr, customerNamePtr, customerTokenPtr,
+		checklist, assignees, labels, nil,
+	)
 }
 
 // parseUUIDArray parses postgres UUID array format like {uuid1,uuid2} or {} into []uuid.UUID.

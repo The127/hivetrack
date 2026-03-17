@@ -26,12 +26,10 @@ func HandleDeleteIssue(ctx context.Context, cmd DeleteIssueCommand) (*DeleteIssu
 		return nil, fmt.Errorf("issue %s: %w", cmd.IssueID, models.ErrNotFound)
 	}
 
-	if err := db.Issues().Delete(ctx, cmd.IssueID); err != nil {
-		return nil, fmt.Errorf("deleting issue: %w", err)
-	}
+	db.Issues().Delete(issue)
 
-	if err := db.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("committing: %w", err)
+	if err := db.SaveChanges(ctx); err != nil {
+		return nil, fmt.Errorf("deleting issue: %w", err)
 	}
 
 	return &DeleteIssueResult{}, nil

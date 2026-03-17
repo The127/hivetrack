@@ -40,7 +40,7 @@ func HandleGetProject(ctx context.Context, q GetProjectQuery) (*GetProjectResult
 		return nil, nil
 	}
 
-	members, err := db.Projects().ListMembers(ctx, project.ID)
+	members, err := db.Projects().ListMembers(ctx, project.GetId())
 	if err != nil {
 		return nil, fmt.Errorf("listing members: %w", err)
 	}
@@ -54,13 +54,13 @@ func HandleGetProject(ctx context.Context, q GetProjectQuery) (*GetProjectResult
 	}
 
 	return &GetProjectResult{
-		ID:          project.ID,
-		Slug:        project.Slug,
-		Name:        project.Name,
-		Description: project.Description,
-		Archetype:   project.Archetype,
-		Archived:    project.Archived,
-		CreatedBy:   project.CreatedBy,
+		ID:          project.GetId(),
+		Slug:        project.GetSlug(),
+		Name:        project.GetName(),
+		Description: project.GetDescription(),
+		Archetype:   project.GetArchetype(),
+		Archived:    project.GetArchived(),
+		CreatedBy:   project.GetCreatedBy(),
 		Members:     memberInfos,
 	}, nil
 }

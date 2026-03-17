@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/the127/hivetrack/internal/commands"
@@ -15,19 +14,21 @@ import (
 
 func TestHandleDeleteIssue_Success(t *testing.T) {
 	db := inmemory.NewDbContext()
-	actor := models.User{ID: uuid.New(), Sub: "sub1", Email: "test@example.com"}
-	require.NoError(t, db.Users().Upsert(context.Background(), &actor))
-	project := &models.Project{ID: uuid.New(), Slug: "p", Name: "P", Archetype: models.ProjectArchetypeSoftware, CreatedBy: actor.ID}
-	require.NoError(t, db.Projects().Insert(context.Background(), project))
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
 
-	issue := newTestIssue(project.ID, actor.ID, 1)
-	require.NoError(t, db.Issues().Insert(context.Background(), issue))
+	issue := newTestIssue(project.GetId(), actor.GetId(), 1)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
-	_, err := commands.HandleDeleteIssue(ctx, commands.DeleteIssueCommand{IssueID: issue.ID})
+	_, err := commands.HandleDeleteIssue(ctx, commands.DeleteIssueCommand{IssueID: issue.GetId()})
 	require.NoError(t, err)
 
-	deleted, err := db.Issues().GetByID(context.Background(), issue.ID)
+	deleted, err := db.Issues().GetByID(context.Background(), issue.GetId())
 	require.NoError(t, err)
 	assert.Nil(t, deleted)
 }

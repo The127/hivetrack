@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/the127/hivetrack/internal/models"
@@ -15,32 +14,34 @@ import (
 
 func TestHandleGetIssue_Success(t *testing.T) {
 	db := inmemory.NewDbContext()
-	actor := models.User{ID: uuid.New(), Sub: "sub1", Email: "test@example.com"}
-	require.NoError(t, db.Users().Upsert(context.Background(), &actor))
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
 
-	p := &models.Project{ID: uuid.New(), Slug: "myproj", Name: "P", Archetype: models.ProjectArchetypeSoftware, CreatedBy: actor.ID}
-	require.NoError(t, db.Projects().Insert(context.Background(), p))
+	p := models.NewProject(actor.GetId(), "myproj", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(p)
+	require.NoError(t, db.SaveChanges(context.Background()))
 
-	issue := seedIssue(db, p.ID, actor.ID, 1, models.IssueStatusTodo, true)
+	issue := seedIssue(db, p.GetId(), actor.GetId(), 1, models.IssueStatusTodo, true)
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 	result, err := queries.HandleGetIssue(ctx, queries.GetIssueQuery{
 		ProjectSlug: "myproj",
-		Number:      issue.Number,
+		Number:      issue.GetNumber(),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	assert.Equal(t, issue.ID, result.ID)
-	assert.Equal(t, issue.Title, result.Title)
+	assert.Equal(t, issue.GetId(), result.ID)
+	assert.Equal(t, issue.GetTitle(), result.Title)
 }
 
 func TestHandleGetIssue_NotFound(t *testing.T) {
 	db := inmemory.NewDbContext()
-	actor := models.User{ID: uuid.New(), Sub: "sub1", Email: "test@example.com"}
-	require.NoError(t, db.Users().Upsert(context.Background(), &actor))
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
 
-	p := &models.Project{ID: uuid.New(), Slug: "myproj", Name: "P", Archetype: models.ProjectArchetypeSoftware, CreatedBy: actor.ID}
-	require.NoError(t, db.Projects().Insert(context.Background(), p))
+	p := models.NewProject(actor.GetId(), "myproj", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(p)
+	require.NoError(t, db.SaveChanges(context.Background()))
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 	result, err := queries.HandleGetIssue(ctx, queries.GetIssueQuery{

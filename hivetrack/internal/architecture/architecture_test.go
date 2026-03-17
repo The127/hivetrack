@@ -126,7 +126,7 @@ var rules = []rule{
 		},
 	},
 	{
-		name: "models must not import any other internal package (pure domain types)",
+		name: "models must not import business logic or infrastructure layers (change package is allowed)",
 		from: []string{pkg("models")},
 		mustNotImport: []string{
 			pkg("handlers"),

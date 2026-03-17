@@ -5,8 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/the127/hivetrack/internal/change"
 	"github.com/the127/hivetrack/internal/models"
 )
 
@@ -18,57 +21,119 @@ func NewSprintRepository(ctx *DbContext) *SprintRepository {
 	return &SprintRepository{ctx: ctx}
 }
 
-func (r *SprintRepository) Insert(ctx context.Context, sprint *models.Sprint) error {
-	tx, err := r.ctx.execContext(ctx)
-	if err != nil {
-		return err
-	}
-	_, err = tx.ExecContext(ctx,
-		`INSERT INTO sprints (id, project_id, name, goal, start_date, end_date, status, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-		sprint.ID, sprint.ProjectID, sprint.Name, sprint.Goal,
-		sprint.StartDate, sprint.EndDate, sprint.Status, sprint.CreatedAt,
-	)
-	return err
+func (r *SprintRepository) Insert(sprint *models.Sprint) {
+	r.ctx.changeTracker.Add(change.NewEntry(sprintEntityType, sprint, change.Added))
 }
 
-func (r *SprintRepository) Update(ctx context.Context, sprint *models.Sprint) error {
-	tx, err := r.ctx.execContext(ctx)
+func (r *SprintRepository) Update(sprint *models.Sprint) {
+	r.ctx.changeTracker.Add(change.NewEntry(sprintEntityType, sprint, change.Updated))
+}
+
+func (r *SprintRepository) Delete(sprint *models.Sprint) {
+	r.ctx.changeTracker.Add(change.NewEntry(sprintEntityType, sprint, change.Deleted))
+}
+
+func (r *SprintRepository) ExecuteInsert(ctx context.Context, tx *sql.Tx, sprint *models.Sprint) error {
+	var xmin uint32
+	err := tx.QueryRowContext(ctx,
+		`INSERT INTO sprints (id, project_id, name, goal, start_date, end_date, status, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+		RETURNING xmin`,
+		sprint.GetId(), sprint.GetProjectID(), sprint.GetName(), sprint.GetGoal(),
+		sprint.GetStartDate(), sprint.GetEndDate(), sprint.GetStatus(), sprint.GetCreatedAt(),
+	).Scan(&xmin)
 	if err != nil {
-		return err
+		return fmt.Errorf("inserting sprint: %w", err)
 	}
-	res, err := tx.ExecContext(ctx,
-		`UPDATE sprints SET name=$1, goal=$2, start_date=$3, end_date=$4, status=$5 WHERE id=$6`,
-		sprint.Name, sprint.Goal, sprint.StartDate, sprint.EndDate, sprint.Status, sprint.ID,
-	)
+	sprint.SetVersion(xmin)
+	sprint.ClearChanges()
+	return nil
+}
+
+func (r *SprintRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, sprint *models.Sprint) error {
+	if !sprint.HasChanges() {
+		return nil
+	}
+
+	var setClauses []string
+	var args []any
+	argIdx := 1
+
+	if sprint.HasChange(models.SprintChangeName) {
+		setClauses = append(setClauses, fmt.Sprintf("name=$%d", argIdx))
+		args = append(args, sprint.GetName())
+		argIdx++
+	}
+	if sprint.HasChange(models.SprintChangeGoal) {
+		setClauses = append(setClauses, fmt.Sprintf("goal=$%d", argIdx))
+		args = append(args, sprint.GetGoal())
+		argIdx++
+	}
+	if sprint.HasChange(models.SprintChangeStartDate) {
+		setClauses = append(setClauses, fmt.Sprintf("start_date=$%d", argIdx))
+		args = append(args, sprint.GetStartDate())
+		argIdx++
+	}
+	if sprint.HasChange(models.SprintChangeEndDate) {
+		setClauses = append(setClauses, fmt.Sprintf("end_date=$%d", argIdx))
+		args = append(args, sprint.GetEndDate())
+		argIdx++
+	}
+	if sprint.HasChange(models.SprintChangeStatus) {
+		setClauses = append(setClauses, fmt.Sprintf("status=$%d", argIdx))
+		args = append(args, sprint.GetStatus())
+		argIdx++
+	}
+
+	if len(setClauses) == 0 {
+		return nil
+	}
+
+	query := fmt.Sprintf("UPDATE sprints SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
+	args = append(args, sprint.GetId())
+	argIdx++
+
+	if sprint.GetVersion() != nil {
+		query += fmt.Sprintf(" AND xmin=$%d::xid", argIdx)
+		args = append(args, sprint.GetVersion().(uint32))
+		argIdx++
+	}
+	query += " RETURNING xmin"
+
+	var xmin uint32
+	err := tx.QueryRowContext(ctx, query, args...).Scan(&xmin)
+	if errors.Is(err, sql.ErrNoRows) {
+		if sprint.GetVersion() != nil {
+			return fmt.Errorf("sprint %s: %w", sprint.GetId(), models.ErrConcurrentUpdate)
+		}
+		return fmt.Errorf("sprint %s: %w", sprint.GetId(), models.ErrNotFound)
+	}
 	if err != nil {
-		return err
+		return fmt.Errorf("updating sprint: %w", err)
 	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return fmt.Errorf("sprint %s: %w", sprint.ID, models.ErrNotFound)
+
+	sprint.SetVersion(xmin)
+	sprint.ClearChanges()
+	return nil
+}
+
+func (r *SprintRepository) ExecuteDelete(ctx context.Context, tx *sql.Tx, sprint *models.Sprint) error {
+	_, err := tx.ExecContext(ctx, `DELETE FROM sprints WHERE id=$1`, sprint.GetId())
+	if err != nil {
+		return fmt.Errorf("deleting sprint: %w", err)
 	}
 	return nil
 }
 
-func (r *SprintRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	tx, err := r.ctx.execContext(ctx)
-	if err != nil {
-		return err
-	}
-	_, err = tx.ExecContext(ctx, `DELETE FROM sprints WHERE id=$1`, id)
-	return err
-}
-
 func (r *SprintRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Sprint, error) {
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
-		`SELECT id, project_id, name, goal, start_date, end_date, status, created_at FROM sprints WHERE id=$1`, id)
+		`SELECT id, project_id, name, goal, start_date, end_date, status, created_at, xmin FROM sprints WHERE id=$1`, id)
 	return scanSprint(row)
 }
 
 func (r *SprintRepository) List(ctx context.Context, projectID uuid.UUID) ([]*models.Sprint, error) {
 	rows, err := r.ctx.queryContext(ctx).QueryContext(ctx,
-		`SELECT id, project_id, name, goal, start_date, end_date, status, created_at FROM sprints WHERE project_id=$1 ORDER BY start_date`,
+		`SELECT id, project_id, name, goal, start_date, end_date, status, created_at, xmin FROM sprints WHERE project_id=$1 ORDER BY start_date`,
 		projectID)
 	if err != nil {
 		return nil, fmt.Errorf("listing sprints: %w", err)
@@ -77,31 +142,44 @@ func (r *SprintRepository) List(ctx context.Context, projectID uuid.UUID) ([]*mo
 
 	var sprints []*models.Sprint
 	for rows.Next() {
-		var s models.Sprint
+		var id, projectID uuid.UUID
+		var name string
 		var goal sql.NullString
-		if err := rows.Scan(&s.ID, &s.ProjectID, &s.Name, &goal, &s.StartDate, &s.EndDate, &s.Status, &s.CreatedAt); err != nil {
+		var startDate, endDate, createdAt time.Time
+		var status models.SprintStatus
+		var xmin uint32
+		if err := rows.Scan(&id, &projectID, &name, &goal, &startDate, &endDate, &status, &createdAt, &xmin); err != nil {
 			return nil, fmt.Errorf("scanning sprint: %w", err)
 		}
+		var goalPtr *string
 		if goal.Valid {
-			s.Goal = &goal.String
+			goalPtr = &goal.String
 		}
-		sprints = append(sprints, &s)
+		sprints = append(sprints, models.NewSprintFromDB(id, createdAt, xmin, projectID, name, goalPtr, startDate, endDate, status))
 	}
 	return sprints, rows.Err()
 }
 
 func scanSprint(row *sql.Row) (*models.Sprint, error) {
-	var s models.Sprint
+	var id, projectID uuid.UUID
+	var name string
 	var goal sql.NullString
-	err := row.Scan(&s.ID, &s.ProjectID, &s.Name, &goal, &s.StartDate, &s.EndDate, &s.Status, &s.CreatedAt)
+	var startDate, endDate, createdAt time.Time
+	var status models.SprintStatus
+	var xmin uint32
+
+	err := row.Scan(&id, &projectID, &name, &goal, &startDate, &endDate, &status, &createdAt, &xmin)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("scanning sprint: %w", err)
 	}
+
+	var goalPtr *string
 	if goal.Valid {
-		s.Goal = &goal.String
+		goalPtr = &goal.String
 	}
-	return &s, nil
+
+	return models.NewSprintFromDB(id, createdAt, xmin, projectID, name, goalPtr, startDate, endDate, status), nil
 }

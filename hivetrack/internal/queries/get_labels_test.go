@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/the127/hivetrack/internal/models"
@@ -15,17 +14,19 @@ import (
 
 func TestHandleGetLabels(t *testing.T) {
 	db := inmemory.NewDbContext()
-	actor := models.User{ID: uuid.New(), Sub: "sub1", Email: "test@example.com"}
-	require.NoError(t, db.Users().Upsert(context.Background(), &actor))
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
 
-	p := &models.Project{ID: uuid.New(), Slug: "p", Name: "P", Archetype: models.ProjectArchetypeSoftware, CreatedBy: actor.ID}
-	require.NoError(t, db.Projects().Insert(context.Background(), p))
+	p := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(p)
+	require.NoError(t, db.SaveChanges(context.Background()))
 
-	l := &models.Label{ID: uuid.New(), ProjectID: p.ID, Name: "bug", Color: "#ff0000"}
-	require.NoError(t, db.Labels().Insert(context.Background(), l))
+	l := models.NewLabel(p.GetId(), "bug", "#ff0000")
+	db.Labels().Insert(l)
+	require.NoError(t, db.SaveChanges(context.Background()))
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
-	result, err := queries.HandleGetLabels(ctx, queries.GetLabelsQuery{ProjectID: p.ID})
+	result, err := queries.HandleGetLabels(ctx, queries.GetLabelsQuery{ProjectID: p.GetId()})
 	require.NoError(t, err)
 	assert.Len(t, result.Labels, 1)
 	assert.Equal(t, "bug", result.Labels[0].Name)

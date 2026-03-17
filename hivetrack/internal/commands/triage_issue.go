@@ -30,22 +30,20 @@ func HandleTriageIssue(ctx context.Context, cmd TriageIssueCommand) (*TriageIssu
 		return nil, fmt.Errorf("issue %s: %w", cmd.IssueID, models.ErrNotFound)
 	}
 
-	issue.Triaged = true
-	issue.Status = cmd.Status
+	issue.SetTriaged(true)
+	issue.SetStatus(cmd.Status)
 	if cmd.SprintID != nil {
-		issue.SprintID = cmd.SprintID
+		issue.SetSprintID(cmd.SprintID)
 	}
 	if cmd.MilestoneID != nil {
-		issue.MilestoneID = cmd.MilestoneID
+		issue.SetMilestoneID(cmd.MilestoneID)
 	}
-	issue.UpdatedAt = time.Now()
+	issue.SetUpdatedAt(time.Now())
 
-	if err := db.Issues().Update(ctx, issue); err != nil {
-		return nil, fmt.Errorf("updating issue: %w", err)
-	}
+	db.Issues().Update(issue)
 
-	if err := db.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("committing: %w", err)
+	if err := db.SaveChanges(ctx); err != nil {
+		return nil, fmt.Errorf("saving issue: %w", err)
 	}
 
 	return &TriageIssueResult{}, nil

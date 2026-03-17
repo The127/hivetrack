@@ -3,7 +3,6 @@ package queries_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -15,36 +14,28 @@ import (
 )
 
 func seedIssue(db *inmemory.DbContext, projectID, reporterID uuid.UUID, number int, status models.IssueStatus, triaged bool) *models.Issue {
-	issue := &models.Issue{
-		ID:         uuid.New(),
-		ProjectID:  projectID,
-		Number:     number,
-		Type:       models.IssueTypeTask,
-		Title:      "Issue " + string(status),
-		Status:     status,
-		Priority:   models.IssuePriorityNone,
-		Estimate:   models.IssueEstimateNone,
-		ReporterID: &reporterID,
-		Triaged:    triaged,
-		Visibility: models.IssueVisibilityNormal,
-		Checklist:  []models.ChecklistItem{},
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-	}
-	_ = db.Issues().Insert(context.Background(), issue)
+	issue := models.NewIssue(
+		projectID, number, models.IssueTypeTask, "Issue "+string(status),
+		status, models.IssuePriorityNone, models.IssueEstimateNone,
+		&reporterID, triaged, models.IssueVisibilityNormal,
+		nil, nil, nil, nil, nil,
+	)
+	db.Issues().Insert(issue)
+	_ = db.SaveChanges(context.Background())
 	return issue
 }
 
 func TestHandleGetIssues_ByProject(t *testing.T) {
 	db := inmemory.NewDbContext()
-	actor := models.User{ID: uuid.New(), Sub: "sub1", Email: "test@example.com"}
-	require.NoError(t, db.Users().Upsert(context.Background(), &actor))
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
 
-	p := &models.Project{ID: uuid.New(), Slug: "p", Name: "P", Archetype: models.ProjectArchetypeSoftware, CreatedBy: actor.ID}
-	require.NoError(t, db.Projects().Insert(context.Background(), p))
+	p := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(p)
+	require.NoError(t, db.SaveChanges(context.Background()))
 
-	seedIssue(db, p.ID, actor.ID, 1, models.IssueStatusTodo, true)
-	seedIssue(db, p.ID, actor.ID, 2, models.IssueStatusInProgress, true)
+	seedIssue(db, p.GetId(), actor.GetId(), 1, models.IssueStatusTodo, true)
+	seedIssue(db, p.GetId(), actor.GetId(), 2, models.IssueStatusInProgress, true)
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 	result, err := queries.HandleGetIssues(ctx, queries.GetIssuesQuery{ProjectSlug: "p"})
@@ -55,14 +46,15 @@ func TestHandleGetIssues_ByProject(t *testing.T) {
 
 func TestHandleGetIssues_FilterByStatus(t *testing.T) {
 	db := inmemory.NewDbContext()
-	actor := models.User{ID: uuid.New(), Sub: "sub1", Email: "test@example.com"}
-	require.NoError(t, db.Users().Upsert(context.Background(), &actor))
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
 
-	p := &models.Project{ID: uuid.New(), Slug: "p", Name: "P", Archetype: models.ProjectArchetypeSoftware, CreatedBy: actor.ID}
-	require.NoError(t, db.Projects().Insert(context.Background(), p))
+	p := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(p)
+	require.NoError(t, db.SaveChanges(context.Background()))
 
-	seedIssue(db, p.ID, actor.ID, 1, models.IssueStatusTodo, true)
-	seedIssue(db, p.ID, actor.ID, 2, models.IssueStatusDone, true)
+	seedIssue(db, p.GetId(), actor.GetId(), 1, models.IssueStatusTodo, true)
+	seedIssue(db, p.GetId(), actor.GetId(), 2, models.IssueStatusDone, true)
 
 	status := models.IssueStatusTodo
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)

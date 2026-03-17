@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/the127/hivetrack/internal/authentication"
@@ -42,7 +41,7 @@ func HandleCreateIssue(ctx context.Context, cmd CreateIssueCommand) (*CreateIssu
 		return nil, fmt.Errorf("project %q: %w", cmd.ProjectSlug, models.ErrNotFound)
 	}
 
-	number, err := db.Projects().NextIssueNumber(ctx, project.ID)
+	number, err := db.Projects().NextIssueNumber(ctx, project.GetId())
 	if err != nil {
 		return nil, fmt.Errorf("getting next issue number: %w", err)
 	}
@@ -52,7 +51,7 @@ func HandleCreateIssue(ctx context.Context, cmd CreateIssueCommand) (*CreateIssu
 	if cmd.Status != nil {
 		status = *cmd.Status
 	} else {
-		switch project.Archetype {
+		switch project.GetArchetype() {
 		case models.ProjectArchetypeSoftware:
 			status = models.IssueStatusTodo
 		case models.ProjectArchetypeSupport:
@@ -73,40 +72,23 @@ func HandleCreateIssue(ctx context.Context, cmd CreateIssueCommand) (*CreateIssu
 	}
 
 	reporterID := actor.ID
-	now := time.Now()
 
-	issue := &models.Issue{
-		ID:          uuid.New(),
-		ProjectID:   project.ID,
-		Number:      number,
-		Type:        cmd.Type,
-		Title:       cmd.Title,
-		Description: cmd.Description,
-		Status:      status,
-		Priority:    priority,
-		Estimate:    estimate,
-		ReporterID:  &reporterID,
-		SprintID:    cmd.SprintID,
-		MilestoneID: cmd.MilestoneID,
-		Triaged:     triaged,
-		Visibility:  models.IssueVisibilityNormal,
-		Assignees:   cmd.AssigneeIDs,
-		Labels:      cmd.LabelIDs,
-		Checklist:   []models.ChecklistItem{},
-		CreatedAt:   now,
-		UpdatedAt:   now,
-	}
+	issue := models.NewIssue(
+		project.GetId(), number, cmd.Type, cmd.Title,
+		status, priority, estimate,
+		&reporterID, triaged, models.IssueVisibilityNormal,
+		cmd.Description, cmd.SprintID, cmd.MilestoneID,
+		cmd.AssigneeIDs, cmd.LabelIDs,
+	)
 
-	if err := db.Issues().Insert(ctx, issue); err != nil {
-		return nil, fmt.Errorf("inserting issue: %w", err)
-	}
+	db.Issues().Insert(issue)
 
-	if err := db.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("committing: %w", err)
+	if err := db.SaveChanges(ctx); err != nil {
+		return nil, fmt.Errorf("saving issue: %w", err)
 	}
 
 	return &CreateIssueResult{
-		ID:     issue.ID,
-		Number: issue.Number,
+		ID:     issue.GetId(),
+		Number: issue.GetNumber(),
 	}, nil
 }

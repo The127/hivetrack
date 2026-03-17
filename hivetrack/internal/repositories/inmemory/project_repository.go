@@ -5,19 +5,22 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/the127/hivetrack/internal/change"
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
 )
 
 type ProjectRepository struct {
+	tracker  *change.Tracker
 	byID     map[uuid.UUID]*models.Project
 	bySlug   map[string]*models.Project
 	members  map[uuid.UUID]map[uuid.UUID]*models.ProjectMember // projectID -> userID -> member
 	counters map[uuid.UUID]int
 }
 
-func NewProjectRepository() *ProjectRepository {
+func NewProjectRepository(tracker *change.Tracker) *ProjectRepository {
 	return &ProjectRepository{
+		tracker:  tracker,
 		byID:     make(map[uuid.UUID]*models.Project),
 		bySlug:   make(map[string]*models.Project),
 		members:  make(map[uuid.UUID]map[uuid.UUID]*models.ProjectMember),
@@ -25,42 +28,16 @@ func NewProjectRepository() *ProjectRepository {
 	}
 }
 
-func (r *ProjectRepository) Insert(_ context.Context, project *models.Project) error {
-	if _, exists := r.bySlug[project.Slug]; exists {
-		return fmt.Errorf("project with slug %q already exists: %w", project.Slug, models.ErrConflict)
-	}
-	cp := *project
-	r.byID[project.ID] = &cp
-	r.bySlug[project.Slug] = &cp
-	r.counters[project.ID] = 1
-	return nil
+func (r *ProjectRepository) Insert(project *models.Project) {
+	r.tracker.Add(change.NewEntry(0, project, change.Added))
 }
 
-func (r *ProjectRepository) Update(_ context.Context, project *models.Project) error {
-	existing, ok := r.byID[project.ID]
-	if !ok {
-		return fmt.Errorf("project %s not found: %w", project.ID, models.ErrNotFound)
-	}
-	// Remove old slug index if slug changed
-	if existing.Slug != project.Slug {
-		delete(r.bySlug, existing.Slug)
-	}
-	cp := *project
-	r.byID[project.ID] = &cp
-	r.bySlug[project.Slug] = &cp
-	return nil
+func (r *ProjectRepository) Update(project *models.Project) {
+	r.tracker.Add(change.NewEntry(0, project, change.Updated))
 }
 
-func (r *ProjectRepository) Delete(_ context.Context, id uuid.UUID) error {
-	project, ok := r.byID[id]
-	if !ok {
-		return fmt.Errorf("project %s not found: %w", id, models.ErrNotFound)
-	}
-	delete(r.bySlug, project.Slug)
-	delete(r.byID, id)
-	delete(r.members, id)
-	delete(r.counters, id)
-	return nil
+func (r *ProjectRepository) Delete(project *models.Project) {
+	r.tracker.Add(change.NewEntry(0, project, change.Deleted))
 }
 
 func (r *ProjectRepository) GetByID(_ context.Context, id uuid.UUID) (*models.Project, error) {
@@ -68,8 +45,7 @@ func (r *ProjectRepository) GetByID(_ context.Context, id uuid.UUID) (*models.Pr
 	if !ok {
 		return nil, nil
 	}
-	cp := *p
-	return &cp, nil
+	return p, nil
 }
 
 func (r *ProjectRepository) GetBySlug(_ context.Context, slug string) (*models.Project, error) {
@@ -77,15 +53,14 @@ func (r *ProjectRepository) GetBySlug(_ context.Context, slug string) (*models.P
 	if !ok {
 		return nil, nil
 	}
-	cp := *p
-	return &cp, nil
+	return p, nil
 }
 
 func (r *ProjectRepository) List(_ context.Context, filter *repositories.ProjectFilter) ([]*models.Project, error) {
 	var result []*models.Project
 	for _, p := range r.byID {
 		if filter.MemberUserID != nil && !filter.IsAdmin {
-			projectMembers, ok := r.members[p.ID]
+			projectMembers, ok := r.members[p.GetId()]
 			if !ok {
 				continue
 			}
@@ -93,8 +68,7 @@ func (r *ProjectRepository) List(_ context.Context, filter *repositories.Project
 				continue
 			}
 		}
-		cp := *p
-		result = append(result, &cp)
+		result = append(result, p)
 	}
 	return result, nil
 }

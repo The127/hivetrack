@@ -6,17 +6,20 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/the127/hivetrack/internal/change"
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
 )
 
 type IssueRepository struct {
-	byID        map[uuid.UUID]*models.Issue
+	tracker            *change.Tracker
+	byID               map[uuid.UUID]*models.Issue
 	byProjectAndNumber map[string]*models.Issue // "projectID:number" -> issue
 }
 
-func NewIssueRepository() *IssueRepository {
+func NewIssueRepository(tracker *change.Tracker) *IssueRepository {
 	return &IssueRepository{
+		tracker:            tracker,
 		byID:               make(map[uuid.UUID]*models.Issue),
 		byProjectAndNumber: make(map[string]*models.Issue),
 	}
@@ -26,35 +29,16 @@ func issueKey(projectID uuid.UUID, number int) string {
 	return fmt.Sprintf("%s:%d", projectID, number)
 }
 
-func (r *IssueRepository) Insert(_ context.Context, issue *models.Issue) error {
-	key := issueKey(issue.ProjectID, issue.Number)
-	if _, exists := r.byProjectAndNumber[key]; exists {
-		return fmt.Errorf("issue %s already exists: %w", key, models.ErrConflict)
-	}
-	cp := copyIssue(issue)
-	r.byID[issue.ID] = cp
-	r.byProjectAndNumber[key] = cp
-	return nil
+func (r *IssueRepository) Insert(issue *models.Issue) {
+	r.tracker.Add(change.NewEntry(0, issue, change.Added))
 }
 
-func (r *IssueRepository) Update(_ context.Context, issue *models.Issue) error {
-	if _, ok := r.byID[issue.ID]; !ok {
-		return fmt.Errorf("issue %s not found: %w", issue.ID, models.ErrNotFound)
-	}
-	cp := copyIssue(issue)
-	r.byID[issue.ID] = cp
-	r.byProjectAndNumber[issueKey(issue.ProjectID, issue.Number)] = cp
-	return nil
+func (r *IssueRepository) Update(issue *models.Issue) {
+	r.tracker.Add(change.NewEntry(0, issue, change.Updated))
 }
 
-func (r *IssueRepository) Delete(_ context.Context, id uuid.UUID) error {
-	issue, ok := r.byID[id]
-	if !ok {
-		return fmt.Errorf("issue %s not found: %w", id, models.ErrNotFound)
-	}
-	delete(r.byProjectAndNumber, issueKey(issue.ProjectID, issue.Number))
-	delete(r.byID, id)
-	return nil
+func (r *IssueRepository) Delete(issue *models.Issue) {
+	r.tracker.Add(change.NewEntry(0, issue, change.Deleted))
 }
 
 func (r *IssueRepository) GetByID(_ context.Context, id uuid.UUID) (*models.Issue, error) {
@@ -62,7 +46,7 @@ func (r *IssueRepository) GetByID(_ context.Context, id uuid.UUID) (*models.Issu
 	if !ok {
 		return nil, nil
 	}
-	return copyIssue(issue), nil
+	return issue, nil
 }
 
 func (r *IssueRepository) GetByNumber(_ context.Context, projectID uuid.UUID, number int) (*models.Issue, error) {
@@ -70,7 +54,7 @@ func (r *IssueRepository) GetByNumber(_ context.Context, projectID uuid.UUID, nu
 	if !ok {
 		return nil, nil
 	}
-	return copyIssue(issue), nil
+	return issue, nil
 }
 
 func (r *IssueRepository) List(_ context.Context, filter *repositories.IssueFilter) ([]*models.Issue, int, error) {
@@ -79,7 +63,7 @@ func (r *IssueRepository) List(_ context.Context, filter *repositories.IssueFilt
 		if !matchesIssueFilter(issue, filter) {
 			continue
 		}
-		result = append(result, copyIssue(issue))
+		result = append(result, issue)
 	}
 	total := len(result)
 
@@ -98,23 +82,23 @@ func (r *IssueRepository) List(_ context.Context, filter *repositories.IssueFilt
 }
 
 func matchesIssueFilter(issue *models.Issue, filter *repositories.IssueFilter) bool {
-	if filter.ProjectID != nil && issue.ProjectID != *filter.ProjectID {
+	if filter.ProjectID != nil && issue.GetProjectID() != *filter.ProjectID {
 		return false
 	}
-	if filter.Status != nil && issue.Status != *filter.Status {
+	if filter.Status != nil && issue.GetStatus() != *filter.Status {
 		return false
 	}
-	if filter.Priority != nil && issue.Priority != *filter.Priority {
+	if filter.Priority != nil && issue.GetPriority() != *filter.Priority {
 		return false
 	}
 	if filter.SprintID != nil {
-		if issue.SprintID == nil || *issue.SprintID != *filter.SprintID {
+		if issue.GetSprintID() == nil || *issue.GetSprintID() != *filter.SprintID {
 			return false
 		}
 	}
 	if filter.AssigneeID != nil {
 		found := false
-		for _, a := range issue.Assignees {
+		for _, a := range issue.GetAssignees() {
 			if a == *filter.AssigneeID {
 				found = true
 				break
@@ -124,36 +108,14 @@ func matchesIssueFilter(issue *models.Issue, filter *repositories.IssueFilter) b
 			return false
 		}
 	}
-	if filter.Triaged != nil && issue.Triaged != *filter.Triaged {
+	if filter.Triaged != nil && issue.GetTriaged() != *filter.Triaged {
 		return false
 	}
 	if filter.Text != nil && *filter.Text != "" {
 		text := strings.ToLower(*filter.Text)
-		if !strings.Contains(strings.ToLower(issue.Title), text) {
+		if !strings.Contains(strings.ToLower(issue.GetTitle()), text) {
 			return false
 		}
 	}
 	return true
-}
-
-func copyIssue(issue *models.Issue) *models.Issue {
-	cp := *issue
-	// Deep copy slices
-	if issue.Assignees != nil {
-		cp.Assignees = make([]uuid.UUID, len(issue.Assignees))
-		copy(cp.Assignees, issue.Assignees)
-	}
-	if issue.Labels != nil {
-		cp.Labels = make([]uuid.UUID, len(issue.Labels))
-		copy(cp.Labels, issue.Labels)
-	}
-	if issue.RestrictedViewers != nil {
-		cp.RestrictedViewers = make([]uuid.UUID, len(issue.RestrictedViewers))
-		copy(cp.RestrictedViewers, issue.RestrictedViewers)
-	}
-	if issue.Checklist != nil {
-		cp.Checklist = make([]models.ChecklistItem, len(issue.Checklist))
-		copy(cp.Checklist, issue.Checklist)
-	}
-	return &cp
 }

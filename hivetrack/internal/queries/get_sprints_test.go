@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/the127/hivetrack/internal/models"
@@ -16,25 +15,19 @@ import (
 
 func TestHandleGetSprints(t *testing.T) {
 	db := inmemory.NewDbContext()
-	actor := models.User{ID: uuid.New(), Sub: "sub1", Email: "test@example.com"}
-	require.NoError(t, db.Users().Upsert(context.Background(), &actor))
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
 
-	p := &models.Project{ID: uuid.New(), Slug: "p", Name: "P", Archetype: models.ProjectArchetypeSoftware, CreatedBy: actor.ID}
-	require.NoError(t, db.Projects().Insert(context.Background(), p))
+	p := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(p)
+	require.NoError(t, db.SaveChanges(context.Background()))
 
-	sprint := &models.Sprint{
-		ID:        uuid.New(),
-		ProjectID: p.ID,
-		Name:      "Sprint 1",
-		StartDate: time.Now(),
-		EndDate:   time.Now().Add(14 * 24 * time.Hour),
-		Status:    models.SprintStatusPlanning,
-		CreatedAt: time.Now(),
-	}
-	require.NoError(t, db.Sprints().Insert(context.Background(), sprint))
+	sprint := models.NewSprint(p.GetId(), "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusPlanning)
+	db.Sprints().Insert(sprint)
+	require.NoError(t, db.SaveChanges(context.Background()))
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
-	result, err := queries.HandleGetSprints(ctx, queries.GetSprintsQuery{ProjectID: p.ID})
+	result, err := queries.HandleGetSprints(ctx, queries.GetSprintsQuery{ProjectID: p.GetId()})
 	require.NoError(t, err)
 	assert.Len(t, result.Sprints, 1)
 	assert.Equal(t, "Sprint 1", result.Sprints[0].Name)

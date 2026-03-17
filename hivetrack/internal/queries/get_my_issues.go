@@ -32,21 +32,21 @@ func HandleGetMyIssues(ctx context.Context, _ GetMyIssuesQuery) (*GetMyIssuesRes
 			continue
 		}
 		items = append(items, IssueSummary{
-			ID:          i.ID,
-			Number:      i.Number,
-			Type:        i.Type,
-			Title:       i.Title,
-			Status:      i.Status,
-			Priority:    i.Priority,
-			Estimate:    i.Estimate,
-			Triaged:     i.Triaged,
-			Assignees:   i.Assignees,
-			Labels:      i.Labels,
-			SprintID:    i.SprintID,
-			MilestoneID: i.MilestoneID,
-			OnHold:      i.OnHold,
-			CreatedAt:   i.CreatedAt,
-			UpdatedAt:   i.UpdatedAt,
+			ID:          i.GetId(),
+			Number:      i.GetNumber(),
+			Type:        i.GetType(),
+			Title:       i.GetTitle(),
+			Status:      i.GetStatus(),
+			Priority:    i.GetPriority(),
+			Estimate:    i.GetEstimate(),
+			Triaged:     i.GetTriaged(),
+			Assignees:   i.GetAssignees(),
+			Labels:      i.GetLabels(),
+			SprintID:    i.GetSprintID(),
+			MilestoneID: i.GetMilestoneID(),
+			OnHold:      i.GetOnHold(),
+			CreatedAt:   i.GetCreatedAt(),
+			UpdatedAt:   i.GetUpdatedAt(),
 		})
 	}
 

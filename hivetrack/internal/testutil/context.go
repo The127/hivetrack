@@ -14,11 +14,11 @@ func ContextWithDb(db repositories.DbContext) context.Context {
 }
 
 // ContextWithUser adds the given user as the current authenticated user.
-func ContextWithUser(ctx context.Context, user models.User) context.Context {
+func ContextWithUser(ctx context.Context, user *models.User) context.Context {
 	return authentication.ContextWithCurrentUser(ctx, authentication.CurrentUser{
-		ID:      user.ID,
-		Sub:     user.Sub,
-		Email:   user.Email,
-		IsAdmin: user.IsAdmin,
+		ID:      user.GetId(),
+		Sub:     user.GetSub(),
+		Email:   user.GetEmail(),
+		IsAdmin: user.GetIsAdmin(),
 	})
 }

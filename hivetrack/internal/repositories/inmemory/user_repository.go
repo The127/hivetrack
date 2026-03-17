@@ -27,8 +27,7 @@ func (r *UserRepository) GetByID(_ context.Context, id uuid.UUID) (*models.User,
 	if !ok {
 		return nil, nil
 	}
-	cp := *u
-	return &cp, nil
+	return u, nil
 }
 
 func (r *UserRepository) GetBySub(_ context.Context, sub string) (*models.User, error) {
@@ -36,8 +35,7 @@ func (r *UserRepository) GetBySub(_ context.Context, sub string) (*models.User, 
 	if !ok {
 		return nil, nil
 	}
-	cp := *u
-	return &cp, nil
+	return u, nil
 }
 
 func (r *UserRepository) GetByEmail(_ context.Context, email string) (*models.User, error) {
@@ -45,31 +43,28 @@ func (r *UserRepository) GetByEmail(_ context.Context, email string) (*models.Us
 	if !ok {
 		return nil, nil
 	}
-	cp := *u
-	return &cp, nil
+	return u, nil
 }
 
 func (r *UserRepository) Upsert(_ context.Context, user *models.User) error {
-	if user.ID == uuid.Nil {
+	if user.GetId() == uuid.Nil {
 		return fmt.Errorf("user ID must be set")
 	}
 	// Remove old email/sub indexes if updating
-	if existing, ok := r.byID[user.ID]; ok {
-		delete(r.bySub, existing.Sub)
-		delete(r.byEmail, existing.Email)
+	if existing, ok := r.byID[user.GetId()]; ok {
+		delete(r.bySub, existing.GetSub())
+		delete(r.byEmail, existing.GetEmail())
 	}
-	cp := *user
-	r.byID[user.ID] = &cp
-	r.bySub[user.Sub] = &cp
-	r.byEmail[user.Email] = &cp
+	r.byID[user.GetId()] = user
+	r.bySub[user.GetSub()] = user
+	r.byEmail[user.GetEmail()] = user
 	return nil
 }
 
 func (r *UserRepository) List(_ context.Context) ([]*models.User, error) {
 	users := make([]*models.User, 0, len(r.byID))
 	for _, u := range r.byID {
-		cp := *u
-		users = append(users, &cp)
+		users = append(users, u)
 	}
 	return users, nil
 }

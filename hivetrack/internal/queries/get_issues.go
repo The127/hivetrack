@@ -58,7 +58,7 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 		return nil, fmt.Errorf("project %q: %w", q.ProjectSlug, models.ErrNotFound)
 	}
 
-	filter := repositories.NewIssueFilter().ByProjectID(project.ID)
+	filter := repositories.NewIssueFilter().ByProjectID(project.GetId())
 	if q.Status != nil {
 		filter = filter.ByStatus(*q.Status)
 	}
@@ -89,21 +89,21 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 	items := make([]IssueSummary, 0, len(issues))
 	for _, i := range issues {
 		items = append(items, IssueSummary{
-			ID:          i.ID,
-			Number:      i.Number,
-			Type:        i.Type,
-			Title:       i.Title,
-			Status:      i.Status,
-			Priority:    i.Priority,
-			Estimate:    i.Estimate,
-			Triaged:     i.Triaged,
-			Assignees:   i.Assignees,
-			Labels:      i.Labels,
-			SprintID:    i.SprintID,
-			MilestoneID: i.MilestoneID,
-			OnHold:      i.OnHold,
-			CreatedAt:   i.CreatedAt,
-			UpdatedAt:   i.UpdatedAt,
+			ID:          i.GetId(),
+			Number:      i.GetNumber(),
+			Type:        i.GetType(),
+			Title:       i.GetTitle(),
+			Status:      i.GetStatus(),
+			Priority:    i.GetPriority(),
+			Estimate:    i.GetEstimate(),
+			Triaged:     i.GetTriaged(),
+			Assignees:   i.GetAssignees(),
+			Labels:      i.GetLabels(),
+			SprintID:    i.GetSprintID(),
+			MilestoneID: i.GetMilestoneID(),
+			OnHold:      i.GetOnHold(),
+			CreatedAt:   i.GetCreatedAt(),
+			UpdatedAt:   i.GetUpdatedAt(),
 		})
 	}
 

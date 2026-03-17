@@ -36,11 +36,11 @@ func HandleGetMilestones(ctx context.Context, q GetMilestonesQuery) (*GetMilesto
 	summaries := make([]MilestoneSummary, 0, len(milestones))
 	for _, m := range milestones {
 		summaries = append(summaries, MilestoneSummary{
-			ID:          m.ID,
-			Title:       m.Title,
-			Description: m.Description,
-			TargetDate:  m.TargetDate,
-			ClosedAt:    m.ClosedAt,
+			ID:          m.GetId(),
+			Title:       m.GetTitle(),
+			Description: m.GetDescription(),
+			TargetDate:  m.GetTargetDate(),
+			ClosedAt:    m.GetClosedAt(),
 		})
 	}
 

@@ -3,9 +3,7 @@ package queries_test
 import (
 	"context"
 	"testing"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/the127/hivetrack/internal/models"
@@ -16,22 +14,19 @@ import (
 
 func TestHandleGetMilestones(t *testing.T) {
 	db := inmemory.NewDbContext()
-	actor := models.User{ID: uuid.New(), Sub: "sub1", Email: "test@example.com"}
-	require.NoError(t, db.Users().Upsert(context.Background(), &actor))
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
 
-	p := &models.Project{ID: uuid.New(), Slug: "p", Name: "P", Archetype: models.ProjectArchetypeSoftware, CreatedBy: actor.ID}
-	require.NoError(t, db.Projects().Insert(context.Background(), p))
+	p := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(p)
+	require.NoError(t, db.SaveChanges(context.Background()))
 
-	m := &models.Milestone{
-		ID:        uuid.New(),
-		ProjectID: p.ID,
-		Title:     "v1.0",
-		CreatedAt: time.Now(),
-	}
-	require.NoError(t, db.Milestones().Insert(context.Background(), m))
+	m := models.NewMilestone(p.GetId(), "v1.0", nil, nil)
+	db.Milestones().Insert(m)
+	require.NoError(t, db.SaveChanges(context.Background()))
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
-	result, err := queries.HandleGetMilestones(ctx, queries.GetMilestonesQuery{ProjectID: p.ID})
+	result, err := queries.HandleGetMilestones(ctx, queries.GetMilestonesQuery{ProjectID: p.GetId()})
 	require.NoError(t, err)
 	assert.Len(t, result.Milestones, 1)
 	assert.Equal(t, "v1.0", result.Milestones[0].Title)

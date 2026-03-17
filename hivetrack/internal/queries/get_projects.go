@@ -44,12 +44,12 @@ func HandleGetProjects(ctx context.Context, _ GetProjectsQuery) (*GetProjectsRes
 	summaries := make([]ProjectSummary, 0, len(projects))
 	for _, p := range projects {
 		summaries = append(summaries, ProjectSummary{
-			ID:          p.ID,
-			Slug:        p.Slug,
-			Name:        p.Name,
-			Description: p.Description,
-			Archetype:   p.Archetype,
-			Archived:    p.Archived,
+			ID:          p.GetId(),
+			Slug:        p.GetSlug(),
+			Name:        p.GetName(),
+			Description: p.GetDescription(),
+			Archetype:   p.GetArchetype(),
+			Archived:    p.GetArchived(),
 		})
 	}
 

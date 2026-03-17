@@ -17,11 +17,12 @@ type DbContext interface {
 	Labels() LabelRepository
 	Outbox() OutboxRepository
 
-	Commit(ctx context.Context) error
-	Rollback(ctx context.Context) error
+	// SaveChanges executes all queued Insert/Update/Delete in a single transaction.
+	SaveChanges(ctx context.Context) error
 }
 
 // UserRepository handles user persistence.
+// Upsert is direct-execute (OIDC sync pattern).
 type UserRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.User, error)
 	GetBySub(ctx context.Context, sub string) (*models.User, error)
@@ -31,22 +32,24 @@ type UserRepository interface {
 }
 
 // ProjectRepository handles project persistence.
+// Insert/Update/Delete queue changes; reads and member ops are direct-execute.
 type ProjectRepository interface {
-	Insert(ctx context.Context, project *models.Project) error
-	Update(ctx context.Context, project *models.Project) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	Insert(project *models.Project)
+	Update(project *models.Project)
+	Delete(project *models.Project)
+
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Project, error)
 	GetBySlug(ctx context.Context, slug string) (*models.Project, error)
 	List(ctx context.Context, filter *ProjectFilter) ([]*models.Project, error)
 
-	// Members
+	// Members — direct-execute
 	AddMember(ctx context.Context, member *models.ProjectMember) error
 	UpdateMember(ctx context.Context, member *models.ProjectMember) error
 	RemoveMember(ctx context.Context, projectID, userID uuid.UUID) error
 	GetMember(ctx context.Context, projectID, userID uuid.UUID) (*models.ProjectMember, error)
 	ListMembers(ctx context.Context, projectID uuid.UUID) ([]*models.ProjectMember, error)
 
-	// Issue counter
+	// Issue counter — direct-execute
 	NextIssueNumber(ctx context.Context, projectID uuid.UUID) (int, error)
 }
 
@@ -71,10 +74,12 @@ func (f *ProjectFilter) AsAdmin() *ProjectFilter {
 }
 
 // IssueRepository handles issue persistence.
+// Insert/Update/Delete queue changes; reads are direct-execute.
 type IssueRepository interface {
-	Insert(ctx context.Context, issue *models.Issue) error
-	Update(ctx context.Context, issue *models.Issue) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	Insert(issue *models.Issue)
+	Update(issue *models.Issue)
+	Delete(issue *models.Issue)
+
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Issue, error)
 	GetByNumber(ctx context.Context, projectID uuid.UUID, number int) (*models.Issue, error)
 	List(ctx context.Context, filter *IssueFilter) ([]*models.Issue, int, error)
@@ -140,32 +145,36 @@ func (f *IssueFilter) WithPagination(limit, offset int) *IssueFilter {
 
 // SprintRepository handles sprint persistence.
 type SprintRepository interface {
-	Insert(ctx context.Context, sprint *models.Sprint) error
-	Update(ctx context.Context, sprint *models.Sprint) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	Insert(sprint *models.Sprint)
+	Update(sprint *models.Sprint)
+	Delete(sprint *models.Sprint)
+
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Sprint, error)
 	List(ctx context.Context, projectID uuid.UUID) ([]*models.Sprint, error)
 }
 
 // MilestoneRepository handles milestone persistence.
 type MilestoneRepository interface {
-	Insert(ctx context.Context, milestone *models.Milestone) error
-	Update(ctx context.Context, milestone *models.Milestone) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	Insert(milestone *models.Milestone)
+	Update(milestone *models.Milestone)
+	Delete(milestone *models.Milestone)
+
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Milestone, error)
 	List(ctx context.Context, projectID uuid.UUID) ([]*models.Milestone, error)
 }
 
 // LabelRepository handles label persistence.
 type LabelRepository interface {
-	Insert(ctx context.Context, label *models.Label) error
-	Update(ctx context.Context, label *models.Label) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	Insert(label *models.Label)
+	Update(label *models.Label)
+	Delete(label *models.Label)
+
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Label, error)
 	List(ctx context.Context, projectID uuid.UUID) ([]*models.Label, error)
 }
 
 // OutboxRepository handles outbox message persistence.
+// All methods are direct-execute (Enqueue runs in the current transaction).
 type OutboxRepository interface {
 	Enqueue(ctx context.Context, msgType string, payload []byte) error
 	ListPending(ctx context.Context) ([]*models.OutboxMessage, error)

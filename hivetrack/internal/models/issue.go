@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/the127/hivetrack/internal/change"
 )
 
 type IssueType string
@@ -55,9 +56,9 @@ const (
 type HoldReason string
 
 const (
-	HoldReasonWaitingOnCustomer  HoldReason = "waiting_on_customer"
-	HoldReasonWaitingOnExternal  HoldReason = "waiting_on_external"
-	HoldReasonBlockedByIssue     HoldReason = "blocked_by_issue"
+	HoldReasonWaitingOnCustomer HoldReason = "waiting_on_customer"
+	HoldReasonWaitingOnExternal HoldReason = "waiting_on_external"
+	HoldReasonBlockedByIssue    HoldReason = "blocked_by_issue"
 )
 
 type IssueVisibility string
@@ -88,53 +89,266 @@ type IssueLink struct {
 	LinkType      LinkType
 }
 
+type IssueChange int
+
+const (
+	IssueChangeTitle             IssueChange = iota
+	IssueChangeDescription       IssueChange = iota
+	IssueChangeStatus            IssueChange = iota
+	IssueChangeHold              IssueChange = iota // covers onHold + holdReason + holdSince + holdNote
+	IssueChangePriority          IssueChange = iota
+	IssueChangeEstimate          IssueChange = iota
+	IssueChangeMilestoneID       IssueChange = iota
+	IssueChangeSprintID          IssueChange = iota
+	IssueChangeSprintCarryCount  IssueChange = iota
+	IssueChangeTriaged           IssueChange = iota
+	IssueChangeVisibility        IssueChange = iota
+	IssueChangeChecklist         IssueChange = iota
+	IssueChangeAssignees         IssueChange = iota
+	IssueChangeLabels            IssueChange = iota
+	IssueChangeRestrictedViewers IssueChange = iota
+)
+
 type Issue struct {
-	ID        uuid.UUID
-	ProjectID uuid.UUID
-	Number    int
+	BaseModel
+	change.List[IssueChange]
 
-	Type        IssueType
-	Title       string
-	Description *string
-	Status      IssueStatus
+	projectID uuid.UUID
+	number    int
 
-	OnHold     bool
-	HoldReason *HoldReason
-	HoldSince  *time.Time
-	HoldNote   *string
+	issueType   IssueType
+	title       string
+	description *string
+	status      IssueStatus
 
-	Priority IssuePriority
-	Estimate IssueEstimate
+	onHold     bool
+	holdReason *HoldReason
+	holdSince  *time.Time
+	holdNote   *string
 
-	ReporterID *uuid.UUID
-	ParentID   *uuid.UUID
+	priority IssuePriority
+	estimate IssueEstimate
 
-	MilestoneID *uuid.UUID
-	SprintID    *uuid.UUID
+	reporterID  *uuid.UUID
+	parentID    *uuid.UUID
+	milestoneID *uuid.UUID
+	sprintID    *uuid.UUID
 
-	SprintCarryCount int
+	sprintCarryCount int
 
-	Triaged bool
+	triaged bool
 
-	Visibility IssueVisibility
+	visibility IssueVisibility
 
-	CustomerEmail *string
-	CustomerName  *string
-	CustomerToken *uuid.UUID
+	customerEmail *string
+	customerName  *string
+	customerToken *uuid.UUID
 
-	Checklist []ChecklistItem
+	checklist         []ChecklistItem
+	assignees         []uuid.UUID
+	labels            []uuid.UUID
+	restrictedViewers []uuid.UUID
+}
 
-	Assignees         []uuid.UUID
-	Labels            []uuid.UUID
-	RestrictedViewers []uuid.UUID
+func NewIssue(projectID uuid.UUID, number int, issueType IssueType, title string,
+	status IssueStatus, priority IssuePriority, estimate IssueEstimate,
+	reporterID *uuid.UUID, triaged bool, visibility IssueVisibility,
+	description *string, sprintID, milestoneID *uuid.UUID,
+	assignees, labels []uuid.UUID) *Issue {
+	return &Issue{
+		BaseModel:   NewBaseModel(),
+		List:        change.NewList[IssueChange](),
+		projectID:   projectID,
+		number:      number,
+		issueType:   issueType,
+		title:       title,
+		description: description,
+		status:      status,
+		priority:    priority,
+		estimate:    estimate,
+		reporterID:  reporterID,
+		sprintID:    sprintID,
+		milestoneID: milestoneID,
+		triaged:     triaged,
+		visibility:  visibility,
+		assignees:   assignees,
+		labels:      labels,
+		checklist:   []ChecklistItem{},
+	}
+}
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
+func NewIssueFromDB(
+	id uuid.UUID, createdAt, updatedAt time.Time, version any,
+	projectID uuid.UUID, number int,
+	issueType IssueType, title string, description *string, status IssueStatus,
+	onHold bool, holdReason *HoldReason, holdSince *time.Time, holdNote *string,
+	priority IssuePriority, estimate IssueEstimate,
+	reporterID, parentID, milestoneID, sprintID *uuid.UUID,
+	sprintCarryCount int, triaged bool, visibility IssueVisibility,
+	customerEmail, customerName *string, customerToken *uuid.UUID,
+	checklist []ChecklistItem, assignees, labels, restrictedViewers []uuid.UUID,
+) *Issue {
+	return &Issue{
+		BaseModel:         NewBaseModelFromDB(id, createdAt, updatedAt, version),
+		List:              change.NewList[IssueChange](),
+		projectID:         projectID,
+		number:            number,
+		issueType:         issueType,
+		title:             title,
+		description:       description,
+		status:            status,
+		onHold:            onHold,
+		holdReason:        holdReason,
+		holdSince:         holdSince,
+		holdNote:          holdNote,
+		priority:          priority,
+		estimate:          estimate,
+		reporterID:        reporterID,
+		parentID:          parentID,
+		milestoneID:       milestoneID,
+		sprintID:          sprintID,
+		sprintCarryCount:  sprintCarryCount,
+		triaged:           triaged,
+		visibility:        visibility,
+		customerEmail:     customerEmail,
+		customerName:      customerName,
+		customerToken:     customerToken,
+		checklist:         checklist,
+		assignees:         assignees,
+		labels:            labels,
+		restrictedViewers: restrictedViewers,
+	}
+}
+
+// Getters
+func (i *Issue) GetProjectID() uuid.UUID           { return i.projectID }
+func (i *Issue) GetNumber() int                    { return i.number }
+func (i *Issue) GetType() IssueType                { return i.issueType }
+func (i *Issue) GetTitle() string                  { return i.title }
+func (i *Issue) GetDescription() *string           { return i.description }
+func (i *Issue) GetStatus() IssueStatus            { return i.status }
+func (i *Issue) GetOnHold() bool                   { return i.onHold }
+func (i *Issue) GetHoldReason() *HoldReason        { return i.holdReason }
+func (i *Issue) GetHoldSince() *time.Time          { return i.holdSince }
+func (i *Issue) GetHoldNote() *string              { return i.holdNote }
+func (i *Issue) GetPriority() IssuePriority        { return i.priority }
+func (i *Issue) GetEstimate() IssueEstimate        { return i.estimate }
+func (i *Issue) GetReporterID() *uuid.UUID         { return i.reporterID }
+func (i *Issue) GetParentID() *uuid.UUID           { return i.parentID }
+func (i *Issue) GetMilestoneID() *uuid.UUID        { return i.milestoneID }
+func (i *Issue) GetSprintID() *uuid.UUID           { return i.sprintID }
+func (i *Issue) GetSprintCarryCount() int          { return i.sprintCarryCount }
+func (i *Issue) GetTriaged() bool                  { return i.triaged }
+func (i *Issue) GetVisibility() IssueVisibility    { return i.visibility }
+func (i *Issue) GetCustomerEmail() *string         { return i.customerEmail }
+func (i *Issue) GetCustomerName() *string          { return i.customerName }
+func (i *Issue) GetCustomerToken() *uuid.UUID      { return i.customerToken }
+func (i *Issue) GetChecklist() []ChecklistItem     { return i.checklist }
+func (i *Issue) GetAssignees() []uuid.UUID         { return i.assignees }
+func (i *Issue) GetLabels() []uuid.UUID            { return i.labels }
+func (i *Issue) GetRestrictedViewers() []uuid.UUID { return i.restrictedViewers }
+
+// Setters
+func (i *Issue) SetTitle(v string) {
+	if i.title == v {
+		return
+	}
+	i.title = v
+	i.TrackChange(IssueChangeTitle)
+}
+
+func (i *Issue) SetDescription(v *string) {
+	i.description = v
+	i.TrackChange(IssueChangeDescription)
+}
+
+func (i *Issue) SetStatus(v IssueStatus) {
+	if i.status == v {
+		return
+	}
+	i.status = v
+	i.TrackChange(IssueChangeStatus)
+}
+
+// SetHold sets all hold-related fields together.
+func (i *Issue) SetHold(onHold bool, reason *HoldReason, since *time.Time, note *string) {
+	i.onHold = onHold
+	i.holdReason = reason
+	i.holdSince = since
+	i.holdNote = note
+	i.TrackChange(IssueChangeHold)
+}
+
+func (i *Issue) SetPriority(v IssuePriority) {
+	if i.priority == v {
+		return
+	}
+	i.priority = v
+	i.TrackChange(IssueChangePriority)
+}
+
+func (i *Issue) SetEstimate(v IssueEstimate) {
+	if i.estimate == v {
+		return
+	}
+	i.estimate = v
+	i.TrackChange(IssueChangeEstimate)
+}
+
+func (i *Issue) SetMilestoneID(v *uuid.UUID) {
+	i.milestoneID = v
+	i.TrackChange(IssueChangeMilestoneID)
+}
+
+func (i *Issue) SetSprintID(v *uuid.UUID) {
+	i.sprintID = v
+	i.TrackChange(IssueChangeSprintID)
+}
+
+func (i *Issue) SetSprintCarryCount(v int) {
+	i.sprintCarryCount = v
+	i.TrackChange(IssueChangeSprintCarryCount)
+}
+
+func (i *Issue) SetTriaged(v bool) {
+	if i.triaged == v {
+		return
+	}
+	i.triaged = v
+	i.TrackChange(IssueChangeTriaged)
+}
+
+func (i *Issue) SetVisibility(v IssueVisibility) {
+	if i.visibility == v {
+		return
+	}
+	i.visibility = v
+	i.TrackChange(IssueChangeVisibility)
+}
+
+func (i *Issue) SetChecklist(v []ChecklistItem) {
+	i.checklist = v
+	i.TrackChange(IssueChangeChecklist)
+}
+
+func (i *Issue) SetAssignees(v []uuid.UUID) {
+	i.assignees = v
+	i.TrackChange(IssueChangeAssignees)
+}
+
+func (i *Issue) SetLabels(v []uuid.UUID) {
+	i.labels = v
+	i.TrackChange(IssueChangeLabels)
+}
+
+func (i *Issue) SetRestrictedViewers(v []uuid.UUID) {
+	i.restrictedViewers = v
+	i.TrackChange(IssueChangeRestrictedViewers)
 }
 
 // IsTerminal returns true if the issue is in a terminal state.
 func (i *Issue) IsTerminal() bool {
-	return i.Status == IssueStatusDone ||
-		i.Status == IssueStatusCancelled ||
-		i.Status == IssueStatusClosed
+	return i.status == IssueStatusDone ||
+		i.status == IssueStatusCancelled ||
+		i.status == IssueStatusClosed
 }

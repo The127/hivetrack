@@ -38,12 +38,12 @@ func HandleGetSprints(ctx context.Context, q GetSprintsQuery) (*GetSprintsResult
 	summaries := make([]SprintSummary, 0, len(sprints))
 	for _, s := range sprints {
 		summaries = append(summaries, SprintSummary{
-			ID:        s.ID,
-			Name:      s.Name,
-			Goal:      s.Goal,
-			StartDate: s.StartDate,
-			EndDate:   s.EndDate,
-			Status:    s.Status,
+			ID:        s.GetId(),
+			Name:      s.GetName(),
+			Goal:      s.GetGoal(),
+			StartDate: s.GetStartDate(),
+			EndDate:   s.GetEndDate(),
+			Status:    s.GetStatus(),
 		})
 	}
 

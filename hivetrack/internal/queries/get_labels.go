@@ -33,9 +33,9 @@ func HandleGetLabels(ctx context.Context, q GetLabelsQuery) (*GetLabelsResult, e
 	summaries := make([]LabelSummary, 0, len(labels))
 	for _, l := range labels {
 		summaries = append(summaries, LabelSummary{
-			ID:    l.ID,
-			Name:  l.Name,
-			Color: l.Color,
+			ID:    l.GetId(),
+			Name:  l.GetName(),
+			Color: l.GetColor(),
 		})
 	}
 
