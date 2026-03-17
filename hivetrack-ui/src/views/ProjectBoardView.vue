@@ -328,7 +328,7 @@ const defaultCreateStatus = computed(() => {
       </div>
 
       <!-- ── Board columns ──────────────────────────────────────────────── -->
-      <div v-else class="flex-1 overflow-x-auto overflow-y-hidden">
+      <div v-else-if="boardIssues.length > 0" class="flex-1 overflow-x-auto overflow-y-hidden">
         <div class="flex h-full gap-3 px-6 py-4" style="min-width: max-content">
 
           <div
@@ -432,8 +432,8 @@ const defaultCreateStatus = computed(() => {
 
       <!-- ── Empty board ────────────────────────────────────────────────── -->
       <div
-        v-if="!isLoading && boardIssues.length === 0"
-        class="absolute inset-0 flex items-center justify-center pointer-events-none"
+        v-else-if="!isLoading && boardIssues.length === 0"
+        class="flex-1 flex items-center justify-center"
       >
         <div class="text-center">
           <InboxIcon class="size-10 text-slate-300 mx-auto mb-3" />
