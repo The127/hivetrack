@@ -7,11 +7,16 @@
   A context bar below the header shows either:
   - Active sprint: name, dates, goal, issue count + "Complete sprint" action
   - No sprint: a note that the backlog is being shown + link to create a sprint
+
+  Drag-and-drop: Issues can be reordered within columns and dragged across
+  columns to change status. Uses fractional indexing for O(1) rank updates.
 -->
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { VueDraggable } from 'vue-draggable-plus'
+import { generateKeyBetween } from 'fractional-indexing'
 import {
   PlusIcon,
   CircleIcon,
@@ -30,7 +35,7 @@ import Avatar from '@/components/ui/Avatar.vue'
 import Alert from '@/components/ui/Alert.vue'
 import CreateIssueModal from '@/components/issue/CreateIssueModal.vue'
 import { fetchProject } from '@/api/projects'
-import { fetchIssues } from '@/api/issues'
+import { fetchIssues, updateIssue } from '@/api/issues'
 import { fetchSprints, updateSprint } from '@/api/sprints'
 
 const route = useRoute()
@@ -64,7 +69,6 @@ const activeSprint = computed(() =>
   (sprintsResult.value?.sprints ?? []).find(s => s.status === 'active') ?? null
 )
 
-// Issues shown on the board: sprint issues when a sprint is active, otherwise backlog.
 const boardIssues = computed(() => {
   const all = issuesResult.value?.items ?? []
   if (activeSprint.value) {
@@ -105,16 +109,88 @@ const columns = computed(() => {
   return project.value.archetype === 'support' ? SUPPORT_COLUMNS : SOFTWARE_COLUMNS
 })
 
-// ── Group issues by status ────────────────────────────────────────────────────
+// ── Drag-and-drop state ─────────────────────────────────────────────────────
 
-const issuesByStatus = computed(() => {
-  const map = {}
-  for (const col of columns.value) map[col.key] = []
-  for (const issue of boardIssues.value) {
-    if (map[issue.status]) map[issue.status].push(issue)
+const isDragging = ref(false)
+const columnIssues = ref({})
+
+function rebuildColumnIssues() {
+  const newMap = {}
+  for (const col of columns.value) {
+    newMap[col.key] = (boardIssues.value ?? [])
+      .filter(i => i.status === col.key)
+      .slice()
   }
-  return map
+  columnIssues.value = newMap
+}
+
+watch([boardIssues, columns], () => {
+  if (!isDragging.value) rebuildColumnIssues()
+}, { immediate: true })
+
+function computeRank(items, newIdx) {
+  const prev = newIdx > 0 ? (items[newIdx - 1]?.rank ?? null) : null
+  const next = newIdx < items.length - 1 ? (items[newIdx + 1]?.rank ?? null) : null
+  try {
+    return generateKeyBetween(prev, next)
+  } catch {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+  }
+}
+
+// ── Reorder mutation ────────────────────────────────────────────────────────
+
+const { mutate: reorderIssue } = useMutation({
+  mutationFn: ({ issueNumber, data }) => updateIssue(slug.value, issueNumber, data),
+  onMutate: async ({ issueNumber, data }) => {
+    const queryKey = ['issues', slug.value, { triaged: true }]
+    await queryClient.cancelQueries({ queryKey })
+    const previous = queryClient.getQueryData(queryKey)
+    queryClient.setQueryData(queryKey, old => {
+      if (!old) return old
+      return { ...old, items: old.items.map(i => i.number === issueNumber ? { ...i, ...data } : i) }
+    })
+    return { previous }
+  },
+  onError: (_err, _vars, context) => {
+    if (context?.previous) {
+      queryClient.setQueryData(['issues', slug.value, { triaged: true }], context.previous)
+    }
+  },
+  onSettled: () => {
+    isDragging.value = false
+    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+  },
 })
+
+// ── Drag handlers ───────────────────────────────────────────────────────────
+
+function onDragStart() {
+  isDragging.value = true
+}
+
+function onDragEnd() {
+  setTimeout(() => { isDragging.value = false }, 0)
+}
+
+function onWithinColumnDrag(evt, colKey) {
+  const items = columnIssues.value[colKey]
+  const newIdx = evt.newDraggableIndex
+  const movedItem = items[newIdx]
+  const newRank = computeRank(items, newIdx)
+  movedItem.rank = newRank
+  reorderIssue({ issueNumber: movedItem.number, data: { rank: newRank } })
+}
+
+function onCrossColumnDrop(evt, toColKey) {
+  const items = columnIssues.value[toColKey]
+  const newIdx = evt.newDraggableIndex
+  const movedItem = items[newIdx]
+  const newRank = computeRank(items, newIdx)
+  movedItem.rank = newRank
+  movedItem.status = toColKey
+  reorderIssue({ issueNumber: movedItem.number, data: { rank: newRank, status: toColKey } })
+}
 
 // ── Priority / estimate helpers ───────────────────────────────────────────────
 
@@ -245,26 +321,27 @@ const defaultCreateStatus = computed(() => {
               />
               <span class="text-sm font-medium text-slate-700">{{ col.label }}</span>
               <span class="ml-auto text-xs text-slate-400 tabular-nums">
-                {{ issuesByStatus[col.key]?.length ?? 0 }}
+                {{ columnIssues[col.key]?.length ?? 0 }}
               </span>
             </div>
 
-            <!-- Issue cards -->
-            <div class="flex-1 overflow-y-auto space-y-2 pb-4 pr-1 -mr-1">
-
-              <!-- Empty column -->
+            <!-- Draggable issue cards -->
+            <VueDraggable
+              v-model="columnIssues[col.key]"
+              :group="{ name: 'board' }"
+              :animation="150"
+              ghost-class="opacity-30"
+              class="flex-1 overflow-y-auto space-y-2 pb-4 pr-1 -mr-1"
+              :class="!columnIssues[col.key]?.length ? 'min-h-24' : ''"
+              @start="onDragStart"
+              @end="onDragEnd"
+              @update="(evt) => onWithinColumnDrag(evt, col.key)"
+              @add="(evt) => onCrossColumnDrop(evt, col.key)"
+            >
               <div
-                v-if="!issuesByStatus[col.key]?.length"
-                class="rounded-lg border-2 border-dashed border-slate-200 py-8 text-center"
-              >
-                <p class="text-xs text-slate-400">No issues</p>
-              </div>
-
-              <!-- Issue card -->
-              <div
-                v-for="issue in issuesByStatus[col.key]"
+                v-for="issue in columnIssues[col.key]"
                 :key="issue.id"
-                class="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-pointer border-l-4"
+                class="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-grab active:cursor-grabbing border-l-4"
                 :class="priorityBorder(issue.priority)"
               >
                 <!-- Issue number + type -->
@@ -306,8 +383,16 @@ const defaultCreateStatus = computed(() => {
                   </div>
                 </div>
               </div>
+            </VueDraggable>
 
+            <!-- Empty column placeholder -->
+            <div
+              v-if="!columnIssues[col.key]?.length && !isDragging"
+              class="rounded-lg border-2 border-dashed border-slate-200 py-8 text-center -mt-24"
+            >
+              <p class="text-xs text-slate-400">No issues</p>
             </div>
+
           </div>
 
         </div>

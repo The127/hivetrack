@@ -36,6 +36,7 @@ type IssueSummary struct {
 	Labels      []uuid.UUID          `json:"labels"`
 	SprintID    *uuid.UUID           `json:"sprint_id,omitempty"`
 	MilestoneID *uuid.UUID           `json:"milestone_id,omitempty"`
+	Rank        *string              `json:"rank,omitempty"`
 	OnHold      bool                 `json:"on_hold"`
 	CreatedAt   time.Time            `json:"created_at"`
 	UpdatedAt   time.Time            `json:"updated_at"`
@@ -105,6 +106,7 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 			Labels:      i.GetLabels(),
 			SprintID:    i.GetSprintID(),
 			MilestoneID: i.GetMilestoneID(),
+			Rank:        i.GetRank(),
 			OnHold:      i.GetOnHold(),
 			CreatedAt:   i.GetCreatedAt(),
 			UpdatedAt:   i.GetUpdatedAt(),

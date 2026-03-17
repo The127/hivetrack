@@ -107,6 +107,7 @@ const (
 	IssueChangeAssignees         IssueChange = iota
 	IssueChangeLabels            IssueChange = iota
 	IssueChangeRestrictedViewers IssueChange = iota
+	IssueChangeRank              IssueChange = iota
 )
 
 type Issue struct {
@@ -143,6 +144,8 @@ type Issue struct {
 	customerEmail *string
 	customerName  *string
 	customerToken *uuid.UUID
+
+	rank *string
 
 	checklist         []ChecklistItem
 	assignees         []uuid.UUID
@@ -186,6 +189,7 @@ func NewIssueFromDB(
 	reporterID, parentID, milestoneID, sprintID *uuid.UUID,
 	sprintCarryCount int, triaged bool, visibility IssueVisibility,
 	customerEmail, customerName *string, customerToken *uuid.UUID,
+	rank *string,
 	checklist []ChecklistItem, assignees, labels, restrictedViewers []uuid.UUID,
 ) *Issue {
 	return &Issue{
@@ -213,6 +217,7 @@ func NewIssueFromDB(
 		customerEmail:     customerEmail,
 		customerName:      customerName,
 		customerToken:     customerToken,
+		rank:              rank,
 		checklist:         checklist,
 		assignees:         assignees,
 		labels:            labels,
@@ -246,6 +251,7 @@ func (i *Issue) GetCustomerToken() *uuid.UUID      { return i.customerToken }
 func (i *Issue) GetChecklist() []ChecklistItem     { return i.checklist }
 func (i *Issue) GetAssignees() []uuid.UUID         { return i.assignees }
 func (i *Issue) GetLabels() []uuid.UUID            { return i.labels }
+func (i *Issue) GetRank() *string                  { return i.rank }
 func (i *Issue) GetRestrictedViewers() []uuid.UUID { return i.restrictedViewers }
 
 // Setters
@@ -344,6 +350,11 @@ func (i *Issue) SetLabels(v []uuid.UUID) {
 func (i *Issue) SetRestrictedViewers(v []uuid.UUID) {
 	i.restrictedViewers = v
 	i.TrackChange(IssueChangeRestrictedViewers)
+}
+
+func (i *Issue) SetRank(v *string) {
+	i.rank = v
+	i.TrackChange(IssueChangeRank)
 }
 
 // IsTerminal returns true if the issue is in a terminal state.

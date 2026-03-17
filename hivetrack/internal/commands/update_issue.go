@@ -11,21 +11,22 @@ import (
 )
 
 type UpdateIssueCommand struct {
-	IssueID      uuid.UUID
-	Title        *string
-	Description  *string
-	Status       *models.IssueStatus
-	Priority     *models.IssuePriority
-	Estimate     *models.IssueEstimate
-	AssigneeIDs  []uuid.UUID
-	LabelIDs     []uuid.UUID
-	SprintID     *uuid.UUID
+	IssueID       uuid.UUID
+	Title         *string
+	Description   *string
+	Status        *models.IssueStatus
+	Priority      *models.IssuePriority
+	Estimate      *models.IssueEstimate
+	AssigneeIDs   []uuid.UUID
+	LabelIDs      []uuid.UUID
+	SprintID      *uuid.UUID
 	ClearSprintID bool
-	MilestoneID  *uuid.UUID
-	OnHold       *bool
-	HoldReason   *models.HoldReason
-	HoldNote     *string
-	Visibility   *models.IssueVisibility
+	MilestoneID   *uuid.UUID
+	OnHold        *bool
+	HoldReason    *models.HoldReason
+	HoldNote      *string
+	Visibility    *models.IssueVisibility
+	Rank          *string
 }
 
 type UpdateIssueResult struct{}
@@ -80,6 +81,9 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	}
 	if cmd.Visibility != nil {
 		issue.SetVisibility(*cmd.Visibility)
+	}
+	if cmd.Rank != nil {
+		issue.SetRank(cmd.Rank)
 	}
 
 	issue.SetUpdatedAt(time.Now())

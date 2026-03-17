@@ -173,6 +173,7 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		HoldReason  *models.HoldReason      `json:"hold_reason"`
 		HoldNote    *string                 `json:"hold_note"`
 		Visibility  *models.IssueVisibility `json:"visibility"`
+		Rank        *string                 `json:"rank"`
 	}
 	if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&body); err != nil {
 		RespondError(w, models.ErrBadRequest)
@@ -204,6 +205,7 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		HoldReason:    body.HoldReason,
 		HoldNote:      body.HoldNote,
 		Visibility:    body.Visibility,
+		Rank:          body.Rank,
 	})
 	if err != nil {
 		RespondError(w, err)

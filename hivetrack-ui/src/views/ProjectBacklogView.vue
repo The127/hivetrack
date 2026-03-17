@@ -4,11 +4,17 @@
   Shows the active sprint, planning sprints, and the unsprinted backlog in a
   single page (Jira-style). Controls to create sprints, move issues between
   sprints, activate, and complete sprints all live here.
+
+  Drag-and-drop: Issues can be reordered within sections and dragged between
+  sprints/backlog. When dragging from the backlog, a fixed sprint drop panel
+  appears on the right edge so sprints don't need to be in view.
 -->
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { VueDraggable } from 'vue-draggable-plus'
+import { generateKeyBetween } from 'fractional-indexing'
 import {
   PlusIcon,
   ListIcon,
@@ -22,6 +28,7 @@ import {
   PlayIcon,
   CheckIcon,
   Trash2Icon,
+  ArrowRightIcon,
 } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -66,33 +73,160 @@ const allSprints = computed(() => sprintsResult.value?.sprints ?? [])
 const activeSprint = computed(() => allSprints.value.find(s => s.status === 'active') ?? null)
 const planningSprints = computed(() => allSprints.value.filter(s => s.status === 'planning'))
 
-const sprintIssuesMap = computed(() => {
-  const map = {}
-  for (const issue of allIssues.value) {
-    const key = issue.sprint_id ?? '__backlog__'
-    if (!map[key]) map[key] = []
-    map[key].push(issue)
-  }
-  return map
+const targetSprints = computed(() => {
+  const sprints = []
+  if (activeSprint.value) sprints.push(activeSprint.value)
+  sprints.push(...planningSprints.value)
+  return sprints
 })
 
-function issuesForSprint(sprintId) {
-  return sprintIssuesMap.value[sprintId] ?? []
+// ── Drag-and-drop state ─────────────────────────────────────────────────────
+
+const BACKLOG_KEY = '__backlog__'
+const isDragging = ref(false)
+const sectionIssues = ref({})
+const overlayDropZones = reactive({})
+
+function rebuildSectionIssues() {
+  const sections = { [BACKLOG_KEY]: [] }
+  for (const sprint of allSprints.value) {
+    sections[sprint.id] = []
+  }
+  for (const issue of allIssues.value) {
+    const key = issue.sprint_id ?? BACKLOG_KEY
+    if (sections[key]) {
+      sections[key].push(issue)
+    }
+  }
+  sectionIssues.value = sections
 }
 
-const backlogIssues = computed(() => {
-  const issues = sprintIssuesMap.value['__backlog__'] ?? []
-  return [...issues].sort((a, b) => {
-    const pa = PRIORITY_ORDER[a.priority] ?? 4
-    const pb = PRIORITY_ORDER[b.priority] ?? 4
-    if (pa !== pb) return pa - pb
-    return new Date(a.created_at) - new Date(b.created_at)
-  })
+watch([allIssues, allSprints], () => {
+  if (!isDragging.value) rebuildSectionIssues()
+}, { immediate: true })
+
+watch(targetSprints, (sprints) => {
+  for (const sprint of sprints) {
+    if (!overlayDropZones[sprint.id]) {
+      overlayDropZones[sprint.id] = []
+    }
+  }
+}, { immediate: true })
+
+function computeRank(items, newIdx) {
+  const prev = newIdx > 0 ? (items[newIdx - 1]?.rank ?? null) : null
+  const next = newIdx < items.length - 1 ? (items[newIdx + 1]?.rank ?? null) : null
+  try {
+    return generateKeyBetween(prev, next)
+  } catch {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+  }
+}
+
+// ── Reorder mutation ────────────────────────────────────────────────────────
+
+const { mutate: reorderIssue } = useMutation({
+  mutationFn: ({ issueNumber, data }) => updateIssue(slug.value, issueNumber, data),
+  onMutate: async ({ issueNumber, data }) => {
+    const queryKey = ['issues', slug.value, { triaged: true }]
+    await queryClient.cancelQueries({ queryKey })
+    const previous = queryClient.getQueryData(queryKey)
+    queryClient.setQueryData(queryKey, old => {
+      if (!old) return old
+      return { ...old, items: old.items.map(i => i.number === issueNumber ? { ...i, ...data } : i) }
+    })
+    return { previous }
+  },
+  onError: (_err, _vars, context) => {
+    if (context?.previous) {
+      queryClient.setQueryData(['issues', slug.value, { triaged: true }], context.previous)
+    }
+  },
+  onSettled: () => {
+    isDragging.value = false
+    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+  },
+})
+
+// ── Drag handlers ───────────────────────────────────────────────────────────
+
+function onSectionDragStart() {
+  isDragging.value = true
+}
+
+function onSectionDragEnd() {
+  setTimeout(() => { isDragging.value = false }, 0)
+}
+
+function onWithinSectionDrag(evt, sectionId) {
+  const items = sectionIssues.value[sectionId]
+  if (!items) return
+  const newIdx = evt.newDraggableIndex
+  const movedItem = items[newIdx]
+  const newRank = computeRank(items, newIdx)
+  movedItem.rank = newRank
+  reorderIssue({ issueNumber: movedItem.number, data: { rank: newRank } })
+}
+
+function onCrossSectionDrop(evt, toSectionId) {
+  const items = sectionIssues.value[toSectionId]
+  if (!items) return
+  const newIdx = evt.newDraggableIndex
+  const movedItem = items[newIdx]
+  const newRank = computeRank(items, newIdx)
+  const newSprintId = toSectionId === BACKLOG_KEY ? null : toSectionId
+  movedItem.rank = newRank
+  movedItem.sprint_id = newSprintId
+  reorderIssue({ issueNumber: movedItem.number, data: { rank: newRank, sprint_id: newSprintId } })
+}
+
+function onDropToOverlayZone(evt, sprintId) {
+  const arr = overlayDropZones[sprintId]
+  if (!arr?.length) return
+  const droppedItem = arr[0]
+  overlayDropZones[sprintId] = []
+
+  if (!sectionIssues.value[sprintId]) {
+    sectionIssues.value[sprintId] = []
+  }
+  sectionIssues.value[sprintId].push(droppedItem)
+  droppedItem.sprint_id = sprintId
+
+  isDragging.value = false
+  reorderIssue({ issueNumber: droppedItem.number, data: { sprint_id: sprintId } })
+}
+
+// ── Move issue mutation (for button-based moves) ────────────────────────────
+
+const { mutate: moveIssue } = useMutation({
+  mutationFn: ({ issueNumber, sprintId }) =>
+    updateIssue(slug.value, issueNumber, { sprint_id: sprintId }),
+  onMutate: async ({ issueNumber, sprintId }) => {
+    const key = ['issues', slug.value, { triaged: true }]
+    await queryClient.cancelQueries({ queryKey: key })
+    const previous = queryClient.getQueryData(key)
+    queryClient.setQueryData(key, old => {
+      if (!old) return old
+      return {
+        ...old,
+        items: old.items.map(i =>
+          i.number === issueNumber ? { ...i, sprint_id: sprintId } : i
+        ),
+      }
+    })
+    return { previous }
+  },
+  onError: (_err, _vars, context) => {
+    if (context?.previous) {
+      queryClient.setQueryData(['issues', slug.value, { triaged: true }], context.previous)
+    }
+  },
+  onSettled: () => {
+    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+  },
 })
 
 // ── Status / priority display ─────────────────────────────────────────────────
-
-const PRIORITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3, none: 4 }
 
 const STATUS_META = {
   todo:        { label: 'To Do',       scheme: 'gray',   icon: CircleIcon },
@@ -145,36 +279,6 @@ function statusIconClass(scheme) {
     'text-teal-500':   scheme === 'teal',
   }
 }
-
-// ── Move issue mutation ───────────────────────────────────────────────────────
-
-const { mutate: moveIssue } = useMutation({
-  mutationFn: ({ issueNumber, sprintId }) =>
-    updateIssue(slug.value, issueNumber, { sprint_id: sprintId }),
-  onMutate: async ({ issueNumber, sprintId }) => {
-    const key = ['issues', slug.value, { triaged: true }]
-    await queryClient.cancelQueries({ queryKey: key })
-    const previous = queryClient.getQueryData(key)
-    queryClient.setQueryData(key, old => {
-      if (!old) return old
-      return {
-        ...old,
-        items: old.items.map(i =>
-          i.number === issueNumber ? { ...i, sprint_id: sprintId } : i
-        ),
-      }
-    })
-    return { previous }
-  },
-  onError: (_err, _vars, context) => {
-    if (context?.previous) {
-      queryClient.setQueryData(['issues', slug.value, { triaged: true }], context.previous)
-    }
-  },
-  onSettled: () => {
-    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
-  },
-})
 
 // ── Sprint status mutations ───────────────────────────────────────────────────
 
@@ -264,13 +368,6 @@ function moveToBacklog(issue) {
   moveIssue({ issueNumber: issue.number, sprintId: null })
 }
 
-const targetSprints = computed(() => {
-  const sprints = []
-  if (activeSprint.value) sprints.push(activeSprint.value)
-  sprints.push(...planningSprints.value)
-  return sprints
-})
-
 // ── Default status for issue creation ────────────────────────────────────────
 
 const defaultCreateStatus = computed(() => {
@@ -340,7 +437,7 @@ function formatDateRange(startDate, endDate) {
               </span>
               <span v-if="activeSprint.goal" class="text-xs text-slate-500 italic truncate max-w-48">{{ activeSprint.goal }}</span>
               <span class="text-xs text-slate-400 tabular-nums flex-shrink-0">
-                {{ issuesForSprint(activeSprint.id).length }} issues
+                {{ (sectionIssues[activeSprint.id] ?? []).length }} issues
               </span>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
@@ -361,11 +458,21 @@ function formatDateRange(startDate, endDate) {
             </div>
           </div>
 
-          <div v-if="issuesForSprint(activeSprint.id).length" class="divide-y divide-slate-100">
+          <VueDraggable
+            v-model="sectionIssues[activeSprint.id]"
+            :group="{ name: 'backlog' }"
+            :animation="150"
+            ghost-class="opacity-30"
+            class="min-h-10"
+            @start="onSectionDragStart"
+            @end="onSectionDragEnd"
+            @update="(evt) => onWithinSectionDrag(evt, activeSprint.id)"
+            @add="(evt) => onCrossSectionDrop(evt, activeSprint.id)"
+          >
             <div
-              v-for="issue in issuesForSprint(activeSprint.id)"
+              v-for="issue in sectionIssues[activeSprint.id]"
               :key="issue.id"
-              class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 transition-colors cursor-pointer border-l-4"
+              class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100"
               :class="priorityBorder(issue.priority)"
             >
               <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
@@ -390,8 +497,8 @@ function formatDateRange(startDate, endDate) {
                 ↓ Backlog
               </button>
             </div>
-          </div>
-          <div v-else class="px-6 py-3 text-sm text-slate-400 italic">No issues in this sprint.</div>
+          </VueDraggable>
+          <div v-if="!(sectionIssues[activeSprint.id] ?? []).length" class="px-6 py-3 text-sm text-slate-400 italic">No issues in this sprint.</div>
         </template>
 
         <!-- ── Planning Sprints ──────────────────────────────────────────── -->
@@ -404,7 +511,7 @@ function formatDateRange(startDate, endDate) {
                 {{ formatDateRange(sprint.start_date, sprint.end_date) }}
               </span>
               <span class="text-xs text-slate-400 tabular-nums flex-shrink-0">
-                {{ issuesForSprint(sprint.id).length }} issues
+                {{ (sectionIssues[sprint.id] ?? []).length }} issues
               </span>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
@@ -426,11 +533,21 @@ function formatDateRange(startDate, endDate) {
             </div>
           </div>
 
-          <div v-if="issuesForSprint(sprint.id).length" class="divide-y divide-slate-100">
+          <VueDraggable
+            v-model="sectionIssues[sprint.id]"
+            :group="{ name: 'backlog' }"
+            :animation="150"
+            ghost-class="opacity-30"
+            class="min-h-10"
+            @start="onSectionDragStart"
+            @end="onSectionDragEnd"
+            @update="(evt) => onWithinSectionDrag(evt, sprint.id)"
+            @add="(evt) => onCrossSectionDrop(evt, sprint.id)"
+          >
             <div
-              v-for="issue in issuesForSprint(sprint.id)"
+              v-for="issue in sectionIssues[sprint.id]"
               :key="issue.id"
-              class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 transition-colors cursor-pointer border-l-4"
+              class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100"
               :class="priorityBorder(issue.priority)"
             >
               <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
@@ -455,15 +572,15 @@ function formatDateRange(startDate, endDate) {
                 ↓ Backlog
               </button>
             </div>
-          </div>
-          <div v-else class="px-6 py-3 text-sm text-slate-400 italic">No issues in this sprint.</div>
+          </VueDraggable>
+          <div v-if="!(sectionIssues[sprint.id] ?? []).length" class="px-6 py-3 text-sm text-slate-400 italic">No issues in this sprint.</div>
         </template>
 
         <!-- ── Backlog section header ─────────────────────────────────────── -->
         <div class="px-6 py-2.5 border-b border-slate-100 bg-white flex items-center justify-between">
           <div class="flex items-center gap-2">
             <span class="font-semibold text-slate-900 text-sm">Backlog</span>
-            <span class="text-xs text-slate-400 tabular-nums">{{ backlogIssues.length }} issues</span>
+            <span class="text-xs text-slate-400 tabular-nums">{{ (sectionIssues[BACKLOG_KEY] ?? []).length }} issues</span>
           </div>
           <button
             class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
@@ -475,11 +592,21 @@ function formatDateRange(startDate, endDate) {
         </div>
 
         <!-- Backlog issues -->
-        <div v-if="backlogIssues.length" class="divide-y divide-slate-100">
+        <VueDraggable
+          v-model="sectionIssues[BACKLOG_KEY]"
+          :group="{ name: 'backlog' }"
+          :animation="150"
+          ghost-class="opacity-30"
+          class="min-h-16"
+          @start="onSectionDragStart"
+          @end="onSectionDragEnd"
+          @update="(evt) => onWithinSectionDrag(evt, BACKLOG_KEY)"
+          @add="(evt) => onCrossSectionDrop(evt, BACKLOG_KEY)"
+        >
           <div
-            v-for="issue in backlogIssues"
+            v-for="issue in sectionIssues[BACKLOG_KEY]"
             :key="issue.id"
-            class="group relative flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 transition-colors cursor-pointer border-l-4"
+            class="group relative flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100"
             :class="priorityBorder(issue.priority)"
           >
             <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
@@ -521,11 +648,11 @@ function formatDateRange(startDate, endDate) {
               </div>
             </div>
           </div>
-        </div>
+        </VueDraggable>
 
         <!-- Empty state when nothing anywhere -->
         <div
-          v-else-if="!activeSprint && !planningSprints.length"
+          v-if="!(sectionIssues[BACKLOG_KEY] ?? []).length && !activeSprint && !planningSprints.length"
           class="flex items-center justify-center py-16"
         >
           <EmptyState
@@ -600,6 +727,42 @@ function formatDateRange(startDate, endDate) {
 
       </div>
     </div>
+
+    <!-- ── Sprint quick-drop overlay (shown when dragging) ─────────────── -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-150"
+        enter-from-class="opacity-0"
+        leave-active-class="transition-opacity duration-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="isDragging && targetSprints.length"
+          class="fixed right-4 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 w-52"
+        >
+          <div class="text-[11px] font-medium text-slate-500 uppercase tracking-wide px-1 mb-0.5 flex items-center gap-1">
+            <ArrowRightIcon class="size-3" />
+            Move to sprint
+          </div>
+          <div v-for="sprint in targetSprints" :key="sprint.id">
+            <VueDraggable
+              v-model="overlayDropZones[sprint.id]"
+              :group="{ name: 'backlog', put: true, pull: false }"
+              :animation="0"
+              class="rounded-lg border-2 border-dashed px-3 py-3 text-center min-h-12 transition-colors bg-white/90 backdrop-blur-sm shadow-lg"
+              :class="overlayDropZones[sprint.id]?.length ? 'border-blue-400 bg-blue-50/90' : 'border-slate-300 hover:border-blue-300'"
+              @add="(evt) => onDropToOverlayZone(evt, sprint.id)"
+            >
+              <div v-for="item in overlayDropZones[sprint.id]" :key="item.id" class="hidden" />
+            </VueDraggable>
+            <div class="text-xs text-slate-600 font-medium truncate mt-1 px-1">
+              {{ sprint.name }}
+              <span v-if="sprint.status === 'active'" class="text-blue-600">(active)</span>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- ── Create issue modal ──────────────────────────────────────────── -->
     <CreateIssueModal
