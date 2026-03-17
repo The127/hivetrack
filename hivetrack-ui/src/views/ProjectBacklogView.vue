@@ -111,6 +111,9 @@ watch(targetSprints, (sprints) => {
       overlayDropZones[sprint.id] = []
     }
   }
+  if (!overlayDropZones[BACKLOG_KEY]) {
+    overlayDropZones[BACKLOG_KEY] = []
+  }
 }, { immediate: true })
 
 function computeRank(items, newIdx) {
@@ -180,20 +183,23 @@ function onCrossSectionDrop(evt, toSectionId) {
   reorderIssue({ issueNumber: movedItem.number, data: { rank: newRank, sprint_id: newSprintId } })
 }
 
-function onDropToOverlayZone(evt, sprintId) {
-  const arr = overlayDropZones[sprintId]
+function onDropToOverlayZone(evt, targetId) {
+  const arr = overlayDropZones[targetId]
   if (!arr?.length) return
   const droppedItem = arr[0]
-  overlayDropZones[sprintId] = []
+  overlayDropZones[targetId] = []
 
-  if (!sectionIssues.value[sprintId]) {
-    sectionIssues.value[sprintId] = []
+  const sectionKey = targetId === BACKLOG_KEY ? BACKLOG_KEY : targetId
+  if (!sectionIssues.value[sectionKey]) {
+    sectionIssues.value[sectionKey] = []
   }
-  sectionIssues.value[sprintId].push(droppedItem)
-  droppedItem.sprint_id = sprintId
+  sectionIssues.value[sectionKey].push(droppedItem)
+
+  const newSprintId = targetId === BACKLOG_KEY ? null : targetId
+  droppedItem.sprint_id = newSprintId
 
   isDragging.value = false
-  reorderIssue({ issueNumber: droppedItem.number, data: { sprint_id: sprintId } })
+  reorderIssue({ issueNumber: droppedItem.number, data: { sprint_id: newSprintId } })
 }
 
 // ── Move issue mutation (for button-based moves) ────────────────────────────
@@ -728,7 +734,7 @@ function formatDateRange(startDate, endDate) {
       </div>
     </div>
 
-    <!-- ── Sprint quick-drop overlay (shown when dragging) ─────────────── -->
+    <!-- ── Quick-drop overlay (shown when dragging) ──────────────────── -->
     <Teleport to="body">
       <Transition
         enter-active-class="transition-opacity duration-150"
@@ -737,12 +743,12 @@ function formatDateRange(startDate, endDate) {
         leave-to-class="opacity-0"
       >
         <div
-          v-if="isDragging && targetSprints.length"
+          v-if="isDragging"
           class="fixed right-4 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 w-52"
         >
           <div class="text-[11px] font-medium text-slate-500 uppercase tracking-wide px-1 mb-0.5 flex items-center gap-1">
             <ArrowRightIcon class="size-3" />
-            Move to sprint
+            Move to
           </div>
           <div v-for="sprint in targetSprints" :key="sprint.id">
             <VueDraggable
@@ -759,6 +765,20 @@ function formatDateRange(startDate, endDate) {
               {{ sprint.name }}
               <span v-if="sprint.status === 'active'" class="text-blue-600">(active)</span>
             </div>
+          </div>
+          <!-- Backlog drop zone -->
+          <div class="mt-1 pt-2 border-t border-slate-200">
+            <VueDraggable
+              v-model="overlayDropZones[BACKLOG_KEY]"
+              :group="{ name: 'backlog', put: true, pull: false }"
+              :animation="0"
+              class="rounded-lg border-2 border-dashed px-3 py-3 text-center min-h-12 transition-colors bg-white/90 backdrop-blur-sm shadow-lg"
+              :class="overlayDropZones[BACKLOG_KEY]?.length ? 'border-blue-400 bg-blue-50/90' : 'border-slate-300 hover:border-blue-300'"
+              @add="(evt) => onDropToOverlayZone(evt, BACKLOG_KEY)"
+            >
+              <div v-for="item in overlayDropZones[BACKLOG_KEY]" :key="item.id" class="hidden" />
+            </VueDraggable>
+            <div class="text-xs text-slate-600 font-medium mt-1 px-1">Backlog</div>
           </div>
         </div>
       </Transition>
