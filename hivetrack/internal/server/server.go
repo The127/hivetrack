@@ -64,7 +64,9 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 
 	// Sprints
 	sprintH := handlers.NewSprintHandler(med)
-	protected.HandleFunc("/projects/{project_id}/sprints", sprintH.ListSprints).Methods("GET")
+	protected.HandleFunc("/projects/{slug}/sprints", sprintH.ListSprints).Methods("GET")
+	protected.HandleFunc("/projects/{slug}/sprints", sprintH.CreateSprint).Methods("POST")
+	protected.HandleFunc("/projects/{slug}/sprints/{id}", sprintH.UpdateSprint).Methods("PATCH")
 
 	// Milestones
 	milestoneH := handlers.NewMilestoneHandler(med)

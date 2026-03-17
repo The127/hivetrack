@@ -27,7 +27,7 @@ func TestHandleGetSprints(t *testing.T) {
 	require.NoError(t, db.SaveChanges(context.Background()))
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
-	result, err := queries.HandleGetSprints(ctx, queries.GetSprintsQuery{ProjectID: p.GetId()})
+	result, err := queries.HandleGetSprints(ctx, queries.GetSprintsQuery{ProjectSlug: "p"})
 	require.NoError(t, err)
 	assert.Len(t, result.Sprints, 1)
 	assert.Equal(t, "Sprint 1", result.Sprints[0].Name)

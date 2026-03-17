@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -151,41 +153,57 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var body struct {
-		Title       *string                  `json:"title"`
-		Description *string                  `json:"description"`
-		Status      *models.IssueStatus      `json:"status"`
-		Priority    *models.IssuePriority    `json:"priority"`
-		Estimate    *models.IssueEstimate    `json:"estimate"`
-		AssigneeIDs []uuid.UUID              `json:"assignee_ids"`
-		LabelIDs    []uuid.UUID              `json:"label_ids"`
-		SprintID    *uuid.UUID               `json:"sprint_id"`
-		MilestoneID *uuid.UUID               `json:"milestone_id"`
-		OnHold      *bool                    `json:"on_hold"`
-		HoldReason  *models.HoldReason       `json:"hold_reason"`
-		HoldNote    *string                  `json:"hold_note"`
-		Visibility  *models.IssueVisibility  `json:"visibility"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
 		RespondError(w, models.ErrBadRequest)
 		return
 	}
 
+	var body struct {
+		Title       *string                 `json:"title"`
+		Description *string                 `json:"description"`
+		Status      *models.IssueStatus     `json:"status"`
+		Priority    *models.IssuePriority   `json:"priority"`
+		Estimate    *models.IssueEstimate   `json:"estimate"`
+		AssigneeIDs []uuid.UUID             `json:"assignee_ids"`
+		LabelIDs    []uuid.UUID             `json:"label_ids"`
+		SprintID    *uuid.UUID              `json:"sprint_id"`
+		MilestoneID *uuid.UUID              `json:"milestone_id"`
+		OnHold      *bool                   `json:"on_hold"`
+		HoldReason  *models.HoldReason      `json:"hold_reason"`
+		HoldNote    *string                 `json:"hold_note"`
+		Visibility  *models.IssueVisibility `json:"visibility"`
+	}
+	if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&body); err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	// Detect explicit null for sprint_id to distinguish "clear sprint" from "not provided".
+	clearSprintID := false
+	var rawFields map[string]json.RawMessage
+	if err := json.Unmarshal(bodyBytes, &rawFields); err == nil {
+		if raw, ok := rawFields["sprint_id"]; ok && string(raw) == "null" {
+			clearSprintID = true
+		}
+	}
+
 	_, err = mediatr.Send[*commands.UpdateIssueResult](r.Context(), h.mediator, commands.UpdateIssueCommand{
-		IssueID:     issueResult.ID,
-		Title:       body.Title,
-		Description: body.Description,
-		Status:      body.Status,
-		Priority:    body.Priority,
-		Estimate:    body.Estimate,
-		AssigneeIDs: body.AssigneeIDs,
-		LabelIDs:    body.LabelIDs,
-		SprintID:    body.SprintID,
-		MilestoneID: body.MilestoneID,
-		OnHold:      body.OnHold,
-		HoldReason:  body.HoldReason,
-		HoldNote:    body.HoldNote,
-		Visibility:  body.Visibility,
+		IssueID:       issueResult.ID,
+		Title:         body.Title,
+		Description:   body.Description,
+		Status:        body.Status,
+		Priority:      body.Priority,
+		Estimate:      body.Estimate,
+		AssigneeIDs:   body.AssigneeIDs,
+		LabelIDs:      body.LabelIDs,
+		SprintID:      body.SprintID,
+		ClearSprintID: clearSprintID,
+		MilestoneID:   body.MilestoneID,
+		OnHold:        body.OnHold,
+		HoldReason:    body.HoldReason,
+		HoldNote:      body.HoldNote,
+		Visibility:    body.Visibility,
 	})
 	if err != nil {
 		RespondError(w, err)

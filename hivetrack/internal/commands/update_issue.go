@@ -11,20 +11,21 @@ import (
 )
 
 type UpdateIssueCommand struct {
-	IssueID     uuid.UUID
-	Title       *string
-	Description *string
-	Status      *models.IssueStatus
-	Priority    *models.IssuePriority
-	Estimate    *models.IssueEstimate
-	AssigneeIDs []uuid.UUID
-	LabelIDs    []uuid.UUID
-	SprintID    *uuid.UUID
-	MilestoneID *uuid.UUID
-	OnHold      *bool
-	HoldReason  *models.HoldReason
-	HoldNote    *string
-	Visibility  *models.IssueVisibility
+	IssueID      uuid.UUID
+	Title        *string
+	Description  *string
+	Status       *models.IssueStatus
+	Priority     *models.IssuePriority
+	Estimate     *models.IssueEstimate
+	AssigneeIDs  []uuid.UUID
+	LabelIDs     []uuid.UUID
+	SprintID     *uuid.UUID
+	ClearSprintID bool
+	MilestoneID  *uuid.UUID
+	OnHold       *bool
+	HoldReason   *models.HoldReason
+	HoldNote     *string
+	Visibility   *models.IssueVisibility
 }
 
 type UpdateIssueResult struct{}
@@ -61,7 +62,9 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	if cmd.LabelIDs != nil {
 		issue.SetLabels(cmd.LabelIDs)
 	}
-	if cmd.SprintID != nil {
+	if cmd.ClearSprintID {
+		issue.SetSprintID(nil)
+	} else if cmd.SprintID != nil {
 		issue.SetSprintID(cmd.SprintID)
 	}
 	if cmd.MilestoneID != nil {
