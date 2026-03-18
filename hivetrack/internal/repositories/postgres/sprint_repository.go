@@ -12,6 +12,7 @@ import (
 
 	"github.com/the127/hivetrack/internal/change"
 	"github.com/the127/hivetrack/internal/models"
+	"github.com/the127/hivetrack/internal/repositories"
 )
 
 type SprintRepository struct {
@@ -160,6 +161,31 @@ func (r *SprintRepository) List(ctx context.Context, projectID uuid.UUID) ([]*mo
 		sprints = append(sprints, models.NewSprintFromDB(id, createdAt, version, projectID, name, goalPtr, startDate, endDate, status))
 	}
 	return sprints, rows.Err()
+}
+
+func (r *SprintRepository) GetIssueCountsForProject(ctx context.Context, projectID uuid.UUID) (map[uuid.UUID]repositories.SprintIssueCounts, error) {
+	rows, err := r.ctx.queryContext(ctx).QueryContext(ctx,
+		`SELECT sprint_id, COUNT(*) AS total,
+			COUNT(*) FILTER (WHERE status IN ('done','cancelled','resolved','closed')) AS done
+		FROM issues
+		WHERE sprint_id IN (SELECT id FROM sprints WHERE project_id = $1)
+		GROUP BY sprint_id`,
+		projectID)
+	if err != nil {
+		return nil, fmt.Errorf("getting sprint issue counts: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := make(map[uuid.UUID]repositories.SprintIssueCounts)
+	for rows.Next() {
+		var sprintID uuid.UUID
+		var counts repositories.SprintIssueCounts
+		if err := rows.Scan(&sprintID, &counts.Total, &counts.Done); err != nil {
+			return nil, fmt.Errorf("scanning sprint issue counts: %w", err)
+		}
+		result[sprintID] = counts
+	}
+	return result, rows.Err()
 }
 
 func scanSprint(row *sql.Row) (*models.Sprint, error) {

@@ -10,6 +10,7 @@ export const fetchIssues = (slug, params = {}) => {
   if (params.text !== undefined) qs.set('text', params.text)
   if (params.type !== undefined) qs.set('type', params.type)
   if (params.parent_id !== undefined) qs.set('parent_id', params.parent_id)
+  if (params.sprint_id !== undefined) qs.set('sprint_id', params.sprint_id)
   if (params.no_parent !== undefined) qs.set('no_parent', String(params.no_parent))
   if (params.limit !== undefined) qs.set('limit', String(params.limit))
   if (params.offset !== undefined) qs.set('offset', String(params.offset))

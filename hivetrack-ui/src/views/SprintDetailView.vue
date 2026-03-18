@@ -1,0 +1,200 @@
+<!--
+  SprintDetailView — readonly view of a completed sprint's issues.
+
+  Shows sprint header (name, dates, goal, done/total) and issues
+  grouped by status. No drag-and-drop, no inline edits.
+-->
+<script setup>
+import { computed } from 'vue'
+import { useRoute, RouterLink } from 'vue-router'
+import { useQuery } from '@tanstack/vue-query'
+import { ArrowLeftIcon } from 'lucide-vue-next'
+import MainLayout from '@/layouts/MainLayout.vue'
+import Spinner from '@/components/ui/Spinner.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import ProgressBar from '@/components/ui/ProgressBar.vue'
+import Badge from '@/components/ui/Badge.vue'
+import Avatar from '@/components/ui/Avatar.vue'
+import { fetchSprints } from '@/api/sprints'
+import { fetchIssues } from '@/api/issues'
+
+const route = useRoute()
+const slug = computed(() => route.params.slug)
+const sprintId = computed(() => route.params.sprintId)
+
+// ── Sprint data ───────────────────────────────────────────────────────────────
+
+const { data: sprintsResult, isLoading: sprintsLoading } = useQuery({
+  queryKey: ['sprints', slug],
+  queryFn: () => fetchSprints(slug.value),
+  enabled: computed(() => !!slug.value),
+})
+
+const sprint = computed(() =>
+  (sprintsResult.value?.sprints ?? []).find((s) => s.id === sprintId.value) ?? null
+)
+
+// ── Issues ────────────────────────────────────────────────────────────────────
+
+const { data: issuesResult, isLoading: issuesLoading } = useQuery({
+  queryKey: ['issues', slug, { sprint_id: sprintId }],
+  queryFn: () => fetchIssues(slug.value, { sprint_id: sprintId.value, limit: 500 }),
+  enabled: computed(() => !!slug.value && !!sprintId.value),
+})
+
+const issues = computed(() => issuesResult.value?.items ?? [])
+
+// Group issues by status, preserving a sensible display order
+const STATUS_ORDER = ['todo', 'in_progress', 'in_review', 'done', 'cancelled', 'open', 'resolved', 'closed']
+
+const groupedIssues = computed(() => {
+  const groups = {}
+  for (const issue of issues.value) {
+    if (!groups[issue.status]) groups[issue.status] = []
+    groups[issue.status].push(issue)
+  }
+  return STATUS_ORDER
+    .filter((s) => groups[s]?.length)
+    .map((s) => ({ status: s, issues: groups[s] }))
+})
+
+// ── Formatting ────────────────────────────────────────────────────────────────
+
+const STATUS_LABEL = {
+  todo: 'To Do',
+  in_progress: 'In Progress',
+  in_review: 'In Review',
+  done: 'Done',
+  cancelled: 'Cancelled',
+  open: 'Open',
+  resolved: 'Resolved',
+  closed: 'Closed',
+}
+
+const STATUS_COLOR = {
+  todo: 'gray',
+  in_progress: 'blue',
+  in_review: 'purple',
+  done: 'green',
+  cancelled: 'gray',
+  open: 'blue',
+  resolved: 'green',
+  closed: 'gray',
+}
+
+const PRIORITY_BORDER = {
+  none:     'border-l-slate-200',
+  low:      'border-l-sky-400',
+  medium:   'border-l-amber-400',
+  high:     'border-l-orange-500',
+  critical: 'border-l-red-500',
+}
+
+const ESTIMATE_LABEL = { none: null, xs: 'XS', s: 'S', m: 'M', l: 'L', xl: 'XL' }
+
+function statusLabel(s) { return STATUS_LABEL[s] ?? s }
+function statusColor(s) { return STATUS_COLOR[s] ?? 'gray' }
+function priorityBorder(p) { return PRIORITY_BORDER[p] ?? 'border-l-slate-200' }
+function estimateLabel(e) { return ESTIMATE_LABEL[e] ?? null }
+
+function formatDate(dateStr) {
+  if (!dateStr) return null
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function dateRange(s) {
+  if (!s) return null
+  const start = formatDate(s.start_date)
+  const end = formatDate(s.end_date)
+  if (start && end) return `${start} – ${end}`
+  if (start) return `Started ${start}`
+  if (end) return `Ended ${end}`
+  return null
+}
+
+const isLoading = computed(() => sprintsLoading.value || issuesLoading.value)
+</script>
+
+<template>
+  <MainLayout>
+    <div class="max-w-3xl mx-auto px-6 py-8">
+
+      <!-- Back link -->
+      <RouterLink
+        :to="`/projects/${slug}/sprints`"
+        class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-5"
+      >
+        <ArrowLeftIcon class="size-3.5" />
+        All sprints
+      </RouterLink>
+
+      <!-- Loading -->
+      <div v-if="isLoading" class="flex justify-center items-center h-32">
+        <Spinner class="size-5 text-slate-400" />
+      </div>
+
+      <template v-else-if="sprint">
+        <!-- Sprint header -->
+        <div class="mb-6 space-y-1">
+          <div class="flex items-center gap-3">
+            <h1 class="text-lg font-semibold text-slate-900">{{ sprint.name }}</h1>
+            <span v-if="dateRange(sprint)" class="text-sm text-slate-400">{{ dateRange(sprint) }}</span>
+          </div>
+          <p v-if="sprint.goal" class="text-sm text-slate-500">{{ sprint.goal }}</p>
+          <div class="flex items-center gap-3 pt-1">
+            <div class="w-48">
+              <ProgressBar :done="sprint.done_count" :total="sprint.issue_count" />
+            </div>
+            <span class="text-xs text-slate-400">{{ sprint.done_count }} / {{ sprint.issue_count }} issues done</span>
+          </div>
+        </div>
+
+        <!-- Issue list by status -->
+        <div v-if="groupedIssues.length === 0">
+          <EmptyState title="No issues" description="This sprint had no issues." />
+        </div>
+
+        <div v-else class="space-y-5">
+          <div v-for="group in groupedIssues" :key="group.status">
+            <div class="flex items-center gap-2 mb-2">
+              <Badge :colorScheme="statusColor(group.status)" compact>{{ statusLabel(group.status) }}</Badge>
+              <span class="text-xs text-slate-400">{{ group.issues.length }}</span>
+            </div>
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+              <RouterLink
+                v-for="issue in group.issues"
+                :key="issue.id"
+                :to="`/projects/${slug}/issues/${issue.number}`"
+                class="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0 border-l-4"
+                :class="priorityBorder(issue.priority)"
+              >
+                <span class="text-[11px] font-mono text-slate-400 flex-shrink-0 w-20">
+                  {{ slug.toUpperCase() }}-{{ issue.number }}
+                </span>
+                <span class="flex-1 min-w-0 text-sm text-slate-800 truncate">{{ issue.title }}</span>
+                <span
+                  v-if="estimateLabel(issue.estimate)"
+                  class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center"
+                >{{ estimateLabel(issue.estimate) }}</span>
+                <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
+                  <Avatar
+                    v-for="a in (issue.assignees ?? []).slice(0, 2)"
+                    :key="a.id"
+                    :name="a.display_name"
+                    :src="a.avatar_url"
+                    size="xs"
+                    class="ring-1 ring-white"
+                  />
+                </div>
+              </RouterLink>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- Sprint not found -->
+      <EmptyState v-else title="Sprint not found" description="This sprint does not exist or has been deleted." />
+
+    </div>
+  </MainLayout>
+</template>

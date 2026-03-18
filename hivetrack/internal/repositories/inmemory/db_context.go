@@ -32,7 +32,7 @@ func NewDbContext() *DbContext {
 		users:          NewUserRepository(),
 		projects:       NewProjectRepository(tracker),
 		issues:         issueRepo,
-		sprints:        NewSprintRepository(tracker),
+		sprints:        NewSprintRepository(tracker, issueRepo),
 		milestones:     NewMilestoneRepository(tracker, issueRepo),
 		labels:         NewLabelRepository(tracker),
 		comments:       NewCommentRepository(tracker),
