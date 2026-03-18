@@ -62,6 +62,20 @@ const { data: issuesResult, isLoading: loadingIssues } = useQuery({
   enabled: computed(() => !!slug.value),
 })
 
+const { data: epicsResult } = useQuery({
+  queryKey: ['issues', slug, { type: 'epic' }],
+  queryFn: () => fetchIssues(slug.value, { type: 'epic', limit: 500 }),
+  enabled: computed(() => !!slug.value),
+})
+
+const epicMap = computed(() => {
+  const map = {}
+  for (const epic of epicsResult.value?.items ?? []) {
+    map[epic.id] = epic
+  }
+  return map
+})
+
 const isLoading = computed(() => loadingProject.value || loadingSprints.value || loadingIssues.value)
 
 // ── Active sprint + issue source ──────────────────────────────────────────────
@@ -393,6 +407,18 @@ const defaultCreateStatus = computed(() => {
                   <p class="text-sm text-slate-800 leading-snug line-clamp-2 group-hover:text-slate-900 mb-2">
                     {{ issue.title }}
                   </p>
+
+                  <!-- Epic badge -->
+                  <div v-if="issue.parent_id && epicMap[issue.parent_id]" class="flex items-center gap-1 mb-2">
+                    <RouterLink
+                      :to="`/projects/${slug}/issues/${epicMap[issue.parent_id].number}`"
+                      class="inline-flex items-center gap-1 text-[11px] font-medium text-violet-600 bg-violet-50 hover:bg-violet-100 px-1.5 py-0.5 rounded truncate max-w-full transition-colors"
+                      @click.stop
+                    >
+                      <LayersIcon class="size-3 flex-shrink-0" />
+                      <span class="truncate">{{ epicMap[issue.parent_id].title }}</span>
+                    </RouterLink>
+                  </div>
 
                   <!-- Footer: estimate + assignees -->
                   <div class="flex items-center gap-1.5">
