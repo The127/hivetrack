@@ -4,9 +4,12 @@
   Mount once in App.vue. Toasts are triggered via useToast().
 
   Variants: 'success' | 'error' | 'info'
+
+  Optional `to` prop on a toast makes the message a RouterLink.
 -->
 <script setup>
 import { CheckCircleIcon, XCircleIcon, InfoIcon, XIcon } from 'lucide-vue-next'
+import { RouterLink } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 
 const { toasts, remove } = useToast()
@@ -44,7 +47,15 @@ function scheme(variant) {
             class="size-4 flex-shrink-0"
             :class="scheme(toast.variant).iconClass"
           />
-          <span class="flex-1 min-w-0">{{ toast.message }}</span>
+          <RouterLink
+            v-if="toast.to"
+            :to="toast.to"
+            class="flex-1 min-w-0 underline underline-offset-2 hover:opacity-80"
+            @click="remove(toast.id)"
+          >
+            {{ toast.message }}
+          </RouterLink>
+          <span v-else class="flex-1 min-w-0">{{ toast.message }}</span>
           <button
             class="flex-shrink-0 rounded p-0.5 opacity-60 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current cursor-pointer"
             @click="remove(toast.id)"

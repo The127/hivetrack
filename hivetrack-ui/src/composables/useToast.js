@@ -3,11 +3,11 @@ import { reactive } from 'vue'
 let nextId = 0
 const toasts = reactive([])
 
-const DURATION = 4000 // ms
+const DURATION = 8000 // ms
 
-function add(message, variant = 'success') {
+function add(message, variant = 'success', to = null) {
   const id = ++nextId
-  toasts.push({ id, message, variant })
+  toasts.push({ id, message, variant, to })
   setTimeout(() => remove(id), DURATION)
 }
 
@@ -19,9 +19,9 @@ function remove(id) {
 export function useToast() {
   return {
     toasts,
-    success: (message) => add(message, 'success'),
-    error: (message) => add(message, 'error'),
-    info: (message) => add(message, 'info'),
+    success: (message, to = null) => add(message, 'success', to),
+    error: (message, to = null) => add(message, 'error', to),
+    info: (message, to = null) => add(message, 'info', to),
     remove,
   }
 }

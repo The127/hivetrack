@@ -117,7 +117,7 @@ const { mutate, isPending, error: serverError } = useMutation({
   onSuccess: (result) => {
     queryClient.invalidateQueries({ queryKey: ['issues', resolvedSlug.value] })
     queryClient.invalidateQueries({ queryKey: ['me', 'issues'] })
-    toast.success(`Issue #${result.Number} created`)
+    toast.success(`Issue #${result.Number} created`, `/projects/${resolvedSlug.value}/issues/${result.Number}`)
     emit('created', result)
   },
 })
