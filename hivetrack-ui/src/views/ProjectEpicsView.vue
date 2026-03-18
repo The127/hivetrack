@@ -50,7 +50,10 @@ const { data: epicsResult, isLoading: loadingEpics } = useQuery({
   enabled: computed(() => !!slug.value),
 })
 
-const epics = computed(() => epicsResult.value?.items ?? [])
+const TERMINAL_STATUSES = ['done', 'cancelled', 'closed']
+const epics = computed(() =>
+  (epicsResult.value?.items ?? []).filter(e => !TERMINAL_STATUSES.includes(e.status))
+)
 
 // ── Unassigned tasks (no parent epic) ────────────────────────────────────────
 
@@ -315,10 +318,6 @@ const defaultCreateStatus = computed(() => {
                   />
                 </div>
 
-                <!-- Assignee avatars -->
-                <div class="flex-shrink-0 flex justify-end w-10">
-                  <AssigneePopover :assignees="epic.assignees ?? []" />
-                </div>
               </div>
 
               <!-- Expanded: child tasks -->
