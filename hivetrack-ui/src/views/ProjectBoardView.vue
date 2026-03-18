@@ -12,7 +12,7 @@
   columns to change status. Uses fractional indexing for O(1) rank updates.
 -->
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { VueDraggable } from 'vue-draggable-plus'
@@ -27,6 +27,8 @@ import {
   InboxIcon,
   LayersIcon,
   CheckIcon,
+  SearchIcon,
+  XIcon,
 } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -154,6 +156,28 @@ const columns = computed(() => {
   return project.value.archetype === 'support' ? SUPPORT_COLUMNS : SOFTWARE_COLUMNS
 })
 
+// ── Board search / filter ────────────────────────────────────────────────────
+
+const searchQuery = ref('')
+const showSearch = ref(false)
+const searchInputEl = ref(null)
+
+function toggleSearch() {
+  showSearch.value = !showSearch.value
+  if (showSearch.value) {
+    nextTick(() => searchInputEl.value?.focus())
+  } else {
+    searchQuery.value = ''
+  }
+}
+
+function matchesSearch(issue) {
+  if (!searchQuery.value) return true
+  const q = searchQuery.value.toLowerCase()
+  const id = `${slug.value}-${issue.number}`.toLowerCase()
+  return issue.title.toLowerCase().includes(q) || id.includes(q)
+}
+
 // ── Drag-and-drop state ─────────────────────────────────────────────────────
 
 const isDragging = ref(false)
@@ -163,13 +187,13 @@ function rebuildColumnIssues() {
   const newMap = {}
   for (const col of columns.value) {
     newMap[col.key] = (boardIssues.value ?? [])
-      .filter(i => i.status === col.key)
+      .filter(i => i.status === col.key && matchesSearch(i))
       .slice()
   }
   columnIssues.value = newMap
 }
 
-watch([boardIssues, columns], () => {
+watch([boardIssues, columns, searchQuery], () => {
   if (!isDragging.value) rebuildColumnIssues()
 }, { immediate: true })
 
@@ -291,13 +315,41 @@ const defaultCreateStatus = computed(() => {
           <div v-else-if="loadingProject" class="h-5 w-40 rounded bg-slate-100 animate-pulse" />
         </div>
 
-        <button
-          class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 h-8 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"
-          @click="showCreateIssue = true"
-        >
-          <PlusIcon class="size-4" />
-          New issue
-        </button>
+        <div class="flex items-center gap-2">
+          <!-- Search -->
+          <div v-if="showSearch" class="relative">
+            <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+            <input
+              ref="searchInputEl"
+              v-model="searchQuery"
+              type="text"
+              placeholder="Filter issues..."
+              class="w-56 rounded-md border border-slate-200 pl-8 pr-8 h-8 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              @keydown.escape="toggleSearch"
+            />
+            <button
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+              @click="toggleSearch"
+            >
+              <XIcon class="size-3.5" />
+            </button>
+          </div>
+          <button
+            v-else
+            class="inline-flex items-center justify-center rounded-md border border-slate-200 size-8 text-slate-500 hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
+            @click="toggleSearch"
+          >
+            <SearchIcon class="size-4" />
+          </button>
+
+          <button
+            class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 h-8 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"
+            @click="showCreateIssue = true"
+          >
+            <PlusIcon class="size-4" />
+            New issue
+          </button>
+        </div>
       </div>
 
       <!-- ── Context bar ────────────────────────────────────────────────── -->
