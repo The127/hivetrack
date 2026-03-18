@@ -12,11 +12,6 @@ import { useRoute, RouterLink } from 'vue-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import {
   ArrowLeftIcon,
-  CircleIcon,
-  CircleDotIcon,
-  GitPullRequestIcon,
-  CheckCircle2Icon,
-  XCircleIcon,
   LayersIcon,
 } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
@@ -24,6 +19,7 @@ import Badge from '@/components/ui/Badge.vue'
 import Spinner from '@/components/ui/Spinner.vue'
 import EpicSelector from '@/components/issue/EpicSelector.vue'
 import EpicChildList from '@/components/issue/EpicChildList.vue'
+import StatusSelect from '@/components/issue/StatusSelect.vue'
 import { fetchIssue, updateIssue } from '@/api/issues'
 import { fetchProject } from '@/api/projects'
 
@@ -46,28 +42,21 @@ const { data: issue, isLoading } = useQuery({
   enabled: computed(() => !!slug.value && !!number.value),
 })
 
-// ── Status display ──────────────────────────────────────────────────────────
-
-const STATUS_META = {
-  todo:        { label: 'To Do',       scheme: 'gray',   icon: CircleIcon },
-  in_progress: { label: 'In Progress', scheme: 'blue',   icon: CircleDotIcon },
-  in_review:   { label: 'In Review',   scheme: 'violet', icon: GitPullRequestIcon },
-  done:        { label: 'Done',        scheme: 'green',  icon: CheckCircle2Icon },
-  cancelled:   { label: 'Cancelled',   scheme: 'gray',   icon: XCircleIcon },
-  open:        { label: 'Open',        scheme: 'sky',    icon: CircleIcon },
-  resolved:    { label: 'Resolved',    scheme: 'teal',   icon: CheckCircle2Icon },
-  closed:      { label: 'Closed',      scheme: 'gray',   icon: XCircleIcon },
-}
-
-function statusMeta(status) {
-  return STATUS_META[status] ?? { label: status, scheme: 'gray', icon: CircleIcon }
-}
-
 const PRIORITY_SCHEME = {
   none: 'gray', low: 'sky', medium: 'amber', high: 'orange', critical: 'red',
 }
 
 const ESTIMATE_LABEL = { none: null, xs: 'XS', s: 'S', m: 'M', l: 'L', xl: 'XL' }
+
+// ── Status mutation ───────────────────────────────────────────────────────────
+
+const { mutate: updateStatus } = useMutation({
+  mutationFn: (status) => updateIssue(slug.value, number.value, { status }),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['issue', slug.value, number.value] })
+    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+  },
+})
 
 // ── Epic assignment mutation (for tasks) ────────────────────────────────────
 
@@ -127,20 +116,12 @@ const { mutate: updateParent } = useMutation({
             <!-- Status -->
             <div class="space-y-1">
               <span class="text-xs font-medium text-slate-500">Status</span>
-              <div class="flex items-center gap-1.5">
-                <component
-                  :is="statusMeta(issue.status).icon"
-                  class="size-4"
-                  :class="{
-                    'text-slate-400':  statusMeta(issue.status).scheme === 'gray',
-                    'text-blue-500':   statusMeta(issue.status).scheme === 'blue',
-                    'text-violet-500': statusMeta(issue.status).scheme === 'violet',
-                    'text-green-500':  statusMeta(issue.status).scheme === 'green',
-                    'text-sky-500':    statusMeta(issue.status).scheme === 'sky',
-                    'text-teal-500':   statusMeta(issue.status).scheme === 'teal',
-                  }"
+              <div class="pt-1">
+                <StatusSelect
+                  :status="issue.status"
+                  :archetype="project?.archetype ?? 'software'"
+                  @update:status="updateStatus"
                 />
-                <span class="text-sm text-slate-700">{{ statusMeta(issue.status).label }}</span>
               </div>
             </div>
 
