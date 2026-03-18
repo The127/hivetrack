@@ -547,8 +547,9 @@ function activateInlineCreate(sectionId) {
   inlineCreateError.value = "";
   nextTick(() => {
     const el = inlineCreateInputs.value[sectionId];
-    el?.focus();
-    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (!el) return;
+    el.scrollIntoView({ behavior: "instant", block: "nearest" });
+    el.focus();
   });
 }
 
@@ -561,8 +562,9 @@ const { mutate: inlineCreate, isPending: inlineCreatePending } = useMutation({
     nextTick(() => {
       if (activeInlineCreate.value) {
         const el = inlineCreateInputs.value[activeInlineCreate.value];
-        el?.focus();
-        el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        if (!el) return;
+        el.scrollIntoView({ behavior: "instant", block: "nearest" });
+        el.focus();
       }
     });
   },
