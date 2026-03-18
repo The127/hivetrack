@@ -6,9 +6,9 @@
   no dedicated overview endpoint needed.
 -->
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
-import { useQuery } from '@tanstack/vue-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import {
   KanbanIcon,
   ListIcon,
@@ -19,23 +19,28 @@ import {
   HeadphonesIcon,
   CalendarIcon,
   UsersIcon,
+  TagIcon,
   CircleIcon,
   CircleDotIcon,
   GitPullRequestIcon,
   CheckCircle2Icon,
   XCircleIcon,
+  Trash2Icon,
 } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Spinner from '@/components/ui/Spinner.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import SprintBurndownChart from '@/components/sprint/SprintBurndownChart.vue'
-import { fetchProject } from '@/api/projects'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+import { fetchProject, removeProjectMember } from '@/api/projects'
+import { fetchLabels, deleteLabel } from '@/api/labels'
 import { fetchIssues } from '@/api/issues'
 import { fetchSprints, fetchSprintBurndown } from '@/api/sprints'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug)
+const queryClient = useQueryClient()
 
 // ── Queries ───────────────────────────────────────────────────────────────────
 
@@ -60,6 +65,35 @@ const { data: inboxResult } = useQuery({
   queryKey: ['issues', slug, { triaged: false }],
   queryFn: () => fetchIssues(slug.value, { triaged: false, limit: 1 }),
   enabled: computed(() => !!slug.value),
+})
+
+const { data: labelsData } = useQuery({
+  queryKey: ['labels', slug],
+  queryFn: () => fetchLabels(slug.value),
+  enabled: computed(() => !!slug.value),
+})
+
+const labels = computed(() => labelsData.value?.labels ?? [])
+
+// ── Mutations ─────────────────────────────────────────────────────────────────
+
+const memberToRemove = ref(null)
+const labelToDelete = ref(null)
+
+const { mutate: doRemoveMember, isPending: removeMemberPending } = useMutation({
+  mutationFn: (userId) => removeProjectMember(slug.value, userId),
+  onSuccess: () => {
+    memberToRemove.value = null
+    queryClient.invalidateQueries({ queryKey: ['project', slug.value] })
+  },
+})
+
+const { mutate: doDeleteLabel, isPending: deleteLabelPending } = useMutation({
+  mutationFn: (labelId) => deleteLabel(slug.value, labelId),
+  onSuccess: () => {
+    labelToDelete.value = null
+    queryClient.invalidateQueries({ queryKey: ['labels', slug.value] })
+  },
 })
 
 // ── Derived state ─────────────────────────────────────────────────────────────
@@ -285,14 +319,71 @@ function formatDateRange(start, end) {
           <div
             v-for="m in project.members"
             :key="m.user_id"
-            class="flex items-center gap-2 rounded-md border border-slate-200 px-2.5 py-1.5"
+            class="group flex items-center gap-2 rounded-md border border-slate-200 px-2.5 py-1.5"
           >
             <span class="text-sm text-slate-700">{{ m.display_name }}</span>
             <Badge colorScheme="gray" compact>{{ m.role.replace('project_', '') }}</Badge>
+            <button
+              class="opacity-0 group-hover:opacity-100 ml-0.5 rounded p-0.5 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
+              title="Remove member"
+              @click="memberToRemove = m"
+            >
+              <Trash2Icon class="size-3" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Labels ─────────────────────────────────────────────────────────── -->
+      <section v-if="labels.length">
+        <h2 class="text-sm font-medium text-slate-700 mb-3 flex items-center gap-1.5">
+          <TagIcon class="size-4 text-slate-500" />
+          Labels
+          <span class="text-xs font-normal text-slate-500">{{ labels.length }}</span>
+        </h2>
+        <div class="flex flex-wrap gap-2">
+          <div
+            v-for="label in labels"
+            :key="label.id"
+            class="group flex items-center gap-1.5 rounded-full border px-2.5 py-0.5"
+            :style="{ borderColor: label.color + '66', backgroundColor: label.color + '22' }"
+          >
+            <span class="text-xs font-medium" :style="{ color: label.color }">{{ label.name }}</span>
+            <button
+              class="opacity-0 group-hover:opacity-100 rounded-full p-0.5 text-slate-400 hover:text-red-500 hover:bg-red-100 transition-all cursor-pointer"
+              title="Delete label"
+              @click="labelToDelete = label"
+            >
+              <XCircleIcon class="size-3" />
+            </button>
           </div>
         </div>
       </section>
 
     </div>
+
+    <!-- Remove member confirmation -->
+    <ConfirmDialog
+      v-if="memberToRemove"
+      :open="!!memberToRemove"
+      title="Remove member?"
+      :message="`Remove ${memberToRemove.display_name} from this project? They will lose access immediately.`"
+      confirm-text="Remove member"
+      :loading="removeMemberPending"
+      @confirm="doRemoveMember(memberToRemove.user_id)"
+      @cancel="memberToRemove = null"
+    />
+
+    <!-- Delete label confirmation -->
+    <ConfirmDialog
+      v-if="labelToDelete"
+      :open="!!labelToDelete"
+      title="Delete label?"
+      :message="`Delete '${labelToDelete.name}'? It will be removed from all issues.`"
+      confirm-text="Delete label"
+      :loading="deleteLabelPending"
+      @confirm="doDeleteLabel(labelToDelete.id)"
+      @cancel="labelToDelete = null"
+    />
   </MainLayout>
 </template>
