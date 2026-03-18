@@ -18,8 +18,8 @@ func TestParseNullableInt(t *testing.T) {
 	t.Run("explicit null clears the value", func(t *testing.T) {
 		result, err := parseNullableInt(json.RawMessage(`null`))
 		require.NoError(t, err)
-		require.NotNil(t, result)  // outer pointer present
-		assert.Nil(t, *result)     // inner pointer nil = clear
+		require.NotNil(t, result) // outer pointer present
+		assert.Nil(t, *result)    // inner pointer nil = clear
 	})
 
 	t.Run("integer sets the value", func(t *testing.T) {
