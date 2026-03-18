@@ -112,7 +112,7 @@ const { data: sprintsResult, isLoading: loadingSprints } = useQuery({
 })
 
 const issueParams = computed(() => {
-  const params = { triaged: true, limit: 1000 }
+  const params = { triaged: true, type: 'task', limit: 1000 }
   if (selectedEpicId.value) {
     params.parent_id = selectedEpicId.value
   }
