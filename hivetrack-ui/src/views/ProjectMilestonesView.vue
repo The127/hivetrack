@@ -3,12 +3,13 @@
 
   Shows all milestones with progress bars, target dates, and closed status.
   Allows creating, editing, closing/reopening, and deleting milestones.
+  Includes an interactive timeline view for planning milestone timing.
 -->
 <script setup>
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
-import { PlusIcon, PencilIcon, Trash2Icon, CheckCircle2Icon, RotateCcwIcon } from 'lucide-vue-next'
+import { PlusIcon, PencilIcon, Trash2Icon, CheckCircle2Icon, RotateCcwIcon, ListIcon, GanttChartIcon } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -16,11 +17,14 @@ import Spinner from '@/components/ui/Spinner.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Modal from '@/components/ui/Modal.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
+import MilestoneTimeline from '@/components/milestone/MilestoneTimeline.vue'
 import { fetchMilestones, createMilestone, updateMilestone, deleteMilestone } from '@/api/milestones'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug)
 const queryClient = useQueryClient()
+
+const viewMode = ref('list') // 'list' | 'timeline'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -119,15 +123,36 @@ function formatDate(dateStr) {
 
 <template>
   <MainLayout>
-    <div class="max-w-3xl mx-auto px-6 py-8">
+    <div class="max-w-5xl mx-auto px-6 py-8">
 
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-lg font-semibold text-slate-900">Milestones</h1>
-        <Button size="sm" @click="openCreate">
-          <PlusIcon class="size-3.5 mr-1" />
-          New milestone
-        </Button>
+        <div class="flex items-center gap-2">
+          <!-- View toggle -->
+          <div class="flex rounded-md border border-slate-200 overflow-hidden">
+            <button
+              class="px-2.5 py-1.5 text-xs flex items-center gap-1.5 transition-colors"
+              :class="viewMode === 'list' ? 'bg-slate-100 text-slate-700 font-medium' : 'text-slate-500 hover:bg-slate-50 cursor-pointer'"
+              @click="viewMode = 'list'"
+            >
+              <ListIcon class="size-3.5" />
+              List
+            </button>
+            <button
+              class="px-2.5 py-1.5 text-xs flex items-center gap-1.5 border-l border-slate-200 transition-colors"
+              :class="viewMode === 'timeline' ? 'bg-slate-100 text-slate-700 font-medium' : 'text-slate-500 hover:bg-slate-50 cursor-pointer'"
+              @click="viewMode = 'timeline'"
+            >
+              <GanttChartIcon class="size-3.5" />
+              Timeline
+            </button>
+          </div>
+          <Button size="sm" @click="openCreate">
+            <PlusIcon class="size-3.5 mr-1" />
+            New milestone
+          </Button>
+        </div>
       </div>
 
       <!-- Loading -->
@@ -140,6 +165,14 @@ function formatDate(dateStr) {
         v-else-if="milestones.length === 0"
         title="No milestones"
         description="Create a milestone to group issues around a target goal or release."
+      />
+
+      <!-- Timeline view -->
+      <MilestoneTimeline
+        v-else-if="viewMode === 'timeline'"
+        :milestones="milestones"
+        :slug="slug"
+        @edit="openEdit"
       />
 
       <!-- Milestone list -->
