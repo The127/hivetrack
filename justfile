@@ -5,6 +5,9 @@
 #   just          → list all available recipes
 #   just <recipe> → run a recipe
 
+# Go binary — override with: just go=/usr/bin/go <recipe>
+go := env("HIVETRACK_GO", "$HOME/repos/go/bin/go")
+
 # Show available recipes by default
 default:
     @just --list
@@ -13,11 +16,11 @@ default:
 
 # Run the backend server (requires postgres, see: just dev-deps)
 run:
-    cd hivetrack && go run ./cmd/hivetrack
+    cd hivetrack && {{go}} run ./cmd/hivetrack
 
 # Build the backend binary (embeds frontend assets if built first)
 build:
-    cd hivetrack && go build -o ../bin/hivetrack ./cmd/hivetrack
+    cd hivetrack && {{go}} build -o ../bin/hivetrack ./cmd/hivetrack
 
 # Build a production Docker image
 docker-build:
@@ -25,23 +28,23 @@ docker-build:
 
 # Run all backend tests (unit + architecture, no DB required)
 test:
-    cd hivetrack && go test ./...
+    cd hivetrack && {{go}} test ./...
 
 # Run only unit tests (fast, in-memory repositories, no DB)
 test-unit:
-    cd hivetrack && go test ./... -tags unit -count=1
+    cd hivetrack && {{go}} test ./... -tags unit -count=1
 
 # Run architecture constraint tests only
 test-arch:
-    cd hivetrack && go test ./internal/architecture/... -v -count=1
+    cd hivetrack && {{go}} test ./internal/architecture/... -v -count=1
 
 # Run integration tests (requires running postgres — run: just dev-deps first)
 test-integration:
-    cd hivetrack && go test ./... -tags integration -count=1
+    cd hivetrack && {{go}} test ./... -tags integration -count=1
 
 # Run all tests including integration
 test-all: dev-deps
-    cd hivetrack && go test ./... -tags 'unit integration' -count=1
+    cd hivetrack && {{go}} test ./... -tags 'unit integration' -count=1
 
 # Run the linter
 lint:
@@ -54,11 +57,11 @@ fmt:
 
 # Check for outdated dependencies
 deps-check:
-    cd hivetrack && go list -u -m all
+    cd hivetrack && {{go}} list -u -m all
 
 # Update all dependencies
 deps-update:
-    cd hivetrack && go get -u ./... && go mod tidy
+    cd hivetrack && {{go}} get -u ./... && {{go}} mod tidy
 
 # ─── Database ─────────────────────────────────────────────────────────────────
 
@@ -150,15 +153,15 @@ uninstall-hooks:
 
 # Run the MCP server (stdio transport, for Claude Code integration)
 mcp:
-    cd mcp && go run ./cmd/hivetrack-mcp
+    cd mcp && {{go}} run ./cmd/hivetrack-mcp
 
 # Build the MCP server binary
 mcp-build:
-    cd mcp && go build -o ../bin/hivetrack-mcp ./cmd/hivetrack-mcp
+    cd mcp && {{go}} build -o ../bin/hivetrack-mcp ./cmd/hivetrack-mcp
 
 # Run MCP server tests
 mcp-test:
-    cd mcp && go test ./... -count=1
+    cd mcp && {{go}} test ./... -count=1
 
 # ─── Utilities ────────────────────────────────────────────────────────────────
 
