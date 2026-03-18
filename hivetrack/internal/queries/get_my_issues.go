@@ -13,7 +13,7 @@ import (
 type GetMyIssuesQuery struct{}
 
 type GetMyIssuesResult struct {
-	Items []IssueSummary
+	Items []IssueSummary `json:"items"`
 }
 
 func HandleGetMyIssues(ctx context.Context, _ GetMyIssuesQuery) (*GetMyIssuesResult, error) {
