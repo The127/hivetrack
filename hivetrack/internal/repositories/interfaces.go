@@ -200,6 +200,12 @@ func (f *IssueFilter) WithNoParent() *IssueFilter {
 	return f
 }
 
+// SprintIssueCounts holds issue counts for a sprint.
+type SprintIssueCounts struct {
+	Total int
+	Done  int
+}
+
 // SprintRepository handles sprint persistence.
 type SprintRepository interface {
 	Insert(sprint *models.Sprint)
@@ -208,6 +214,7 @@ type SprintRepository interface {
 
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Sprint, error)
 	List(ctx context.Context, projectID uuid.UUID) ([]*models.Sprint, error)
+	GetIssueCountsForProject(ctx context.Context, projectID uuid.UUID) (map[uuid.UUID]SprintIssueCounts, error)
 }
 
 // MilestoneProgress holds issue counts for a milestone.

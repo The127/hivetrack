@@ -43,6 +43,16 @@ const router = createRouter({
       meta: { requiresAuth: true, layout: 'main' },
     },
     {
+      path: '/projects/:slug/sprints',
+      component: () => import('@/views/SprintsView.vue'),
+      meta: { requiresAuth: true, layout: 'main' },
+    },
+    {
+      path: '/projects/:slug/sprints/:sprintId',
+      component: () => import('@/views/SprintDetailView.vue'),
+      meta: { requiresAuth: true, layout: 'main' },
+    },
+    {
       path: '/projects/:slug/issues/:number',
       component: () => import('@/views/IssueDetailView.vue'),
       meta: { requiresAuth: true, layout: 'main' },

@@ -16,12 +16,14 @@ type GetSprintsQuery struct {
 }
 
 type SprintSummary struct {
-	ID        uuid.UUID           `json:"id"`
-	Name      string              `json:"name"`
-	Goal      *string             `json:"goal,omitempty"`
-	StartDate *time.Time          `json:"start_date,omitempty"`
-	EndDate   *time.Time          `json:"end_date,omitempty"`
-	Status    models.SprintStatus `json:"status"`
+	ID         uuid.UUID           `json:"id"`
+	Name       string              `json:"name"`
+	Goal       *string             `json:"goal,omitempty"`
+	StartDate  *time.Time          `json:"start_date,omitempty"`
+	EndDate    *time.Time          `json:"end_date,omitempty"`
+	Status     models.SprintStatus `json:"status"`
+	IssueCount int                 `json:"issue_count"`
+	DoneCount  int                 `json:"done_count"`
 }
 
 type GetSprintsResult struct {
@@ -44,13 +46,21 @@ func HandleGetSprints(ctx context.Context, q GetSprintsQuery) (*GetSprintsResult
 		return nil, fmt.Errorf("listing sprints: %w", err)
 	}
 
+	issueCounts, err := db.Sprints().GetIssueCountsForProject(ctx, project.GetId())
+	if err != nil {
+		return nil, fmt.Errorf("getting sprint issue counts: %w", err)
+	}
+
 	summaries := make([]SprintSummary, 0, len(sprints))
 	for _, s := range sprints {
+		counts := issueCounts[s.GetId()]
 		sum := SprintSummary{
-			ID:     s.GetId(),
-			Name:   s.GetName(),
-			Goal:   s.GetGoal(),
-			Status: s.GetStatus(),
+			ID:         s.GetId(),
+			Name:       s.GetName(),
+			Goal:       s.GetGoal(),
+			Status:     s.GetStatus(),
+			IssueCount: counts.Total,
+			DoneCount:  counts.Done,
 		}
 		if !s.GetStartDate().IsZero() {
 			t := s.GetStartDate()
