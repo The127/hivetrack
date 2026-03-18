@@ -505,7 +505,7 @@ const defaultCreateStatus = computed(() => {
       </template>
 
       <!-- ── Loading ────────────────────────────────────────────────────── -->
-      <div v-if="isLoading" class="flex-1 flex items-center justify-center">
+      <div v-if="isLoading" class="h-32 flex items-center justify-center">
         <Spinner class="size-6 text-slate-400" />
       </div>
 
