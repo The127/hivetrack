@@ -111,6 +111,7 @@ const (
 	IssueChangeRestrictedViewers IssueChange = iota
 	IssueChangeRank              IssueChange = iota
 	IssueChangeParentID          IssueChange = iota
+	IssueChangeOwnerID           IssueChange = iota
 )
 
 type Issue struct {
@@ -134,6 +135,7 @@ type Issue struct {
 	estimate IssueEstimate
 
 	reporterID  *uuid.UUID
+	ownerID     *uuid.UUID
 	parentID    *uuid.UUID
 	milestoneID *uuid.UUID
 	sprintID    *uuid.UUID
@@ -174,6 +176,7 @@ func NewIssue(projectID uuid.UUID, number int, issueType IssueType, title string
 		priority:    priority,
 		estimate:    estimate,
 		reporterID:  reporterID,
+		ownerID:     reporterID,
 		sprintID:    sprintID,
 		milestoneID: milestoneID,
 		triaged:     triaged,
@@ -191,7 +194,7 @@ func NewIssueFromDB(
 	issueType IssueType, title string, description *string, status IssueStatus,
 	onHold bool, holdReason *HoldReason, holdSince *time.Time, holdNote *string,
 	priority IssuePriority, estimate IssueEstimate,
-	reporterID, parentID, milestoneID, sprintID *uuid.UUID,
+	reporterID, ownerID, parentID, milestoneID, sprintID *uuid.UUID,
 	sprintCarryCount int, triaged bool, refined bool, visibility IssueVisibility,
 	customerEmail, customerName *string, customerToken *uuid.UUID,
 	rank *string,
@@ -213,6 +216,7 @@ func NewIssueFromDB(
 		priority:          priority,
 		estimate:          estimate,
 		reporterID:        reporterID,
+		ownerID:           ownerID,
 		parentID:          parentID,
 		milestoneID:       milestoneID,
 		sprintID:          sprintID,
@@ -245,6 +249,7 @@ func (i *Issue) GetHoldNote() *string              { return i.holdNote }
 func (i *Issue) GetPriority() IssuePriority        { return i.priority }
 func (i *Issue) GetEstimate() IssueEstimate        { return i.estimate }
 func (i *Issue) GetReporterID() *uuid.UUID         { return i.reporterID }
+func (i *Issue) GetOwnerID() *uuid.UUID            { return i.ownerID }
 func (i *Issue) GetParentID() *uuid.UUID           { return i.parentID }
 func (i *Issue) GetMilestoneID() *uuid.UUID        { return i.milestoneID }
 func (i *Issue) GetSprintID() *uuid.UUID           { return i.sprintID }
@@ -375,6 +380,11 @@ func (i *Issue) SetRank(v *string) {
 func (i *Issue) SetParentID(v *uuid.UUID) {
 	i.parentID = v
 	i.TrackChange(IssueChangeParentID)
+}
+
+func (i *Issue) SetOwnerID(v *uuid.UUID) {
+	i.ownerID = v
+	i.TrackChange(IssueChangeOwnerID)
 }
 
 // IsTerminal returns true if the issue is in a terminal state.

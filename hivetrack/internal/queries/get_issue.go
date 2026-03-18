@@ -48,6 +48,7 @@ type IssueDetail struct {
 	MilestoneID    *uuid.UUID             `json:"milestone_id,omitempty"`
 	ParentID       *uuid.UUID             `json:"parent_id,omitempty"`
 	ReporterID     *uuid.UUID             `json:"reporter_id,omitempty"`
+	Owner          *UserInfo              `json:"owner,omitempty"`
 	Checklist      []models.ChecklistItem `json:"checklist"`
 	Links          []IssueLinkInfo        `json:"links"`
 	ChildCount     int                    `json:"child_count"`
@@ -78,6 +79,17 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 	assignees, err := resolveUsers(ctx, db, issue.GetAssignees())
 	if err != nil {
 		return nil, fmt.Errorf("resolving assignees: %w", err)
+	}
+
+	var owner *UserInfo
+	if issue.GetOwnerID() != nil {
+		owners, err := resolveUsers(ctx, db, []uuid.UUID{*issue.GetOwnerID()})
+		if err != nil {
+			return nil, fmt.Errorf("resolving owner: %w", err)
+		}
+		if len(owners) > 0 {
+			owner = &owners[0]
+		}
 	}
 
 	labels, err := resolveLabels(ctx, db, issue.GetLabels())
@@ -135,6 +147,7 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 		MilestoneID: issue.GetMilestoneID(),
 		ParentID:    issue.GetParentID(),
 		ReporterID:  issue.GetReporterID(),
+		Owner:       owner,
 		Checklist:   issue.GetChecklist(),
 		Links:       links,
 		CreatedAt:   issue.GetCreatedAt(),

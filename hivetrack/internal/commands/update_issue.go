@@ -33,6 +33,8 @@ type UpdateIssueCommand struct {
 	HoldNote      *string
 	Visibility    *models.IssueVisibility
 	Rank          *string
+	OwnerID       *uuid.UUID
+	ClearOwnerID  bool
 }
 
 type UpdateIssueResult struct{}
@@ -113,6 +115,11 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	}
 	if cmd.Rank != nil {
 		issue.SetRank(cmd.Rank)
+	}
+	if cmd.ClearOwnerID {
+		issue.SetOwnerID(nil)
+	} else if cmd.OwnerID != nil {
+		issue.SetOwnerID(cmd.OwnerID)
 	}
 
 	if cmd.Status != nil && oldStatus == models.IssueStatusTodo && *cmd.Status == models.IssueStatusInProgress {
