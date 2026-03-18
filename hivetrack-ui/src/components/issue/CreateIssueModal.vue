@@ -22,6 +22,7 @@ import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
 import { createIssue } from '@/api/issues'
 import { apiFetch } from '@/composables/useApi'
+import { useToast } from '@/composables/useToast'
 
 const props = defineProps({
   open: {
@@ -48,6 +49,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'created'])
 
 const queryClient = useQueryClient()
+const toast = useToast()
 
 // ── Project picker (only when projectSlug is not provided) ──────────────────
 
@@ -115,6 +117,7 @@ const { mutate, isPending, error: serverError } = useMutation({
   onSuccess: (result) => {
     queryClient.invalidateQueries({ queryKey: ['issues', resolvedSlug.value] })
     queryClient.invalidateQueries({ queryKey: ['me', 'issues'] })
+    toast.success(`Issue #${result.number} created`)
     emit('created', result)
   },
 })
