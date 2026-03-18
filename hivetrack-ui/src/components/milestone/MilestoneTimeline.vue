@@ -159,7 +159,20 @@ const queryClient = useQueryClient()
 
 const { mutate: doUpdate } = useMutation({
   mutationFn: ({ id, data }) => updateMilestone(props.slug, id, data),
-  onSuccess: () => queryClient.invalidateQueries({ queryKey: ['milestones', props.slug] }),
+  onMutate: async ({ id, data }) => {
+    await queryClient.cancelQueries({ queryKey: ['milestones', props.slug] })
+    const previous = queryClient.getQueryData(['milestones', props.slug])
+    queryClient.setQueryData(['milestones', props.slug], old =>
+      old?.map(m => m.id === id ? { ...m, ...data } : m) ?? old
+    )
+    return { previous }
+  },
+  onError: (_err, _vars, context) => {
+    queryClient.setQueryData(['milestones', props.slug], context.previous)
+  },
+  onSettled: () => {
+    queryClient.invalidateQueries({ queryKey: ['milestones', props.slug] })
+  },
 })
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
