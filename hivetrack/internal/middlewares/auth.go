@@ -65,6 +65,9 @@ func AuthMiddleware(verifier *authentication.OIDCVerifier, logger *zap.Logger, c
 				user.SetDisplayName(claims.Name)
 				user.SetLastLoginAt(now)
 			}
+			if claims.AvatarURL != "" {
+				user.SetAvatarURL(&claims.AvatarURL)
+			}
 
 			if err := db.Users().Upsert(r.Context(), user); err != nil {
 				logger.Error("failed to upsert user", zap.Error(err))

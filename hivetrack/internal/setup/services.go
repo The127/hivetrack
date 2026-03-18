@@ -21,6 +21,6 @@ func Services(dc *ioc.DependencyCollection, cfg *config.Config) {
 
 	ioc.RegisterSingleton(dc, func(dp *ioc.DependencyProvider) *authentication.OIDCVerifier {
 		cfg := ioc.GetDependency[*config.Config](dp)
-		return authentication.NewOIDCVerifier(cfg.OIDC.Authority, cfg.OIDC.ClientID)
+		return authentication.NewOIDCVerifier(cfg.OIDC.Authority, cfg.OIDC.ClientID, cfg.OIDC.ClaimMappings)
 	})
 }

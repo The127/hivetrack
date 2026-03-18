@@ -3,32 +3,37 @@ package authentication
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	oidc "github.com/coreos/go-oidc/v3/oidc"
+	"github.com/the127/hivetrack/internal/config"
 )
 
 // Claims holds the extracted JWT claims.
 type Claims struct {
-	Sub   string
-	Email string
-	Name  string
+	Sub       string
+	Email     string
+	Name      string
+	AvatarURL string
 }
 
 // OIDCVerifier lazily initializes an OIDC provider and verifies tokens.
 type OIDCVerifier struct {
-	authority string
-	clientID  string
+	authority     string
+	clientID      string
+	claimMappings config.OIDCClaimMappings
 
 	mu       sync.Mutex
 	verifier *oidc.IDTokenVerifier
 }
 
 // NewOIDCVerifier creates a new verifier for the given authority.
-func NewOIDCVerifier(authority, clientID string) *OIDCVerifier {
+func NewOIDCVerifier(authority, clientID string, claimMappings config.OIDCClaimMappings) *OIDCVerifier {
 	return &OIDCVerifier{
-		authority: authority,
-		clientID:  clientID,
+		authority:     authority,
+		clientID:      clientID,
+		claimMappings: claimMappings.WithDefaults(),
 	}
 }
 
@@ -61,18 +66,56 @@ func (v *OIDCVerifier) VerifyToken(ctx context.Context, token string) (*Claims, 
 		return nil, fmt.Errorf("verifying token: %w", err)
 	}
 
-	var claims struct {
-		Sub   string `json:"sub"`
-		Email string `json:"email"`
-		Name  string `json:"name"`
-	}
-	if err := idToken.Claims(&claims); err != nil {
+	var raw map[string]interface{}
+	if err := idToken.Claims(&raw); err != nil {
 		return nil, fmt.Errorf("extracting claims: %w", err)
 	}
 
 	return &Claims{
-		Sub:   claims.Sub,
-		Email: claims.Email,
-		Name:  claims.Name,
+		Sub:       stringClaim(raw, "sub"),
+		Email:     stringClaim(raw, v.claimMappings.Email),
+		Name:      resolveName(raw, v.claimMappings.Name),
+		AvatarURL: stringClaim(raw, v.claimMappings.Avatar),
 	}, nil
+}
+
+// resolveName extracts the display name from claims using the configured claim,
+// falling back to common OIDC claim names if the configured one is empty.
+func resolveName(claims map[string]interface{}, primaryClaim string) string {
+	if v := stringClaim(claims, primaryClaim); v != "" {
+		return v
+	}
+
+	// Fallback chain for common OIDC providers.
+	fallbacks := []string{"name", "preferred_username"}
+	for _, key := range fallbacks {
+		if key == primaryClaim {
+			continue
+		}
+		if v := stringClaim(claims, key); v != "" {
+			return v
+		}
+	}
+
+	// Last resort: combine given_name + family_name.
+	given := stringClaim(claims, "given_name")
+	family := stringClaim(claims, "family_name")
+	if combined := strings.TrimSpace(given + " " + family); combined != "" {
+		return combined
+	}
+
+	return ""
+}
+
+// stringClaim extracts a string value from a claims map, returning "" if missing or wrong type.
+func stringClaim(claims map[string]interface{}, key string) string {
+	v, ok := claims[key]
+	if !ok {
+		return ""
+	}
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return s
 }

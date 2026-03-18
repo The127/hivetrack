@@ -37,8 +37,29 @@ type DatabaseConfig struct {
 }
 
 type OIDCConfig struct {
-	Authority string `koanf:"authority"`
-	ClientID  string `koanf:"client_id"`
+	Authority     string            `koanf:"authority"`
+	ClientID      string            `koanf:"client_id"`
+	ClaimMappings OIDCClaimMappings `koanf:"claim_mappings"`
+}
+
+type OIDCClaimMappings struct {
+	Email  string `koanf:"email"`
+	Name   string `koanf:"name"`
+	Avatar string `koanf:"avatar"`
+}
+
+// WithDefaults returns the claim mappings with defaults applied for any empty fields.
+func (m OIDCClaimMappings) WithDefaults() OIDCClaimMappings {
+	if m.Email == "" {
+		m.Email = "email"
+	}
+	if m.Name == "" {
+		m.Name = "name"
+	}
+	if m.Avatar == "" {
+		m.Avatar = "picture"
+	}
+	return m
 }
 
 type EmailConfig struct {
