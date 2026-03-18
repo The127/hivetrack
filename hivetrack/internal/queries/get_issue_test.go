@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -87,6 +88,37 @@ func TestHandleGetIssue_EpicIncludesChildProgress(t *testing.T) {
 	require.NotNil(t, result)
 	assert.Equal(t, 3, result.ChildCount)
 	assert.Equal(t, 2, result.ChildDoneCount) // done + cancelled
+}
+
+func TestHandleGetIssue_IncludesLabels(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+
+	p := models.NewProject(actor.GetId(), "myproj", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(p)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	label := models.NewLabel(p.GetId(), "bug", "#ff0000")
+	db.Labels().Insert(label)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	issue := seedIssue(db, p.GetId(), actor.GetId(), 1, models.IssueStatusTodo, true)
+	issue.SetLabels([]uuid.UUID{label.GetId()})
+	db.Issues().Update(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	result, err := queries.HandleGetIssue(ctx, queries.GetIssueQuery{
+		ProjectSlug: "myproj",
+		Number:      issue.GetNumber(),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, result.Labels, 1)
+	assert.Equal(t, label.GetId(), result.Labels[0].ID)
+	assert.Equal(t, "bug", result.Labels[0].Name)
+	assert.Equal(t, "#ff0000", result.Labels[0].Color)
 }
 
 func TestHandleGetIssue_NotFound(t *testing.T) {

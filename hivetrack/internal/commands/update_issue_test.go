@@ -25,6 +25,59 @@ func newTestIssue(projectID uuid.UUID, reporterID uuid.UUID, number int) *models
 	)
 }
 
+func TestHandleUpdateIssue_AddLabels(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	label := models.NewLabel(project.GetId(), "bug", "#ff0000")
+	db.Labels().Insert(label)
+	issue := newTestIssue(project.GetId(), actor.GetId(), 1)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID:  issue.GetId(),
+		LabelIDs: []uuid.UUID{label.GetId()},
+	})
+	require.NoError(t, err)
+
+	updated, err := db.Issues().GetByID(context.Background(), issue.GetId())
+	require.NoError(t, err)
+	assert.Equal(t, []uuid.UUID{label.GetId()}, updated.GetLabels())
+}
+
+func TestHandleUpdateIssue_ClearLabels(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	label := models.NewLabel(project.GetId(), "bug", "#ff0000")
+	db.Labels().Insert(label)
+	issue := newTestIssue(project.GetId(), actor.GetId(), 1)
+	issue.SetLabels([]uuid.UUID{label.GetId()})
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID:  issue.GetId(),
+		LabelIDs: []uuid.UUID{},
+	})
+	require.NoError(t, err)
+
+	updated, err := db.Issues().GetByID(context.Background(), issue.GetId())
+	require.NoError(t, err)
+	assert.Empty(t, updated.GetLabels())
+}
+
 func TestHandleUpdateIssue_ChangeTitle(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
