@@ -21,6 +21,7 @@ import CommentSection from "@/components/issue/CommentSection.vue";
 import StatusSelect from "@/components/issue/StatusSelect.vue";
 import PrioritySelect from "@/components/issue/PrioritySelect.vue";
 import AssigneeSelect from "@/components/issue/AssigneeSelect.vue";
+import OwnerSelect from "@/components/issue/OwnerSelect.vue";
 import LabelSelect from "@/components/issue/LabelSelect.vue";
 import MilestoneSelect from "@/components/issue/MilestoneSelect.vue";
 import { MdPreview } from "md-editor-v3";
@@ -124,6 +125,19 @@ const { mutate: updateAssignees } = useMutation({
     });
     queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
     queryClient.invalidateQueries({ queryKey: ["me", "issues"] });
+  },
+});
+
+// ── Owner mutation ────────────────────────────────────────────────────────────
+
+const { mutate: updateOwner } = useMutation({
+  mutationFn: (ownerId) =>
+    updateIssue(slug.value, number.value, { owner_id: ownerId ?? null }),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["issue", slug.value, number.value],
+    });
+    queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
   },
 });
 
@@ -366,6 +380,17 @@ const { mutate: updateMilestone } = useMutation({
                   :project-slug="slug"
                   :model-value="issue.assignees ?? []"
                   @update:model-value="updateAssignees"
+                />
+              </div>
+            </div>
+
+            <!-- Owner -->
+            <div class="space-y-1">
+              <div class="max-w-xs">
+                <OwnerSelect
+                  :project-slug="slug"
+                  :model-value="issue.owner ?? null"
+                  @update:model-value="updateOwner"
                 />
               </div>
             </div>

@@ -205,15 +205,17 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		HoldNote    *string                 `json:"hold_note"`
 		Visibility  *models.IssueVisibility `json:"visibility"`
 		Rank        *string                 `json:"rank"`
+		OwnerID     *uuid.UUID              `json:"owner_id"`
 	}
 	if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&body); err != nil {
 		RespondError(w, models.ErrBadRequest)
 		return
 	}
 
-	// Detect explicit null for sprint_id/parent_id to distinguish "clear" from "not provided".
+	// Detect explicit null for sprint_id/parent_id/owner_id to distinguish "clear" from "not provided".
 	clearSprintID := false
 	clearParentID := false
+	clearOwnerID := false
 	var rawFields map[string]json.RawMessage
 	if err := json.Unmarshal(bodyBytes, &rawFields); err == nil {
 		if raw, ok := rawFields["sprint_id"]; ok && string(raw) == "null" {
@@ -221,6 +223,9 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		}
 		if raw, ok := rawFields["parent_id"]; ok && string(raw) == "null" {
 			clearParentID = true
+		}
+		if raw, ok := rawFields["owner_id"]; ok && string(raw) == "null" {
+			clearOwnerID = true
 		}
 	}
 
@@ -245,6 +250,8 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		HoldNote:      body.HoldNote,
 		Visibility:    body.Visibility,
 		Rank:          body.Rank,
+		OwnerID:       body.OwnerID,
+		ClearOwnerID:  clearOwnerID,
 	})
 	if err != nil {
 		RespondError(w, err)

@@ -65,6 +65,7 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("parent_id", mcp.Description("Parent epic ID (UUID), or 'null' to remove parent")),
 		mcp.WithString("assignee_ids", mcp.Description("Comma-separated user IDs (UUIDs) to assign, or 'null' to clear all assignees")),
 		mcp.WithString("label_ids", mcp.Description("Comma-separated label IDs (UUIDs), or 'null' to clear all labels")),
+		mcp.WithString("owner_id", mcp.Description("User ID (UUID) to set as owner, or 'null' to clear")),
 	), makeUpdateIssue(client))
 
 	s.AddTool(mcp.NewTool("add_checklist_item",
@@ -282,6 +283,15 @@ func makeUpdateIssue(client *Client) server.ToolHandlerFunc {
 					return errResult(fmt.Errorf("resolving parent_id: %w", err)), nil
 				}
 				body["parent_id"] = resolved
+			}
+		}
+
+		// owner_id: UUID or "null" to clear
+		if v, ok := args["owner_id"].(string); ok {
+			if v == "null" {
+				body["owner_id"] = nil
+			} else if v != "" {
+				body["owner_id"] = v
 			}
 		}
 
