@@ -24,6 +24,7 @@ import AssigneeSelect from "@/components/issue/AssigneeSelect.vue";
 import LabelSelect from "@/components/issue/LabelSelect.vue";
 import MilestoneSelect from "@/components/issue/MilestoneSelect.vue";
 import MarkdownContent from "@/components/ui/MarkdownContent.vue";
+import RelativeTime from "@/components/ui/RelativeTime.vue";
 import SplitIssueModal from "@/components/issue/SplitIssueModal.vue";
 import { fetchIssue, updateIssue } from "@/api/issues";
 import { fetchProject } from "@/api/projects";
@@ -56,14 +57,6 @@ const currentSprint = computed(() => {
     ) ?? null
   );
 });
-
-function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 const { data: issue, isLoading } = useQuery({
   queryKey: ["issue", slug, number],
@@ -471,9 +464,9 @@ const { mutate: updateMilestone } = useMutation({
 
           <!-- Dates -->
           <div class="flex items-center gap-4 text-xs text-slate-400">
-            <span>Created {{ formatDate(issue.created_at) }}</span>
+            <span>Created <RelativeTime :datetime="issue.created_at" /></span>
             <span v-if="issue.updated_at !== issue.created_at">
-              · Updated {{ formatDate(issue.updated_at) }}
+              · Updated <RelativeTime :datetime="issue.updated_at" />
             </span>
           </div>
 
