@@ -7,7 +7,7 @@
   For tasks: shows EpicSelector to assign/change/clear parent epic.
 -->
 <script setup>
-import { computed } from "vue";
+import { computed, ref, nextTick } from "vue";
 import { useRoute, RouterLink } from "vue-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { ArrowLeftIcon, LayersIcon, ZapIcon } from "lucide-vue-next";
@@ -128,6 +128,47 @@ const { mutate: updateAssignees } = useMutation({
   },
 });
 
+// ── Title mutation ────────────────────────────────────────────────────────────
+
+const editingTitle = ref(false);
+const titleDraft = ref("");
+const titleInputEl = ref(null);
+
+function startEditingTitle() {
+  titleDraft.value = issue.value.title;
+  editingTitle.value = true;
+  nextTick(() => {
+    titleInputEl.value?.select();
+  });
+}
+
+function cancelEditingTitle() {
+  editingTitle.value = false;
+}
+
+const { mutate: updateTitle } = useMutation({
+  mutationFn: (title) => updateIssue(slug.value, number.value, { title }),
+  onSuccess: () => {
+    editingTitle.value = false;
+    queryClient.invalidateQueries({
+      queryKey: ["issue", slug.value, number.value],
+    });
+    queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
+  },
+  onError: () => {
+    editingTitle.value = false;
+  },
+});
+
+function saveTitle() {
+  const trimmed = titleDraft.value.trim();
+  if (!trimmed || trimmed === issue.value.title) {
+    editingTitle.value = false;
+    return;
+  }
+  updateTitle(trimmed);
+}
+
 // ── Label mutation ───────────────────────────────────────────────────────────
 
 const { mutate: updateLabels } = useMutation({
@@ -188,9 +229,22 @@ const { mutate: updateLabels } = useMutation({
               </Badge>
               <Badge v-else color-scheme="blue" compact>Task</Badge>
             </div>
-            <h1 class="text-2xl font-semibold text-slate-900">
+            <h1
+              v-if="!editingTitle"
+              class="text-2xl font-semibold text-slate-900 cursor-pointer hover:text-slate-700 group"
+              @click="startEditingTitle"
+            >
               {{ issue.title }}
             </h1>
+            <input
+              v-else
+              ref="titleInputEl"
+              v-model="titleDraft"
+              class="text-2xl font-semibold text-slate-900 w-full border-b-2 border-blue-500 focus:outline-none bg-transparent"
+              @keydown.enter="saveTitle"
+              @keydown.escape="cancelEditingTitle"
+              @blur="saveTitle"
+            />
           </div>
 
           <!-- Metadata grid -->
