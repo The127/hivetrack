@@ -24,6 +24,7 @@ import {
   GitPullRequestIcon,
   CheckCircle2Icon,
   XCircleIcon,
+  ChevronDownIcon,
   InboxIcon,
   LayersIcon,
   CheckIcon,
@@ -166,7 +167,6 @@ const SOFTWARE_COLUMNS = [
     icon: GitPullRequestIcon,
   },
   { key: "done", label: "Done", scheme: "green", icon: CheckCircle2Icon },
-  { key: "cancelled", label: "Cancelled", scheme: "gray", icon: XCircleIcon },
 ];
 
 const SUPPORT_COLUMNS = [
@@ -349,6 +349,14 @@ function formatDateRange(startDate, endDate) {
     new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
   return `${fmt(startDate)} – ${fmt(endDate)}`;
 }
+
+// ── Cancelled issues (collapsible in Done column) ────────────────────────────
+
+const showCancelled = ref(false)
+
+const cancelledBoardIssues = computed(() =>
+  boardIssues.value.filter(i => i.status === 'cancelled' && matchesSearch(i))
+)
 
 // ── New issue modal ───────────────────────────────────────────────────────────
 
@@ -652,6 +660,41 @@ const defaultCreateStatus = computed(() => {
                 <p class="text-xs text-slate-400">No issues</p>
               </div>
             </div>
+
+            <!-- Cancelled issues (Done column only) -->
+            <div v-if="col.key === 'done' && cancelledBoardIssues.length > 0" class="mt-2">
+              <button
+                class="flex items-center gap-1.5 w-full px-1 py-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                @click="showCancelled = !showCancelled"
+              >
+                <ChevronDownIcon
+                  class="size-3.5 transition-transform"
+                  :class="showCancelled ? 'rotate-0' : '-rotate-90'"
+                />
+                <XCircleIcon class="size-3.5" />
+                <span>Cancelled · {{ cancelledBoardIssues.length }}</span>
+              </button>
+              <div v-if="showCancelled" class="space-y-2 mt-1">
+                <div
+                  v-for="issue in cancelledBoardIssues"
+                  :key="issue.id"
+                  class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 opacity-60 border-l-4 border-l-slate-200"
+                >
+                  <div class="flex items-center gap-1.5 mb-1">
+                    <RouterLink
+                      :to="`/projects/${slug}/issues/${issue.number}`"
+                      class="text-[11px] font-mono text-slate-400 hover:text-blue-600 hover:underline"
+                    >
+                      {{ slug.toUpperCase() }}-{{ issue.number }}
+                    </RouterLink>
+                  </div>
+                  <p class="text-sm text-slate-500 leading-snug line-clamp-2 line-through">
+                    {{ issue.title }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
