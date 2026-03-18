@@ -1,0 +1,422 @@
+---
+import Layout from '../../layouts/Layout.astro'
+---
+
+<Layout
+  title="Deployment Config Generator — Hivetrack Docs"
+  description="Generate a ready-to-use Docker Compose, Docker CLI, or Kubernetes deployment config for Hivetrack."
+>
+  <div class="flex-1 max-w-5xl mx-auto w-full px-6 py-10">
+    <div class="mb-8 space-y-1">
+      <h1 class="text-3xl font-semibold text-slate-900 tracking-tight">Deployment config generator</h1>
+      <p class="text-slate-500">Fill in the fields and get a ready-to-use config. All generation happens in your browser.</p>
+    </div>
+
+    <div id="generator" class="space-y-6">
+      <!-- Target tabs -->
+      <div class="flex border-b border-slate-200">
+        {['compose', 'docker', 'kubernetes'].map(t => (
+          <button
+            class="tab-btn px-5 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px"
+            data-target={t}
+          >
+            {t === 'compose' ? 'Docker Compose' : t === 'docker' ? 'Docker CLI' : 'Kubernetes'}
+          </button>
+        ))}
+      </div>
+
+      <!-- Two-column: form + output -->
+      <div class="grid lg:grid-cols-2 gap-6">
+        <!-- Inputs -->
+        <div class="space-y-5">
+          <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wider">Configuration</h2>
+
+          <!-- Shared fields -->
+          <div class="space-y-4">
+            <div class="field">
+              <label for="f-version" class="field-label">Image tag / version</label>
+              <input id="f-version" type="text" value="latest" class="field-input" data-field="version" />
+            </div>
+            <div class="field">
+              <label for="f-port" class="field-label">Port</label>
+              <input id="f-port" type="number" value="8086" class="field-input" data-field="port" />
+            </div>
+            <div class="field">
+              <label for="f-db-url" class="field-label">PostgreSQL URL</label>
+              <input id="f-db-url" type="text" placeholder="postgres://hivetrack:secret@db:5432/hivetrack" class="field-input" data-field="dbUrl" />
+            </div>
+            <div class="field">
+              <label for="f-external-url" class="field-label">External URL</label>
+              <input id="f-external-url" type="text" placeholder="https://hivetrack.example.com" class="field-input" data-field="externalUrl" />
+            </div>
+            <div class="field">
+              <label for="f-oidc-authority" class="field-label">OIDC Issuer URL</label>
+              <input id="f-oidc-authority" type="text" placeholder="https://auth.example.com/realms/my-realm" class="field-input" data-field="oidcAuthority" />
+            </div>
+            <div class="field">
+              <label for="f-oidc-client-id" class="field-label">OIDC Client ID</label>
+              <input id="f-oidc-client-id" type="text" placeholder="hivetrack" class="field-input" data-field="oidcClientId" />
+            </div>
+            <div class="field">
+              <label for="f-oidc-client-secret" class="field-label">OIDC Client Secret <span class="text-slate-400 font-normal">(optional)</span></label>
+              <input id="f-oidc-client-secret" type="text" placeholder="leave blank if using PKCE only" class="field-input" data-field="oidcClientSecret" />
+            </div>
+            <div class="field">
+              <label for="f-admin-email" class="field-label">Initial admin email</label>
+              <input id="f-admin-email" type="email" placeholder="admin@example.com" class="field-input" data-field="adminEmail" />
+            </div>
+            <div class="field">
+              <label for="f-smtp-host" class="field-label">SMTP host <span class="text-slate-400 font-normal">(optional)</span></label>
+              <input id="f-smtp-host" type="text" placeholder="smtp.example.com" class="field-input" data-field="smtpHost" />
+            </div>
+          </div>
+
+          <!-- Kubernetes-only fields -->
+          <div id="k8s-fields" class="space-y-4 hidden">
+            <div class="border-t border-slate-200 pt-4">
+              <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Kubernetes options</p>
+              <div class="space-y-4">
+                <div class="field">
+                  <label for="f-namespace" class="field-label">Namespace</label>
+                  <input id="f-namespace" type="text" value="hivetrack" class="field-input" data-field="namespace" />
+                </div>
+                <div class="field">
+                  <label for="f-replicas" class="field-label">Replicas</label>
+                  <input id="f-replicas" type="number" value="1" min="1" class="field-input" data-field="replicas" />
+                </div>
+                <div class="field">
+                  <label for="f-ingress-host" class="field-label">Ingress hostname <span class="text-slate-400 font-normal">(optional)</span></label>
+                  <input id="f-ingress-host" type="text" placeholder="hivetrack.example.com" class="field-input" data-field="ingressHost" />
+                </div>
+                <div class="field">
+                  <label for="f-storage-class" class="field-label">StorageClass for PVC <span class="text-slate-400 font-normal">(optional)</span></label>
+                  <input id="f-storage-class" type="text" placeholder="standard" class="field-input" data-field="storageClass" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Output -->
+        <div class="flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wider">Output</h2>
+            <div class="flex gap-2">
+              <button
+                id="copy-btn"
+                class="text-xs text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </button>
+              <button
+                id="download-btn"
+                class="text-xs text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                Download
+              </button>
+            </div>
+          </div>
+          <pre id="output" class="flex-1 bg-slate-900 text-slate-100 rounded-lg p-4 text-xs font-mono leading-relaxed overflow-auto min-h-[28rem] whitespace-pre"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .field-label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #475569;
+    margin-bottom: 0.375rem;
+  }
+  .field-input {
+    width: 100%;
+    height: 2rem;
+    padding: 0 0.625rem;
+    font-size: 0.8125rem;
+    color: #1e293b;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.375rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .field-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15);
+  }
+  .field-input::placeholder {
+    color: #94a3b8;
+  }
+  .tab-btn {
+    color: #64748b;
+    border-color: transparent;
+  }
+  .tab-btn.active {
+    color: #1e293b;
+    border-color: #3b82f6;
+  }
+  .tab-btn:hover:not(.active) {
+    color: #334155;
+    background: #f8fafc;
+  }
+</style>
+
+<script>
+  type Target = 'compose' | 'docker' | 'kubernetes'
+
+  interface Fields {
+    version: string
+    port: string
+    dbUrl: string
+    externalUrl: string
+    oidcAuthority: string
+    oidcClientId: string
+    oidcClientSecret: string
+    adminEmail: string
+    smtpHost: string
+    namespace: string
+    replicas: string
+    ingressHost: string
+    storageClass: string
+  }
+
+  let target: Target = 'compose'
+
+  function getFields(): Fields {
+    const get = (id: string) => (document.querySelector<HTMLInputElement>(`[data-field="${id}"]`)?.value ?? '').trim()
+    return {
+      version: get('version') || 'latest',
+      port: get('port') || '8086',
+      dbUrl: get('dbUrl') || 'postgres://hivetrack:secret@db:5432/hivetrack?sslmode=disable',
+      externalUrl: get('externalUrl') || 'https://hivetrack.example.com',
+      oidcAuthority: get('oidcAuthority') || 'https://auth.example.com',
+      oidcClientId: get('oidcClientId') || 'hivetrack',
+      oidcClientSecret: get('oidcClientSecret'),
+      adminEmail: get('adminEmail') || 'admin@example.com',
+      smtpHost: get('smtpHost'),
+      namespace: get('namespace') || 'hivetrack',
+      replicas: get('replicas') || '1',
+      ingressHost: get('ingressHost'),
+      storageClass: get('storageClass'),
+    }
+  }
+
+  function generateCompose(f: Fields): string {
+    const smtp = f.smtpHost ? `\n      HIVETRACK_EMAIL_SMTP_HOST: "${f.smtpHost}"` : ''
+    return `services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hivetrack
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: hivetrack
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hivetrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  hivetrack:
+    image: ghcr.io/the127/hivetrack:${f.version}
+    restart: unless-stopped
+    ports:
+      - "${f.port}:${f.port}"
+    environment:
+      HIVETRACK_SERVER_PORT: "${f.port}"
+      HIVETRACK_SERVER_EXTERNAL_URL: "${f.externalUrl}"
+      HIVETRACK_DATABASE_URL: "${f.dbUrl}"
+      HIVETRACK_OIDC_AUTHORITY: "${f.oidcAuthority}"
+      HIVETRACK_OIDC_CLIENT_ID: "${f.oidcClientId}"
+      HIVETRACK_INITIAL_ADMIN_EMAIL: "${f.adminEmail}"${smtp}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:`
+  }
+
+  function generateDocker(f: Fields): string {
+    const lines: string[] = [
+      `docker run -d \\`,
+      `  --name hivetrack \\`,
+      `  --restart unless-stopped \\`,
+      `  -p ${f.port}:${f.port} \\`,
+      `  -e HIVETRACK_SERVER_PORT="${f.port}" \\`,
+      `  -e HIVETRACK_SERVER_EXTERNAL_URL="${f.externalUrl}" \\`,
+      `  -e HIVETRACK_DATABASE_URL="${f.dbUrl}" \\`,
+      `  -e HIVETRACK_OIDC_AUTHORITY="${f.oidcAuthority}" \\`,
+      `  -e HIVETRACK_OIDC_CLIENT_ID="${f.oidcClientId}" \\`,
+      `  -e HIVETRACK_INITIAL_ADMIN_EMAIL="${f.adminEmail}" \\`,
+    ]
+    if (f.smtpHost) lines.push(`  -e HIVETRACK_EMAIL_SMTP_HOST="${f.smtpHost}" \\`)
+    lines.push(`  ghcr.io/the127/hivetrack:${f.version}`)
+    return lines.join('\n')
+  }
+
+  function generateK8s(f: Fields): string {
+    const ns = f.namespace
+    const smtpEnv = f.smtpHost ? `
+        - name: HIVETRACK_EMAIL_SMTP_HOST
+          value: "${f.smtpHost}"` : ''
+    const ingress = f.ingressHost ? `
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hivetrack
+  namespace: ${ns}
+spec:
+  rules:
+    - host: ${f.ingressHost}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hivetrack
+                port:
+                  number: ${f.port}` : ''
+    const pvcStorageClass = f.storageClass ? `\n  storageClassName: ${f.storageClass}` : ''
+
+    return `apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${ns}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hivetrack-secret
+  namespace: ${ns}
+type: Opaque
+stringData:
+  database-url: "${f.dbUrl}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hivetrack-config
+  namespace: ${ns}
+data:
+  HIVETRACK_SERVER_PORT: "${f.port}"
+  HIVETRACK_SERVER_EXTERNAL_URL: "${f.externalUrl}"
+  HIVETRACK_OIDC_AUTHORITY: "${f.oidcAuthority}"
+  HIVETRACK_OIDC_CLIENT_ID: "${f.oidcClientId}"
+  HIVETRACK_INITIAL_ADMIN_EMAIL: "${f.adminEmail}"${f.smtpHost ? `\n  HIVETRACK_EMAIL_SMTP_HOST: "${f.smtpHost}"` : ''}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hivetrack
+  namespace: ${ns}
+spec:
+  replicas: ${f.replicas}
+  selector:
+    matchLabels:
+      app: hivetrack
+  template:
+    metadata:
+      labels:
+        app: hivetrack
+    spec:
+      containers:
+        - name: hivetrack
+          image: ghcr.io/the127/hivetrack:${f.version}
+          ports:
+            - containerPort: ${f.port}
+          envFrom:
+            - configMapRef:
+                name: hivetrack-config
+          env:
+            - name: HIVETRACK_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: hivetrack-secret
+                  key: database-url${smtpEnv}
+          readinessProbe:
+            httpGet:
+              path: /api/v1/auth/oidc-config
+              port: ${f.port}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hivetrack
+  namespace: ${ns}
+spec:
+  selector:
+    app: hivetrack
+  ports:
+    - port: ${f.port}
+      targetPort: ${f.port}${ingress}`
+  }
+
+  function generate(): string {
+    const f = getFields()
+    if (target === 'compose') return generateCompose(f)
+    if (target === 'docker') return generateDocker(f)
+    return generateK8s(f)
+  }
+
+  function render() {
+    const out = document.getElementById('output')!
+    out.textContent = generate()
+  }
+
+  // Tab switching
+  const tabs = document.querySelectorAll<HTMLButtonElement>('.tab-btn')
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      target = btn.dataset.target as Target
+      tabs.forEach(t => t.classList.remove('active'))
+      btn.classList.add('active')
+      const k8sFields = document.getElementById('k8s-fields')!
+      k8sFields.classList.toggle('hidden', target !== 'kubernetes')
+      render()
+    })
+  })
+  // Activate first tab
+  tabs[0]?.classList.add('active')
+
+  // Live update on input
+  document.querySelectorAll<HTMLInputElement>('.field-input').forEach(input => {
+    input.addEventListener('input', render)
+  })
+
+  // Copy
+  document.getElementById('copy-btn')?.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(generate())
+    const btn = document.getElementById('copy-btn')!
+    const orig = btn.innerHTML
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!`
+    btn.classList.add('text-emerald-600')
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('text-emerald-600') }, 2000)
+  })
+
+  // Download
+  document.getElementById('download-btn')?.addEventListener('click', () => {
+    const ext = target === 'docker' ? 'sh' : 'yml'
+    const name = target === 'kubernetes' ? `hivetrack-k8s.${ext}` : target === 'docker' ? `run-hivetrack.${ext}` : `docker-compose.${ext}`
+    const blob = new Blob([generate()], { type: 'text/plain' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = name
+    a.click()
+    URL.revokeObjectURL(a.href)
+  })
+
+  // Initial render
+  render()
+</script>
