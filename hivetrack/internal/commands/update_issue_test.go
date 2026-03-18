@@ -4,11 +4,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/The127/mediatr"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/the127/hivetrack/internal/commands"
+	"github.com/the127/hivetrack/internal/events"
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories/inmemory"
 	"github.com/the127/hivetrack/internal/testutil"
@@ -190,6 +192,64 @@ func TestHandleUpdateIssue_ParentMustBeSameProject(t *testing.T) {
 	})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, models.ErrBadRequest)
+}
+
+func TestHandleUpdateIssue_TodoToInProgress_AutoAssignsActor(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	issue := newTestIssue(project.GetId(), actor.GetId(), 1)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	m := mediatr.NewMediator()
+	mediatr.RegisterEventHandler(m, events.HandleAutoAssignOnStatusChange)
+
+	ctx := commands.ContextWithMediator(testutil.ContextWithUser(testutil.ContextWithDb(db), actor), m)
+	newStatus := models.IssueStatusInProgress
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID: issue.GetId(),
+		Status:  &newStatus,
+	})
+	require.NoError(t, err)
+
+	updated, err := db.Issues().GetByID(context.Background(), issue.GetId())
+	require.NoError(t, err)
+	assert.Equal(t, []uuid.UUID{actor.GetId()}, updated.GetAssignees())
+}
+
+func TestHandleUpdateIssue_TodoToInProgress_AlreadyAssigned_NoChange(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	issue := newTestIssue(project.GetId(), actor.GetId(), 1)
+	existingAssignee := uuid.New()
+	issue.SetAssignees([]uuid.UUID{existingAssignee})
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	m := mediatr.NewMediator()
+	mediatr.RegisterEventHandler(m, events.HandleAutoAssignOnStatusChange)
+
+	ctx := commands.ContextWithMediator(testutil.ContextWithUser(testutil.ContextWithDb(db), actor), m)
+	newStatus := models.IssueStatusInProgress
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID: issue.GetId(),
+		Status:  &newStatus,
+	})
+	require.NoError(t, err)
+
+	updated, err := db.Issues().GetByID(context.Background(), issue.GetId())
+	require.NoError(t, err)
+	assert.Equal(t, []uuid.UUID{existingAssignee}, updated.GetAssignees())
 }
 
 func TestHandleUpdateIssue_SetOnHold(t *testing.T) {
