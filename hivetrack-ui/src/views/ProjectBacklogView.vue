@@ -373,8 +373,8 @@ function handleCreateSprint() {
     return
   }
   const data = { name: newSprint.value.name.trim() }
-  if (newSprint.value.start_date) data.start_date = newSprint.value.start_date
-  if (newSprint.value.end_date) data.end_date = newSprint.value.end_date
+  if (newSprint.value.start_date) data.start_date = newSprint.value.start_date + 'T00:00:00Z'
+  if (newSprint.value.end_date) data.end_date = newSprint.value.end_date + 'T00:00:00Z'
   if (newSprint.value.goal.trim()) data.goal = newSprint.value.goal.trim()
   submitNewSprint(data)
 }
