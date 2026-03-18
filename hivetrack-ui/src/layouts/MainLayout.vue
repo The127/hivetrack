@@ -35,12 +35,22 @@ import {
 } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
 import { useAuth } from "@/composables/useAuth";
+import { useQuery } from "@tanstack/vue-query";
+import { fetchIssues } from "@/api/issues";
 
 const route = useRoute();
 const { user, signOut } = useAuth();
 
 // True when navigated inside a project (route has a :slug param).
 const projectSlug = computed(() => route.params.slug ?? null);
+
+// Untriaged count for the triage nav badge.
+const { data: triageCountResult } = useQuery({
+  queryKey: computed(() => ["issues", projectSlug.value, { triaged: false, limit: 1 }]),
+  queryFn: () => fetchIssues(projectSlug.value, { triaged: false, limit: 1 }),
+  enabled: computed(() => !!projectSlug.value),
+});
+const triageCount = computed(() => triageCountResult.value?.total ?? 0);
 
 // Display name for the current user. Falls back to email, then "You".
 const userName = computed(
@@ -229,7 +239,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
             title="Triage"
           >
             <InboxIcon class="size-4 flex-shrink-0" />
-            <span v-if="!collapsed">Triage</span>
+            <span v-if="!collapsed" class="flex-1">Triage</span>
+            <span
+              v-if="triageCount > 0"
+              class="flex-shrink-0 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums bg-amber-500 text-white px-1"
+              :title="`${triageCount} untriaged`"
+            >
+              {{ triageCount > 99 ? '99+' : triageCount }}
+            </span>
           </RouterLink>
 
           <RouterLink

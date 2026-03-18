@@ -40,6 +40,7 @@ func Mediator(dc *ioc.DependencyCollection) {
 	mediatr.RegisterHandler(m, commands.HandleCreateLabel)
 	mediatr.RegisterHandler(m, commands.HandleUpdateLabel)
 	mediatr.RegisterHandler(m, commands.HandleDeleteLabel)
+	mediatr.RegisterHandler(m, commands.HandleCreateIssueLink)
 	mediatr.RegisterHandler(m, commands.HandleCreateComment)
 	mediatr.RegisterHandler(m, commands.HandleUpdateComment)
 	mediatr.RegisterHandler(m, commands.HandleDeleteComment)

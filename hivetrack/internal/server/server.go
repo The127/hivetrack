@@ -69,6 +69,7 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 	protected.HandleFunc("/projects/{slug}/issues/{number}/triage", issueH.TriageIssue).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/refine", issueH.RefineIssue).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/split", issueH.SplitIssue).Methods("POST")
+	protected.HandleFunc("/projects/{slug}/issues/{number}/links", issueH.AddIssueLink).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/checklist", issueH.AddChecklistItem).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/checklist/{item_id}", issueH.UpdateChecklistItem).Methods("PATCH")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/checklist/{item_id}", issueH.RemoveChecklistItem).Methods("DELETE")

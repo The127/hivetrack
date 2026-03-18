@@ -547,6 +547,62 @@ func (h *IssueHandler) SplitIssue(w http.ResponseWriter, r *http.Request) {
 	RespondJSON(w, http.StatusCreated, result)
 }
 
+func (h *IssueHandler) AddIssueLink(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	slug := vars["slug"]
+	number, err := strconv.Atoi(vars["number"])
+	if err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	sourceIssue, err := mediatr.Send[*queries.IssueDetail](r.Context(), h.mediator, queries.GetIssueQuery{
+		ProjectSlug: slug,
+		Number:      number,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	if sourceIssue == nil {
+		RespondError(w, models.ErrNotFound)
+		return
+	}
+
+	var body struct {
+		LinkType     models.LinkType `json:"link_type"`
+		TargetNumber int             `json:"target_number"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	targetIssue, err := mediatr.Send[*queries.IssueDetail](r.Context(), h.mediator, queries.GetIssueQuery{
+		ProjectSlug: slug,
+		Number:      body.TargetNumber,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	if targetIssue == nil {
+		RespondError(w, models.ErrNotFound)
+		return
+	}
+
+	_, err = mediatr.Send[*commands.CreateIssueLinkResult](r.Context(), h.mediator, commands.CreateIssueLinkCommand{
+		SourceIssueID: sourceIssue.ID,
+		TargetIssueID: targetIssue.ID,
+		LinkType:      body.LinkType,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	RespondJSON(w, http.StatusNoContent, nil)
+}
+
 func (h *IssueHandler) GetMyIssues(w http.ResponseWriter, r *http.Request) {
 	result, err := mediatr.Send[*queries.GetMyIssuesResult](r.Context(), h.mediator, queries.GetMyIssuesQuery{})
 	if err != nil {

@@ -49,6 +49,12 @@ export const refineIssue = (slug, number) =>
 
 export const fetchMyIssues = () => apiFetch('/api/v1/me/issues')
 
+export const createIssueLink = (slug, number, data) =>
+  apiFetch(`/api/v1/projects/${slug}/issues/${number}/links`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+
 export const splitIssue = (slug, number, titles) =>
   apiFetch(`/api/v1/projects/${slug}/issues/${number}/split`, {
     method: 'POST',
