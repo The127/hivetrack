@@ -469,24 +469,26 @@ const defaultCreateStatus = computed(() => {
                     {{ issue.title }}
                   </p>
 
-                  <!-- Epic badge -->
-                  <div v-if="issue.parent_id && epicMap[issue.parent_id]" class="flex items-center gap-1 mb-2">
+                  <!-- Epic + priority row -->
+                  <div class="flex items-center gap-1.5 mb-2">
                     <RouterLink
+                      v-if="issue.parent_id && epicMap[issue.parent_id]"
                       :to="`/projects/${slug}/issues/${epicMap[issue.parent_id].number}`"
-                      class="inline-flex items-center gap-1 text-[11px] font-medium text-violet-600 bg-violet-50 hover:bg-violet-100 px-1.5 py-0.5 rounded truncate max-w-full transition-colors"
+                      class="inline-flex items-center gap-1 text-[11px] font-medium text-violet-600 bg-violet-50 hover:bg-violet-100 px-1.5 py-0.5 rounded min-w-0 max-w-[10rem] transition-colors"
                       @click.stop
                     >
                       <LayersIcon class="size-3 flex-shrink-0" />
                       <span class="truncate">{{ epicMap[issue.parent_id].title }}</span>
                     </RouterLink>
-                  </div>
-
-                  <!-- Footer: priority + estimate + assignees -->
-                  <div class="flex items-center gap-1.5">
+                    <span class="flex-1" />
                     <PrioritySelect
                       :priority="issue.priority ?? 'none'"
                       @update:priority="reorderIssue({ issueNumber: issue.number, data: { priority: $event } })"
                     />
+                  </div>
+
+                  <!-- Footer: estimate + assignees -->
+                  <div class="flex items-center gap-1.5">
                     <span
                       v-if="estimateLabel(issue.estimate)"
                       class="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded"
