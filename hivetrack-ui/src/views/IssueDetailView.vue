@@ -410,6 +410,17 @@ const { mutate: updateMilestone } = useMutation({
               </div>
             </div>
 
+            <!-- Epic (tasks only) -->
+            <div v-if="issue.type === 'task'" class="space-y-1">
+              <div class="max-w-xs">
+                <EpicSelector
+                  :project-slug="slug"
+                  :model-value="issue.parent_id"
+                  @update:model-value="updateParent"
+                />
+              </div>
+            </div>
+
             <!-- On hold -->
             <div v-if="issue.on_hold" class="space-y-1">
               <span class="text-xs font-medium text-slate-500">On Hold</span>
@@ -462,15 +473,6 @@ const { mutate: updateMilestone } = useMutation({
               </button>
               <span class="text-xs text-slate-400 ml-1">Ctrl+Enter to save · Esc to cancel</span>
             </div>
-          </div>
-
-          <!-- Epic selector (for tasks) -->
-          <div v-if="issue.type === 'task'" class="max-w-xs">
-            <EpicSelector
-              :project-slug="slug"
-              :model-value="issue.parent_id"
-              @update:model-value="updateParent"
-            />
           </div>
 
           <!-- Child tasks (for epics) -->
