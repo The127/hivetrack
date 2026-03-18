@@ -57,17 +57,8 @@ linters:
             - pkg: "github.com/lib/pq"
               desc: "handlers must not import the postgres driver"
 
-formatters:
-  enable:
-    - goimports
-
-  settings:
-    goimports:
-      local-prefixes:
-        - github.com/the127/hivetrack
-
-exclusions:
-  rules:
+  exclusions:
+    rules:
       # Allow unused parameters in test files (common in table-driven tests)
       - path: "_test.go"
         linters:
@@ -82,3 +73,12 @@ exclusions:
         linters:
           - exhaustive
           - unparam
+
+formatters:
+  enable:
+    - goimports
+
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/the127/hivetrack
