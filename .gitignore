@@ -17,6 +17,7 @@ hivetrack/web/dist/*
 !hivetrack/web/dist/.gitkeep
 hivetrack-web/node_modules/
 hivetrack-web/dist/
+hivetrack-web/.astro/
 
 # Config overrides (never commit secrets)
 hivetrack/config.local.yaml
