@@ -359,8 +359,8 @@ const { mutate: updateMilestone } = useMutation({
               </div>
             </div>
 
-            <!-- Assignees -->
-            <div class="space-y-1">
+            <!-- Assignees (tasks only) -->
+            <div v-if="issue.type !== 'epic'" class="space-y-1">
               <div class="max-w-xs">
                 <AssigneeSelect
                   :project-slug="slug"
