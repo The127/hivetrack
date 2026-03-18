@@ -2,11 +2,246 @@
 import Layout from '../layouts/Layout.astro'
 ---
 
-<Layout title="Hivetrack — Lean task tracking for high-performing teams">
-  <main class="flex-1 flex items-center justify-center px-6 py-24">
-    <div class="text-center space-y-4">
-      <h1 class="text-4xl font-semibold text-slate-900">Hivetrack</h1>
-      <p class="text-lg text-slate-500">Coming soon.</p>
+<Layout
+  title="Hivetrack — Lean task tracking for high-performing teams"
+  description="Self-hosted, open source task tracker. A Jira alternative for teams who value speed over process."
+>
+  <!-- Nav -->
+  <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-6 h-14 flex items-center gap-6">
+      <a href="/" class="flex items-center gap-2 mr-auto">
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="7" fill="#1e293b"/>
+          <path d="M8 10h16M8 16h10M8 22h13" stroke="#f1f5f9" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        <span class="font-semibold text-slate-900 tracking-tight">Hivetrack</span>
+      </a>
+      <nav class="hidden sm:flex items-center gap-5 text-sm text-slate-500">
+        <a href="/docs/getting-started" class="hover:text-slate-900 transition-colors">Docs</a>
+        <a href="https://github.com/The127/hivetrack" target="_blank" rel="noopener" class="hover:text-slate-900 transition-colors flex items-center gap-1.5">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+          GitHub
+        </a>
+      </nav>
+      <a href="/docs/getting-started" class="text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-md transition-colors">
+        Get started
+      </a>
     </div>
+  </header>
+
+  <main class="flex-1">
+    <!-- Hero -->
+    <section class="bg-white pt-20 pb-16 px-6 border-b border-slate-100">
+      <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+        <!-- Copy -->
+        <div class="space-y-6">
+          <div class="inline-flex items-center gap-2 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full">
+            <span class="size-1.5 rounded-full bg-blue-500"></span>
+            Open source · Self-hosted · AGPLv3
+          </div>
+          <h1 class="text-4xl sm:text-5xl font-semibold text-slate-900 leading-[1.15] tracking-tight">
+            The lean task tracker for high-performing teams
+          </h1>
+          <p class="text-lg text-slate-500 leading-relaxed max-w-lg">
+            Self-hosted, open source, and opinionated. Built as a Jira alternative for teams who value speed over process.
+          </p>
+          <div class="flex flex-wrap gap-3 pt-2">
+            <a
+              href="/docs/getting-started"
+              class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-md transition-colors text-sm"
+            >
+              Get started
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+            <a
+              href="https://github.com/The127/hivetrack"
+              target="_blank"
+              rel="noopener"
+              class="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-medium px-5 py-2.5 rounded-md border border-slate-200 transition-colors text-sm"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+              View on GitHub
+            </a>
+          </div>
+        </div>
+
+        <!-- Kanban board mockup -->
+        <div class="relative">
+          <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 shadow-sm overflow-hidden">
+            <!-- Board header -->
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono font-medium text-slate-400">HT</span>
+                <span class="text-sm font-semibold text-slate-700">Sprint 4 · Public Website</span>
+              </div>
+              <div class="flex gap-1">
+                <span class="size-2 rounded-full bg-slate-300"></span>
+                <span class="size-2 rounded-full bg-slate-300"></span>
+                <span class="size-2 rounded-full bg-slate-300"></span>
+              </div>
+            </div>
+
+            <!-- Columns -->
+            <div class="grid grid-cols-3 gap-3">
+              <!-- Todo -->
+              <div class="space-y-2">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="size-2 rounded-full bg-slate-300"></span>
+                  <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Todo</span>
+                  <span class="ml-auto text-xs text-slate-400">2</span>
+                </div>
+                <div class="bg-white rounded-lg border border-slate-200 p-2.5 space-y-1.5 hover:border-slate-300 transition-colors">
+                  <div class="text-[11px] font-mono text-slate-400">HT-86</div>
+                  <div class="text-xs font-medium text-slate-700 leading-snug">Navigation and footer</div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">XS</span>
+                    <span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-100 px-1.5 py-0.5 rounded font-medium">medium</span>
+                  </div>
+                </div>
+                <div class="bg-white rounded-lg border border-slate-200 p-2.5 space-y-1.5 hover:border-slate-300 transition-colors">
+                  <div class="text-[11px] font-mono text-slate-400">HT-87</div>
+                  <div class="text-xs font-medium text-slate-700 leading-snug">Getting started guide</div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">M</span>
+                    <span class="text-[10px] bg-red-50 text-red-700 border border-red-100 px-1.5 py-0.5 rounded font-medium">high</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- In Progress -->
+              <div class="space-y-2">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="size-2 rounded-full bg-blue-400"></span>
+                  <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">In progress</span>
+                  <span class="ml-auto text-xs text-slate-400">1</span>
+                </div>
+                <div class="bg-white rounded-lg border border-blue-200 p-2.5 space-y-1.5 shadow-sm">
+                  <div class="text-[11px] font-mono text-slate-400">HT-85</div>
+                  <div class="text-xs font-medium text-slate-700 leading-snug">Landing page hero + features</div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">M</span>
+                    <span class="text-[10px] bg-red-50 text-red-700 border border-red-100 px-1.5 py-0.5 rounded font-medium">high</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <div class="size-4 rounded-full bg-blue-500 flex items-center justify-center text-[8px] text-white font-bold">K</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Done -->
+              <div class="space-y-2">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="size-2 rounded-full bg-emerald-400"></span>
+                  <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Done</span>
+                  <span class="ml-auto text-xs text-slate-400">3</span>
+                </div>
+                <div class="bg-white rounded-lg border border-slate-200 p-2.5 space-y-1.5 opacity-75">
+                  <div class="text-[11px] font-mono text-slate-400">HT-84</div>
+                  <div class="text-xs font-medium text-slate-500 line-through leading-snug">Website scaffold</div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded font-medium">S</span>
+                  </div>
+                </div>
+                <div class="bg-white rounded-lg border border-slate-200 p-2.5 space-y-1.5 opacity-75">
+                  <div class="text-[11px] font-mono text-slate-400">HT-63</div>
+                  <div class="text-xs font-medium text-slate-500 line-through leading-snug">Branch protection on main</div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded font-medium">XS</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subtle glow behind the mockup -->
+          <div class="absolute -inset-4 bg-blue-50 rounded-2xl -z-10 opacity-60"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Feature highlights -->
+    <section class="bg-slate-50 py-20 px-6 border-b border-slate-100">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-12 space-y-2">
+          <h2 class="text-2xl font-semibold text-slate-900 tracking-tight">Built on strong opinions</h2>
+          <p class="text-slate-500">Fewer features. Zero management bloat. Faster teams.</p>
+        </div>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Card 1 -->
+          <div class="bg-white rounded-xl border border-slate-200 p-6 space-y-3 hover:border-slate-300 hover:shadow-sm transition-all">
+            <div class="size-9 rounded-lg bg-slate-100 flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <h3 class="font-semibold text-slate-900 text-sm">Zero management bloat</h3>
+            <p class="text-sm text-slate-500 leading-relaxed">Fixed workflows. No configuration maze. Two status sets cover 95% of real work.</p>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="bg-white rounded-xl border border-slate-200 p-6 space-y-3 hover:border-slate-300 hover:shadow-sm transition-all">
+            <div class="size-9 rounded-lg bg-slate-100 flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            </div>
+            <h3 class="font-semibold text-slate-900 text-sm">Self-hosted</h3>
+            <p class="text-sm text-slate-500 leading-relaxed">One binary. Your data, your infra. Docker image under 50MB.</p>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="bg-white rounded-xl border border-slate-200 p-6 space-y-3 hover:border-slate-300 hover:shadow-sm transition-all">
+            <div class="size-9 rounded-lg bg-slate-100 flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            </div>
+            <h3 class="font-semibold text-slate-900 text-sm">OIDC everywhere</h3>
+            <p class="text-sm text-slate-500 leading-relaxed">Service accounts for CI and bots via client credentials. No custom API keys to manage.</p>
+          </div>
+
+          <!-- Card 4 -->
+          <div class="bg-white rounded-xl border border-slate-200 p-6 space-y-3 hover:border-slate-300 hover:shadow-sm transition-all">
+            <div class="size-9 rounded-lg bg-slate-100 flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </div>
+            <h3 class="font-semibold text-slate-900 text-sm">Sprint + backlog + milestones</h3>
+            <p class="text-sm text-slate-500 leading-relaxed">Time-boxed sprints, milestone tracking, and a clean backlog. Everything a software team needs.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA strip -->
+    <section class="bg-slate-900 py-16 px-6">
+      <div class="max-w-2xl mx-auto text-center space-y-5">
+        <h2 class="text-2xl font-semibold text-white tracking-tight">Ready to ditch the bloat?</h2>
+        <p class="text-slate-400">Deploy in minutes. One Docker image, one database, one config file.</p>
+        <div class="flex flex-wrap justify-center gap-3">
+          <a
+            href="/docs/getting-started"
+            class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium px-5 py-2.5 rounded-md transition-colors text-sm"
+          >
+            Get started
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          <a
+            href="https://github.com/The127/hivetrack"
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-medium px-5 py-2.5 rounded-md transition-colors text-sm border border-white/10"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+            Star on GitHub
+          </a>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-6 px-6">
+    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-400">
+      <span>Hivetrack · Self-hosted. Open source. AGPLv3</span>
+      <div class="flex items-center gap-4">
+        <a href="https://github.com/The127/hivetrack" target="_blank" rel="noopener" class="hover:text-slate-700 transition-colors">GitHub</a>
+        <a href="https://github.com/The127/hivetrack/blob/main/LICENSE" target="_blank" rel="noopener" class="hover:text-slate-700 transition-colors">License</a>
+        <a href="/docs/getting-started" class="hover:text-slate-700 transition-colors">Docs</a>
+      </div>
+    </div>
+  </footer>
 </Layout>
