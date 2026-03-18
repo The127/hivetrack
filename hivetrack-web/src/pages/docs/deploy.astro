@@ -15,12 +15,17 @@ import Layout from '../../layouts/Layout.astro'
     <div id="generator" class="space-y-6">
       <!-- Target tabs -->
       <div class="flex border-b border-slate-200">
-        {['compose', 'docker', 'kubernetes'].map(t => (
+        {[
+          ['compose', 'Docker Compose'],
+          ['docker', 'Docker CLI'],
+          ['kubernetes', 'Kubernetes'],
+          ['keyline', 'Compose + Keyline'],
+        ].map(([t, label]) => (
           <button
             class="tab-btn px-5 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px"
             data-target={t}
           >
-            {t === 'compose' ? 'Docker Compose' : t === 'docker' ? 'Docker CLI' : 'Kubernetes'}
+            {label}
           </button>
         ))}
       </div>
@@ -95,10 +100,47 @@ import Layout from '../../layouts/Layout.astro'
               </div>
             </div>
           </div>
+
+          <!-- Keyline-only fields -->
+          <div id="keyline-fields" class="space-y-4 hidden">
+            <div class="border-t border-slate-200 pt-4">
+              <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Keyline OIDC provider</p>
+              <div class="space-y-4">
+                <div class="field">
+                  <label for="f-keyline-api-version" class="field-label">Keyline API image tag</label>
+                  <input id="f-keyline-api-version" type="text" value="latest" class="field-input keyline-input" data-field="keylineApiVersion" />
+                </div>
+                <div class="field">
+                  <label for="f-keyline-ui-version" class="field-label">Keyline UI image tag</label>
+                  <input id="f-keyline-ui-version" type="text" value="latest" class="field-input keyline-input" data-field="keylineUiVersion" />
+                </div>
+                <div class="field">
+                  <label for="f-keyline-api-port" class="field-label">Keyline API port</label>
+                  <input id="f-keyline-api-port" type="number" value="8081" class="field-input keyline-input" data-field="keylineApiPort" />
+                </div>
+                <div class="field">
+                  <label for="f-keyline-ui-port" class="field-label">Keyline UI port</label>
+                  <input id="f-keyline-ui-port" type="number" value="5177" class="field-input keyline-input" data-field="keylineUiPort" />
+                </div>
+                <div class="field">
+                  <label for="f-keyline-external-url" class="field-label">Keyline external URL</label>
+                  <input id="f-keyline-external-url" type="text" value="http://localhost:8081" class="field-input keyline-input" data-field="keylineExternalUrl" />
+                </div>
+                <div class="field">
+                  <label for="f-keyline-admin-email" class="field-label">Keyline admin email</label>
+                  <input id="f-keyline-admin-email" type="email" value="admin@hivetrack.local" class="field-input keyline-input" data-field="keylineAdminEmail" />
+                </div>
+                <div class="field">
+                  <label for="f-keyline-virtual-server" class="field-label">Virtual server slug</label>
+                  <input id="f-keyline-virtual-server" type="text" value="hivetrack" class="field-input keyline-input" data-field="keylineVirtualServer" />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Output -->
-        <div class="flex flex-col">
+        <!-- Output: single panel (compose / docker / k8s) -->
+        <div id="output-single" class="flex flex-col">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wider">Output</h2>
             <div class="flex gap-2">
@@ -119,6 +161,54 @@ import Layout from '../../layouts/Layout.astro'
             </div>
           </div>
           <pre id="output" class="flex-1 bg-slate-900 text-slate-100 rounded-lg p-4 text-xs font-mono leading-relaxed overflow-auto min-h-[28rem] whitespace-pre"></pre>
+        </div>
+
+        <!-- Output: dual panel (keyline) -->
+        <div id="output-keyline" class="hidden flex flex-col gap-4">
+          <div class="flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">docker-compose.yml</span>
+              <div class="flex gap-2">
+                <button
+                  id="copy-compose-btn"
+                  class="text-xs text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy
+                </button>
+                <button
+                  id="download-compose-btn"
+                  class="text-xs text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                  Download
+                </button>
+              </div>
+            </div>
+            <pre id="output-compose" class="bg-slate-900 text-slate-100 rounded-lg p-4 text-xs font-mono leading-relaxed overflow-auto min-h-[14rem] whitespace-pre"></pre>
+          </div>
+          <div class="flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">keyline-config.yaml</span>
+              <div class="flex gap-2">
+                <button
+                  id="copy-keyline-btn"
+                  class="text-xs text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy
+                </button>
+                <button
+                  id="download-keyline-btn"
+                  class="text-xs text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                  Download
+                </button>
+              </div>
+            </div>
+            <pre id="output-keyline-config" class="bg-slate-900 text-slate-100 rounded-lg p-4 text-xs font-mono leading-relaxed overflow-auto min-h-[14rem] whitespace-pre"></pre>
+          </div>
         </div>
       </div>
     </div>
@@ -167,7 +257,7 @@ import Layout from '../../layouts/Layout.astro'
 </style>
 
 <script>
-  type Target = 'compose' | 'docker' | 'kubernetes'
+  type Target = 'compose' | 'docker' | 'kubernetes' | 'keyline'
 
   interface Fields {
     version: string
@@ -183,6 +273,13 @@ import Layout from '../../layouts/Layout.astro'
     replicas: string
     ingressHost: string
     storageClass: string
+    keylineApiVersion: string
+    keylineUiVersion: string
+    keylineApiPort: string
+    keylineUiPort: string
+    keylineExternalUrl: string
+    keylineAdminEmail: string
+    keylineVirtualServer: string
   }
 
   let target: Target = 'compose'
@@ -203,6 +300,23 @@ import Layout from '../../layouts/Layout.astro'
       replicas: get('replicas') || '1',
       ingressHost: get('ingressHost'),
       storageClass: get('storageClass'),
+      keylineApiVersion: get('keylineApiVersion') || 'latest',
+      keylineUiVersion: get('keylineUiVersion') || 'latest',
+      keylineApiPort: get('keylineApiPort') || '8081',
+      keylineUiPort: get('keylineUiPort') || '5177',
+      keylineExternalUrl: get('keylineExternalUrl') || 'http://localhost:8081',
+      keylineAdminEmail: get('keylineAdminEmail') || 'admin@hivetrack.local',
+      keylineVirtualServer: get('keylineVirtualServer') || 'hivetrack',
+    }
+  }
+
+  function keylineUiExternalUrl(f: Fields): string {
+    try {
+      const u = new URL(f.keylineExternalUrl)
+      u.port = f.keylineUiPort
+      return u.toString().replace(/\/$/, '')
+    } catch {
+      return `http://localhost:${f.keylineUiPort}`
     }
   }
 
@@ -242,6 +356,133 @@ import Layout from '../../layouts/Layout.astro'
 
 volumes:
   postgres_data:`
+  }
+
+  function generateKeylineCompose(f: Fields): string {
+    const oidcAuthority = `${f.keylineExternalUrl}/vs/${f.keylineVirtualServer}`
+    const smtp = f.smtpHost ? `\n      HIVETRACK_EMAIL_SMTP_HOST: "${f.smtpHost}"` : ''
+    const uiUrl = keylineUiExternalUrl(f)
+    return `services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hivetrack
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: hivetrack
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hivetrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  hivetrack:
+    image: ghcr.io/the127/hivetrack:${f.version}
+    restart: unless-stopped
+    ports:
+      - "${f.port}:${f.port}"
+    environment:
+      HIVETRACK_SERVER_PORT: "${f.port}"
+      HIVETRACK_SERVER_EXTERNAL_URL: "${f.externalUrl}"
+      HIVETRACK_DATABASE_URL: "postgres://hivetrack:secret@postgres:5432/hivetrack?sslmode=disable"
+      HIVETRACK_OIDC_AUTHORITY: "${oidcAuthority}"
+      HIVETRACK_OIDC_CLIENT_ID: "hivetrack"
+      HIVETRACK_INITIAL_ADMIN_EMAIL: "${f.adminEmail}"${smtp}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keyline-api:
+        condition: service_healthy
+
+  keyline-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: keyline
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: keyline
+    volumes:
+      - keyline_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keyline"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keyline-api:
+    image: ghcr.io/the127/keyline:${f.keylineApiVersion}
+    restart: unless-stopped
+    ports:
+      - "${f.keylineApiPort}:${f.keylineApiPort}"
+    volumes:
+      - ./keyline-config.yaml:/app/config.yaml
+    depends_on:
+      keyline-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${f.keylineApiPort}/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keyline-ui:
+    image: ghcr.io/the127/keyline-ui:${f.keylineUiVersion}
+    restart: unless-stopped
+    ports:
+      - "${f.keylineUiPort}:${f.keylineUiPort}"
+    environment:
+      KEYLINE_API_URL: "${f.keylineExternalUrl}"
+    depends_on:
+      - keyline-api
+
+volumes:
+  postgres_data:
+  keyline_data:`
+  }
+
+  function generateKeylineConfig(f: Fields): string {
+    const uiUrl = keylineUiExternalUrl(f)
+    const hivetrackUrl = f.externalUrl || 'https://hivetrack.example.com'
+    return `server:
+  host: 0.0.0.0
+  port: ${f.keylineApiPort}
+  externalUrl: ${f.keylineExternalUrl}
+  allowedOrigins:
+    - ${uiUrl}
+    - ${hivetrackUrl}
+
+frontend:
+  externalUrl: ${uiUrl}
+
+database:
+  url: postgres://keyline:secret@keyline-db:5432/keyline?sslmode=disable
+
+keyStore:
+  # Keyline generates a signing key on first start.
+  # Set this explicitly for multi-replica or persistent key stability.
+  signingKey: ""
+
+cache:
+  type: memory
+
+leaderElection:
+  enabled: false
+
+initialVirtualServer:
+  slug: ${f.keylineVirtualServer}
+  name: Hivetrack
+  admin:
+    email: ${f.keylineAdminEmail}
+    # Default password: hivetrack — change before going public
+    passwordHash: "$2y$12$oOOVAx6u2cZtS0ZqHb4aBurii/qMAAvFxSLmGgzcvbs0SxghjG5dm"
+  application:
+    clientId: hivetrack
+    name: Hivetrack
+    redirectUris:
+      - ${hivetrackUrl}/oidc/callback
+      - ${hivetrackUrl}`
   }
 
   function generateDocker(f: Fields): string {
@@ -363,16 +604,31 @@ spec:
       targetPort: ${f.port}${ingress}`
   }
 
-  function generate(): string {
+  function render() {
     const f = getFields()
-    if (target === 'compose') return generateCompose(f)
-    if (target === 'docker') return generateDocker(f)
-    return generateK8s(f)
+    const singlePanel = document.getElementById('output-single')!
+    const keylinePanel = document.getElementById('output-keyline')!
+
+    if (target === 'keyline') {
+      singlePanel.classList.add('hidden')
+      keylinePanel.classList.remove('hidden')
+      document.getElementById('output-compose')!.textContent = generateKeylineCompose(f)
+      document.getElementById('output-keyline-config')!.textContent = generateKeylineConfig(f)
+    } else {
+      singlePanel.classList.remove('hidden')
+      keylinePanel.classList.add('hidden')
+      const out = document.getElementById('output')!
+      if (target === 'compose') out.textContent = generateCompose(f)
+      else if (target === 'docker') out.textContent = generateDocker(f)
+      else out.textContent = generateK8s(f)
+    }
   }
 
-  function render() {
-    const out = document.getElementById('output')!
-    out.textContent = generate()
+  function syncOidcAuthority() {
+    if (target !== 'keyline') return
+    const f = getFields()
+    const input = document.querySelector<HTMLInputElement>('[data-field="oidcAuthority"]')
+    if (input) input.value = `${f.keylineExternalUrl}/vs/${f.keylineVirtualServer}`
   }
 
   // Tab switching
@@ -382,8 +638,9 @@ spec:
       target = btn.dataset.target as Target
       tabs.forEach(t => t.classList.remove('active'))
       btn.classList.add('active')
-      const k8sFields = document.getElementById('k8s-fields')!
-      k8sFields.classList.toggle('hidden', target !== 'kubernetes')
+      document.getElementById('k8s-fields')!.classList.toggle('hidden', target !== 'kubernetes')
+      document.getElementById('keyline-fields')!.classList.toggle('hidden', target !== 'keyline')
+      if (target === 'keyline') syncOidcAuthority()
       render()
     })
   })
@@ -395,24 +652,69 @@ spec:
     input.addEventListener('input', render)
   })
 
-  // Copy
+  // Sync OIDC authority when keyline fields change
+  document.querySelectorAll<HTMLInputElement>('.keyline-input').forEach(input => {
+    input.addEventListener('input', syncOidcAuthority)
+  })
+
+  // Copy (single)
   document.getElementById('copy-btn')?.addEventListener('click', async () => {
-    await navigator.clipboard.writeText(generate())
     const btn = document.getElementById('copy-btn')!
+    await navigator.clipboard.writeText(document.getElementById('output')!.textContent ?? '')
     const orig = btn.innerHTML
     btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!`
     btn.classList.add('text-emerald-600')
     setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('text-emerald-600') }, 2000)
   })
 
-  // Download
+  // Download (single)
   document.getElementById('download-btn')?.addEventListener('click', () => {
     const ext = target === 'docker' ? 'sh' : 'yml'
     const name = target === 'kubernetes' ? `hivetrack-k8s.${ext}` : target === 'docker' ? `run-hivetrack.${ext}` : `docker-compose.${ext}`
-    const blob = new Blob([generate()], { type: 'text/plain' })
+    const blob = new Blob([document.getElementById('output')!.textContent ?? ''], { type: 'text/plain' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
     a.download = name
+    a.click()
+    URL.revokeObjectURL(a.href)
+  })
+
+  // Copy compose (keyline)
+  document.getElementById('copy-compose-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('copy-compose-btn')!
+    await navigator.clipboard.writeText(document.getElementById('output-compose')!.textContent ?? '')
+    const orig = btn.innerHTML
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!`
+    btn.classList.add('text-emerald-600')
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('text-emerald-600') }, 2000)
+  })
+
+  // Download compose (keyline)
+  document.getElementById('download-compose-btn')?.addEventListener('click', () => {
+    const blob = new Blob([document.getElementById('output-compose')!.textContent ?? ''], { type: 'text/plain' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = 'docker-compose.yml'
+    a.click()
+    URL.revokeObjectURL(a.href)
+  })
+
+  // Copy keyline config
+  document.getElementById('copy-keyline-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('copy-keyline-btn')!
+    await navigator.clipboard.writeText(document.getElementById('output-keyline-config')!.textContent ?? '')
+    const orig = btn.innerHTML
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!`
+    btn.classList.add('text-emerald-600')
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('text-emerald-600') }, 2000)
+  })
+
+  // Download keyline config
+  document.getElementById('download-keyline-btn')?.addEventListener('click', () => {
+    const blob = new Blob([document.getElementById('output-keyline-config')!.textContent ?? ''], { type: 'text/plain' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = 'keyline-config.yaml'
     a.click()
     URL.revokeObjectURL(a.href)
   })
