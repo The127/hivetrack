@@ -12,6 +12,7 @@ import (
 
 	"github.com/the127/hivetrack/internal/change"
 	"github.com/the127/hivetrack/internal/models"
+	"github.com/the127/hivetrack/internal/repositories"
 )
 
 type MilestoneRepository struct {
@@ -126,6 +127,31 @@ func (r *MilestoneRepository) GetByID(ctx context.Context, id uuid.UUID) (*model
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
 		`SELECT id, project_id, title, description, target_date, closed_at, created_at, version FROM milestones WHERE id=$1`, id)
 	return scanMilestone(row)
+}
+
+func (r *MilestoneRepository) CountByMilestone(ctx context.Context, projectID uuid.UUID) (map[uuid.UUID]repositories.MilestoneProgress, error) {
+	rows, err := r.ctx.queryContext(ctx).QueryContext(ctx,
+		`SELECT milestone_id, COUNT(*) AS total,
+		        COUNT(*) FILTER (WHERE status IN ('done','cancelled','closed','resolved')) AS closed
+		 FROM issues
+		 WHERE project_id = $1 AND milestone_id IS NOT NULL
+		 GROUP BY milestone_id`,
+		projectID)
+	if err != nil {
+		return nil, fmt.Errorf("counting issues by milestone: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := make(map[uuid.UUID]repositories.MilestoneProgress)
+	for rows.Next() {
+		var milestoneID uuid.UUID
+		var p repositories.MilestoneProgress
+		if err := rows.Scan(&milestoneID, &p.IssueCount, &p.ClosedIssueCount); err != nil {
+			return nil, fmt.Errorf("scanning milestone count: %w", err)
+		}
+		result[milestoneID] = p
+	}
+	return result, rows.Err()
 }
 
 func (r *MilestoneRepository) List(ctx context.Context, projectID uuid.UUID) ([]*models.Milestone, error) {

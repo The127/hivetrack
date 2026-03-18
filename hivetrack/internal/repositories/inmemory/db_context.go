@@ -25,13 +25,14 @@ type DbContext struct {
 
 func NewDbContext() *DbContext {
 	tracker := change.NewTracker()
+	issueRepo := NewIssueRepository(tracker)
 	return &DbContext{
 		changeTracker: tracker,
 		users:         NewUserRepository(),
 		projects:      NewProjectRepository(tracker),
-		issues:        NewIssueRepository(tracker),
+		issues:        issueRepo,
 		sprints:       NewSprintRepository(tracker),
-		milestones:    NewMilestoneRepository(tracker),
+		milestones:    NewMilestoneRepository(tracker, issueRepo),
 		labels:        NewLabelRepository(tracker),
 		comments:      NewCommentRepository(tracker),
 		outbox:        NewOutboxRepository(),

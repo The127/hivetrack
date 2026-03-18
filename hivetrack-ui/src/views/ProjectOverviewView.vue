@@ -14,6 +14,7 @@ import {
   ListIcon,
   InboxIcon,
   LayersIcon,
+  FlagIcon,
   CodeIcon,
   HeadphonesIcon,
   CalendarIcon,
@@ -166,7 +167,7 @@ function formatDateRange(start, end) {
       </div>
 
       <!-- ── Quick navigation ────────────────────────────────────────────────── -->
-      <div class="grid grid-cols-3 gap-3">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <RouterLink
           :to="`/projects/${slug}/board`"
           class="flex items-center gap-2.5 rounded-lg border border-slate-200 px-4 py-3 hover:bg-slate-50 hover:border-slate-300 transition-colors group"
@@ -187,6 +188,13 @@ function formatDateRange(start, end) {
         >
           <LayersIcon class="size-4 text-slate-500 group-hover:text-slate-700 flex-shrink-0" />
           <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">Epics</span>
+        </RouterLink>
+        <RouterLink
+          :to="`/projects/${slug}/milestones`"
+          class="flex items-center gap-2.5 rounded-lg border border-slate-200 px-4 py-3 hover:bg-slate-50 hover:border-slate-300 transition-colors group"
+        >
+          <FlagIcon class="size-4 text-slate-500 group-hover:text-slate-700 flex-shrink-0" />
+          <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">Milestones</span>
         </RouterLink>
       </div>
 

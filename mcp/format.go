@@ -304,6 +304,45 @@ func formatCreateLabel(data json.RawMessage, name, color string) string {
 	return fmt.Sprintf("Created label %q (%s, id: %s)", name, color, resp.ID)
 }
 
+// formatListMilestones formats a list_milestones response.
+func formatListMilestones(data json.RawMessage) string {
+	var resp struct {
+		Milestones []struct {
+			ID               string  `json:"id"`
+			Title            string  `json:"title"`
+			TargetDate       *string `json:"target_date"`
+			ClosedAt         *string `json:"closed_at"`
+			IssueCount       int     `json:"issue_count"`
+			ClosedIssueCount int     `json:"closed_issue_count"`
+		} `json:"milestones"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return string(data)
+	}
+
+	if len(resp.Milestones) == 0 {
+		return "No milestones found."
+	}
+
+	var sb strings.Builder
+	for _, m := range resp.Milestones {
+		status := "open"
+		if m.ClosedAt != nil {
+			status = "closed"
+		}
+
+		progress := fmt.Sprintf("%d/%d issues done", m.ClosedIssueCount, m.IssueCount)
+
+		target := ""
+		if m.TargetDate != nil {
+			target = fmt.Sprintf(", target: %s", (*m.TargetDate)[:10])
+		}
+
+		sb.WriteString(fmt.Sprintf("• %s [%s%s] — %s\n  id: %s\n", m.Title, status, target, progress, m.ID))
+	}
+	return sb.String()
+}
+
 // formatGetIssue formats a get_issue response with full details.
 func formatGetIssue(data json.RawMessage) string {
 	var issue struct {

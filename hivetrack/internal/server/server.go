@@ -90,7 +90,10 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 
 	// Milestones
 	milestoneH := handlers.NewMilestoneHandler(med)
-	protected.HandleFunc("/projects/{project_id}/milestones", milestoneH.ListMilestones).Methods("GET")
+	protected.HandleFunc("/projects/{slug}/milestones", milestoneH.ListMilestones).Methods("GET")
+	protected.HandleFunc("/projects/{slug}/milestones", milestoneH.CreateMilestone).Methods("POST")
+	protected.HandleFunc("/projects/{slug}/milestones/{id}", milestoneH.UpdateMilestone).Methods("PATCH")
+	protected.HandleFunc("/projects/{slug}/milestones/{id}", milestoneH.DeleteMilestone).Methods("DELETE")
 
 	// Labels
 	labelH := handlers.NewLabelHandler(med)
