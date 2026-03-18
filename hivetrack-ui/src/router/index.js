@@ -18,6 +18,11 @@ const router = createRouter({
       meta: { requiresAuth: true, layout: 'main' },
     },
     {
+      path: '/projects/:slug/overview',
+      component: () => import('@/views/ProjectOverviewView.vue'),
+      meta: { requiresAuth: true, layout: 'main' },
+    },
+    {
       path: '/projects/:slug/board',
       component: () => import('@/views/ProjectBoardView.vue'),
       meta: { requiresAuth: true, layout: 'main' },
