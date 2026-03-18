@@ -5,27 +5,36 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
 )
 
 type GetLabelsQuery struct {
-	ProjectID uuid.UUID
+	ProjectSlug string
 }
 
 type LabelSummary struct {
-	ID    uuid.UUID
-	Name  string
-	Color string
+	ID    uuid.UUID `json:"id"`
+	Name  string    `json:"name"`
+	Color string    `json:"color"`
 }
 
 type GetLabelsResult struct {
-	Labels []LabelSummary
+	Labels []LabelSummary `json:"labels"`
 }
 
 func HandleGetLabels(ctx context.Context, q GetLabelsQuery) (*GetLabelsResult, error) {
 	db := repositories.GetDbContext(ctx)
 
-	labels, err := db.Labels().List(ctx, q.ProjectID)
+	project, err := db.Projects().GetBySlug(ctx, q.ProjectSlug)
+	if err != nil {
+		return nil, fmt.Errorf("getting project: %w", err)
+	}
+	if project == nil {
+		return nil, fmt.Errorf("project %q: %w", q.ProjectSlug, models.ErrNotFound)
+	}
+
+	labels, err := db.Labels().List(ctx, project.GetId())
 	if err != nil {
 		return nil, fmt.Errorf("listing labels: %w", err)
 	}

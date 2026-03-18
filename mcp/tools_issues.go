@@ -48,6 +48,7 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("milestone_id", mcp.Description("Milestone ID (UUID)")),
 		mcp.WithString("parent_id", mcp.Description("Parent epic ID (UUID) — only for tasks")),
 		mcp.WithString("assignee_ids", mcp.Description("Comma-separated user IDs (UUIDs) to assign")),
+		mcp.WithString("label_ids", mcp.Description("Comma-separated label IDs (UUIDs) to attach")),
 	), makeCreateIssue(client))
 
 	s.AddTool(mcp.NewTool("update_issue",
@@ -63,6 +64,7 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("milestone_id", mcp.Description("Milestone ID (UUID)")),
 		mcp.WithString("parent_id", mcp.Description("Parent epic ID (UUID), or 'null' to remove parent")),
 		mcp.WithString("assignee_ids", mcp.Description("Comma-separated user IDs (UUIDs) to assign, or 'null' to clear all assignees")),
+		mcp.WithString("label_ids", mcp.Description("Comma-separated label IDs (UUIDs), or 'null' to clear all labels")),
 	), makeUpdateIssue(client))
 
 	s.AddTool(mcp.NewTool("add_checklist_item",
@@ -173,6 +175,11 @@ func makeCreateIssue(client *Client) server.ToolHandlerFunc {
 		} else if ids != nil {
 			body["assignee_ids"] = ids
 		}
+		if ids, err := parseUUIDList(args, "label_ids"); err != nil {
+			return errResult(fmt.Errorf("invalid label_ids: %w", err)), nil
+		} else if ids != nil {
+			body["label_ids"] = ids
+		}
 
 		data, err := client.post("/api/v1/projects/"+slug+"/issues", body)
 		if err != nil {
@@ -246,6 +253,21 @@ func makeUpdateIssue(client *Client) server.ToolHandlerFunc {
 				}
 				if ids != nil {
 					body["assignee_ids"] = ids
+				}
+			}
+		}
+
+		// label_ids: comma-separated UUIDs, or "null" to clear
+		if v, ok := args["label_ids"].(string); ok {
+			if v == "null" {
+				body["label_ids"] = []string{}
+			} else if v != "" {
+				ids, err := parseUUIDList(args, "label_ids")
+				if err != nil {
+					return errResult(fmt.Errorf("invalid label_ids: %w", err)), nil
+				}
+				if ids != nil {
+					body["label_ids"] = ids
 				}
 			}
 		}

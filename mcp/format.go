@@ -70,6 +70,13 @@ func formatUpdateIssue(number int, args map[string]any) string {
 			changes = append(changes, "assignees updated")
 		}
 	}
+	if v, ok := args["label_ids"].(string); ok {
+		if v == "null" {
+			changes = append(changes, "labels cleared")
+		} else if v != "" {
+			changes = append(changes, "labels updated")
+		}
+	}
 	return fmt.Sprintf("Updated #%d: %s", number, strings.Join(changes, ", "))
 }
 
@@ -113,8 +120,10 @@ func formatListIssues(data json.RawMessage) string {
 			Triaged   bool     `json:"triaged"`
 			ParentID  *string  `json:"parent_id"`
 			SprintID  *string  `json:"sprint_id"`
-			OnHold    bool     `json:"on_hold"`
-			Labels    []string `json:"labels"`
+			OnHold bool `json:"on_hold"`
+			Labels []struct {
+				Name string `json:"name"`
+			} `json:"labels"`
 			Assignees []struct {
 				DisplayName string `json:"display_name"`
 			} `json:"assignees"`
@@ -160,7 +169,16 @@ func formatListIssues(data json.RawMessage) string {
 			assigneeStr = " → " + strings.Join(names, ", ")
 		}
 
-		sb.WriteString(fmt.Sprintf("%s#%-4d %-50s (%s)%s\n", marker, item.Number, item.Title, strings.Join(meta, ", "), assigneeStr))
+		labelStr := ""
+		if len(item.Labels) > 0 {
+			var labelNames []string
+			for _, l := range item.Labels {
+				labelNames = append(labelNames, l.Name)
+			}
+			labelStr = " [" + strings.Join(labelNames, ", ") + "]"
+		}
+
+		sb.WriteString(fmt.Sprintf("%s#%-4d %-50s (%s)%s%s\n", marker, item.Number, item.Title, strings.Join(meta, ", "), assigneeStr, labelStr))
 	}
 	return sb.String()
 }
@@ -251,6 +269,41 @@ func formatListComments(data json.RawMessage) string {
 	return sb.String()
 }
 
+// formatListLabels formats a list_labels response.
+func formatListLabels(data json.RawMessage) string {
+	var resp struct {
+		Labels []struct {
+			ID    string `json:"id"`
+			Name  string `json:"name"`
+			Color string `json:"color"`
+		} `json:"labels"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return string(data)
+	}
+
+	if len(resp.Labels) == 0 {
+		return "No labels found."
+	}
+
+	var sb strings.Builder
+	for _, l := range resp.Labels {
+		sb.WriteString(fmt.Sprintf("• %s (%s) id: %s\n", l.Name, l.Color, l.ID))
+	}
+	return sb.String()
+}
+
+// formatCreateLabel formats a create_label response.
+func formatCreateLabel(data json.RawMessage, name, color string) string {
+	var resp struct {
+		ID string `json:"ID"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return string(data)
+	}
+	return fmt.Sprintf("Created label %q (%s, id: %s)", name, color, resp.ID)
+}
+
 // formatGetIssue formats a get_issue response with full details.
 func formatGetIssue(data json.RawMessage) string {
 	var issue struct {
@@ -266,10 +319,14 @@ func formatGetIssue(data json.RawMessage) string {
 		OnHold      bool    `json:"on_hold"`
 		ParentID    *string `json:"parent_id"`
 		SprintID    *string `json:"sprint_id"`
-		Assignees   []struct {
+		Assignees []struct {
 			DisplayName string `json:"display_name"`
 			Email       string `json:"email"`
 		} `json:"assignees"`
+		Labels []struct {
+			Name  string `json:"name"`
+			Color string `json:"color"`
+		} `json:"labels"`
 		Checklist []struct {
 			ID   string `json:"id"`
 			Text string `json:"text"`
@@ -313,6 +370,14 @@ func formatGetIssue(data json.RawMessage) string {
 			}
 		}
 		sb.WriteString(fmt.Sprintf("Assignees: %s\n", strings.Join(names, ", ")))
+	}
+
+	if len(issue.Labels) > 0 {
+		var labelNames []string
+		for _, l := range issue.Labels {
+			labelNames = append(labelNames, l.Name)
+		}
+		sb.WriteString(fmt.Sprintf("Labels: %s\n", strings.Join(labelNames, ", ")))
 	}
 
 	if issue.Description != "" {

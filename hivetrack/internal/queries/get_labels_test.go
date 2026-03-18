@@ -26,7 +26,7 @@ func TestHandleGetLabels(t *testing.T) {
 	require.NoError(t, db.SaveChanges(context.Background()))
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
-	result, err := queries.HandleGetLabels(ctx, queries.GetLabelsQuery{ProjectID: p.GetId()})
+	result, err := queries.HandleGetLabels(ctx, queries.GetLabelsQuery{ProjectSlug: "p"})
 	require.NoError(t, err)
 	assert.Len(t, result.Labels, 1)
 	assert.Equal(t, "bug", result.Labels[0].Name)

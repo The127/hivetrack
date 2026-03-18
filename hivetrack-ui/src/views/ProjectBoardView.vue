@@ -507,10 +507,20 @@ const defaultCreateStatus = computed(() => {
                     />
                   </div>
 
-                  <!-- Footer: estimate -->
-                  <div v-if="estimateLabel(issue.estimate)" class="flex items-center gap-1.5">
-                    <span class="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                  <!-- Footer: estimate + labels -->
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span v-if="estimateLabel(issue.estimate)" class="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
                       {{ estimateLabel(issue.estimate) }}
+                    </span>
+                    <Badge
+                      v-for="l in (issue.labels ?? []).slice(0, 3)"
+                      :key="l.id"
+                      dot
+                      :dot-color="l.color"
+                      compact
+                    >{{ l.name }}</Badge>
+                    <span v-if="(issue.labels ?? []).length > 3" class="text-[10px] text-slate-400">
+                      +{{ issue.labels.length - 3 }}
                     </span>
                   </div>
                 </div>

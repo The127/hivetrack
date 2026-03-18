@@ -36,7 +36,7 @@ type IssueSummary struct {
 	Estimate    models.IssueEstimate `json:"estimate"`
 	Triaged     bool                 `json:"triaged"`
 	Assignees   []UserInfo           `json:"assignees"`
-	Labels      []uuid.UUID          `json:"labels"`
+	Labels      []LabelInfo          `json:"labels"`
 	SprintID    *uuid.UUID           `json:"sprint_id,omitempty"`
 	MilestoneID *uuid.UUID           `json:"milestone_id,omitempty"`
 	ParentID    *uuid.UUID           `json:"parent_id,omitempty"`
@@ -111,6 +111,10 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 		if err != nil {
 			return nil, fmt.Errorf("resolving assignees: %w", err)
 		}
+		labelInfos, err := resolveLabels(ctx, db, i.GetLabels())
+		if err != nil {
+			return nil, fmt.Errorf("resolving labels: %w", err)
+		}
 		items = append(items, IssueSummary{
 			ID:          i.GetId(),
 			Number:      i.GetNumber(),
@@ -121,7 +125,7 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 			Estimate:    i.GetEstimate(),
 			Triaged:     i.GetTriaged(),
 			Assignees:   assignees,
-			Labels:      i.GetLabels(),
+			Labels:      labelInfos,
 			SprintID:    i.GetSprintID(),
 			MilestoneID: i.GetMilestoneID(),
 			ParentID:    i.GetParentID(),

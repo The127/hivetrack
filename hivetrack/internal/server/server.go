@@ -91,7 +91,10 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 
 	// Labels
 	labelH := handlers.NewLabelHandler(med)
-	protected.HandleFunc("/projects/{project_id}/labels", labelH.ListLabels).Methods("GET")
+	protected.HandleFunc("/projects/{slug}/labels", labelH.ListLabels).Methods("GET")
+	protected.HandleFunc("/projects/{slug}/labels", labelH.CreateLabel).Methods("POST")
+	protected.HandleFunc("/projects/{slug}/labels/{label_id}", labelH.UpdateLabel).Methods("PATCH")
+	protected.HandleFunc("/projects/{slug}/labels/{label_id}", labelH.DeleteLabel).Methods("DELETE")
 
 	return r
 }

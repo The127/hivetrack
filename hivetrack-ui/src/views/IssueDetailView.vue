@@ -23,6 +23,7 @@ import CommentSection from '@/components/issue/CommentSection.vue'
 import StatusSelect from '@/components/issue/StatusSelect.vue'
 import PrioritySelect from '@/components/issue/PrioritySelect.vue'
 import AssigneeSelect from '@/components/issue/AssigneeSelect.vue'
+import LabelSelect from '@/components/issue/LabelSelect.vue'
 import { fetchIssue, updateIssue } from '@/api/issues'
 import { fetchProject } from '@/api/projects'
 
@@ -85,6 +86,16 @@ const { mutate: updateAssignees } = useMutation({
     queryClient.invalidateQueries({ queryKey: ['issue', slug.value, number.value] })
     queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
     queryClient.invalidateQueries({ queryKey: ['me', 'issues'] })
+  },
+})
+
+// ── Label mutation ───────────────────────────────────────────────────────────
+
+const { mutate: updateLabels } = useMutation({
+  mutationFn: (labelIds) => updateIssue(slug.value, number.value, { label_ids: labelIds }),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['issue', slug.value, number.value] })
+    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
   },
 })
 </script>
@@ -174,6 +185,17 @@ const { mutate: updateAssignees } = useMutation({
                   :project-slug="slug"
                   :model-value="issue.assignees ?? []"
                   @update:model-value="updateAssignees"
+                />
+              </div>
+            </div>
+
+            <!-- Labels -->
+            <div class="space-y-1">
+              <div class="max-w-xs">
+                <LabelSelect
+                  :project-slug="slug"
+                  :model-value="issue.labels ?? []"
+                  @update:model-value="updateLabels"
                 />
               </div>
             </div>

@@ -714,6 +714,9 @@ function formatDateRange(startDate, endDate) {
               <PrioritySelect :priority="issue.priority ?? 'none'" @update:priority="updatePriority(issue, $event)" />
               <span v-if="estimateLabel(issue.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(issue.estimate) }}</span>
               <span v-else class="w-7 flex-shrink-0" />
+              <div class="flex-shrink-0 flex gap-1 max-w-32">
+                <Badge v-for="l in (issue.labels ?? []).slice(0, 2)" :key="l.id" dot :dot-color="l.color" compact>{{ l.name }}</Badge>
+              </div>
               <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
                 <Avatar v-for="a in (issue.assignees ?? []).slice(0, 2)" :key="a.id" :name="a.display_name" :src="a.avatar_url" size="xs" class="ring-1 ring-white" />
               </div>
@@ -816,6 +819,9 @@ function formatDateRange(startDate, endDate) {
               <PrioritySelect :priority="issue.priority ?? 'none'" @update:priority="updatePriority(issue, $event)" />
               <span v-if="estimateLabel(issue.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(issue.estimate) }}</span>
               <span v-else class="w-7 flex-shrink-0" />
+              <div class="flex-shrink-0 flex gap-1 max-w-32">
+                <Badge v-for="l in (issue.labels ?? []).slice(0, 2)" :key="l.id" dot :dot-color="l.color" compact>{{ l.name }}</Badge>
+              </div>
               <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
                 <Avatar v-for="a in (issue.assignees ?? []).slice(0, 2)" :key="a.id" :name="a.display_name" :src="a.avatar_url" size="xs" class="ring-1 ring-white" />
               </div>
@@ -960,6 +966,9 @@ function formatDateRange(startDate, endDate) {
             <PrioritySelect :priority="issue.priority ?? 'none'" @update:priority="updatePriority(issue, $event)" />
             <span v-if="estimateLabel(issue.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(issue.estimate) }}</span>
             <span v-else class="w-7 flex-shrink-0" />
+            <div class="flex-shrink-0 flex gap-1 max-w-32">
+              <Badge v-for="l in (issue.labels ?? []).slice(0, 2)" :key="l.id" dot :dot-color="l.color" compact>{{ l.name }}</Badge>
+            </div>
             <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
               <Avatar v-for="a in (issue.assignees ?? []).slice(0, 2)" :key="a.id" :name="a.display_name" :src="a.avatar_url" size="xs" class="ring-1 ring-white" />
             </div>
