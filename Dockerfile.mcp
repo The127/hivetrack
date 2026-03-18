@@ -1,0 +1,13 @@
+# ─── Stage 1: Build ────────────────────────────────────────────────────────
+FROM golang:1.25-alpine AS builder
+WORKDIR /build
+COPY mcp/go.mod mcp/go.sum ./
+RUN go mod download
+COPY mcp/ ./
+RUN CGO_ENABLED=0 GOOS=linux go build -o /hivetrack-mcp ./cmd/hivetrack-mcp
+
+# ─── Stage 2: Runtime ──────────────────────────────────────────────────────
+FROM alpine:3.21
+RUN apk add --no-cache ca-certificates
+COPY --from=builder /hivetrack-mcp /hivetrack-mcp
+ENTRYPOINT ["/hivetrack-mcp"]

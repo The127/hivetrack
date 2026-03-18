@@ -9,6 +9,8 @@ vendor/
 # Frontend
 hivetrack-ui/node_modules/
 hivetrack-ui/dist/
+hivetrack/web/dist/*
+!hivetrack/web/dist/.gitkeep
 
 # Config overrides (never commit secrets)
 hivetrack/config.local.yaml

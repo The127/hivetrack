@@ -5,6 +5,8 @@ import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
   build: {
+    outDir: "../hivetrack/web/dist",
+    emptyOutDir: true,
     target: "es2022",
     rollupOptions: {
       output: {
