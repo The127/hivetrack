@@ -12,11 +12,11 @@
   columns to change status. Uses fractional indexing for O(1) rank updates.
 -->
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
-import { VueDraggable } from 'vue-draggable-plus'
-import { generateKeyBetween } from 'fractional-indexing'
+import { ref, computed, watch, nextTick } from "vue";
+import { useRoute, RouterLink } from "vue-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
+import { VueDraggable } from "vue-draggable-plus";
+import { generateKeyBetween } from "fractional-indexing";
 import {
   PlusIcon,
   CircleIcon,
@@ -29,297 +29,373 @@ import {
   CheckIcon,
   SearchIcon,
   XIcon,
-} from 'lucide-vue-next'
-import MainLayout from '@/layouts/MainLayout.vue'
-import Badge from '@/components/ui/Badge.vue'
-import Spinner from '@/components/ui/Spinner.vue'
-import Avatar from '@/components/ui/Avatar.vue'
-import Alert from '@/components/ui/Alert.vue'
-import CreateIssueModal from '@/components/issue/CreateIssueModal.vue'
-import CompleteSprintModal from '@/components/sprint/CompleteSprintModal.vue'
-import PrioritySelect from '@/components/issue/PrioritySelect.vue'
-import { fetchProject } from '@/api/projects'
-import { fetchIssues, updateIssue } from '@/api/issues'
-import { fetchSprints, updateSprint } from '@/api/sprints'
+} from "lucide-vue-next";
+import MainLayout from "@/layouts/MainLayout.vue";
+import Badge from "@/components/ui/Badge.vue";
+import Spinner from "@/components/ui/Spinner.vue";
+import Avatar from "@/components/ui/Avatar.vue";
+import Alert from "@/components/ui/Alert.vue";
+import ProgressBar from "@/components/ui/ProgressBar.vue";
+import CreateIssueModal from "@/components/issue/CreateIssueModal.vue";
+import CompleteSprintModal from "@/components/sprint/CompleteSprintModal.vue";
+import PrioritySelect from "@/components/issue/PrioritySelect.vue";
+import { fetchProject } from "@/api/projects";
+import { fetchIssues, updateIssue } from "@/api/issues";
+import { fetchSprints, updateSprint } from "@/api/sprints";
 
-const route = useRoute()
-const slug = computed(() => route.params.slug)
-const queryClient = useQueryClient()
+const route = useRoute();
+const slug = computed(() => route.params.slug);
+const queryClient = useQueryClient();
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
 const { data: project, isLoading: loadingProject } = useQuery({
-  queryKey: ['project', slug],
+  queryKey: ["project", slug],
   queryFn: () => fetchProject(slug.value),
-})
+});
 
 const { data: sprintsResult, isLoading: loadingSprints } = useQuery({
-  queryKey: ['sprints', slug],
+  queryKey: ["sprints", slug],
   queryFn: () => fetchSprints(slug.value),
   enabled: computed(() => !!slug.value),
-})
+});
 
 const { data: issuesResult, isLoading: loadingIssues } = useQuery({
-  queryKey: ['issues', slug, { triaged: true, type: 'task' }],
-  queryFn: () => fetchIssues(slug.value, { triaged: true, type: 'task', limit: 500 }),
+  queryKey: ["issues", slug, { triaged: true, type: "task" }],
+  queryFn: () =>
+    fetchIssues(slug.value, { triaged: true, type: "task", limit: 500 }),
   enabled: computed(() => !!slug.value),
-})
+});
 
 const { data: epicsResult } = useQuery({
-  queryKey: ['issues', slug, { type: 'epic' }],
-  queryFn: () => fetchIssues(slug.value, { type: 'epic', limit: 500 }),
+  queryKey: ["issues", slug, { type: "epic" }],
+  queryFn: () => fetchIssues(slug.value, { type: "epic", limit: 500 }),
   enabled: computed(() => !!slug.value),
-})
+});
 
 const epicMap = computed(() => {
-  const map = {}
+  const map = {};
   for (const epic of epicsResult.value?.items ?? []) {
-    map[epic.id] = epic
+    map[epic.id] = epic;
   }
-  return map
-})
+  return map;
+});
 
-const isLoading = computed(() => loadingProject.value || loadingSprints.value || loadingIssues.value)
+const isLoading = computed(
+  () => loadingProject.value || loadingSprints.value || loadingIssues.value,
+);
 
 // ── Active sprint + issue source ──────────────────────────────────────────────
 
-const activeSprint = computed(() =>
-  (sprintsResult.value?.sprints ?? []).find(s => s.status === 'active') ?? null
-)
+const activeSprint = computed(
+  () =>
+    (sprintsResult.value?.sprints ?? []).find((s) => s.status === "active") ??
+    null,
+);
 
 const boardIssues = computed(() => {
-  const all = issuesResult.value?.items ?? []
+  const all = issuesResult.value?.items ?? [];
   if (activeSprint.value) {
-    return all.filter(i => i.sprint_id === activeSprint.value.id)
+    return all.filter((i) => i.sprint_id === activeSprint.value.id);
   }
-  return all.filter(i => i.sprint_id == null)
-})
+  return all.filter((i) => i.sprint_id == null);
+});
 
 // ── Complete sprint ──────────────────────────────────────────────────────────
 
-const showCompleteSprintModal = ref(false)
+const showCompleteSprintModal = ref(false);
 
-const TERMINAL_STATUSES_SOFTWARE = new Set(['done', 'cancelled'])
-const TERMINAL_STATUSES_SUPPORT = new Set(['resolved', 'closed'])
+const TERMINAL_STATUSES_SOFTWARE = new Set(["done", "cancelled"]);
+const TERMINAL_STATUSES_SUPPORT = new Set(["resolved", "closed"]);
 
 const openIssuesInSprint = computed(() => {
-  const terminal = project.value?.archetype === 'support' ? TERMINAL_STATUSES_SUPPORT : TERMINAL_STATUSES_SOFTWARE
-  return boardIssues.value.filter(i => !terminal.has(i.status))
-})
+  const terminal =
+    project.value?.archetype === "support"
+      ? TERMINAL_STATUSES_SUPPORT
+      : TERMINAL_STATUSES_SOFTWARE;
+  return boardIssues.value.filter((i) => !terminal.has(i.status));
+});
+
+const doneInSprint = computed(
+  () => boardIssues.value.length - openIssuesInSprint.value.length,
+);
 
 const otherSprints = computed(() =>
-  (sprintsResult.value?.sprints ?? []).filter(s => s.status === 'planning')
-)
+  (sprintsResult.value?.sprints ?? []).filter((s) => s.status === "planning"),
+);
 
 function requestCompleteSprint() {
   if (openIssuesInSprint.value.length > 0) {
-    showCompleteSprintModal.value = true
+    showCompleteSprintModal.value = true;
   } else {
-    doCompleteSprint({ moveToSprintId: null })
+    doCompleteSprint({ moveToSprintId: null });
   }
 }
 
 const { mutate: completeSprintMutation } = useMutation({
-  mutationFn: ({ sprintId, moveToSprintId }) => updateSprint(slug.value, sprintId, {
-    status: 'completed',
-    move_open_issues_to_sprint_id: moveToSprintId ?? null,
-  }),
+  mutationFn: ({ sprintId, moveToSprintId }) =>
+    updateSprint(slug.value, sprintId, {
+      status: "completed",
+      move_open_issues_to_sprint_id: moveToSprintId ?? null,
+    }),
   onSuccess: () => {
-    showCompleteSprintModal.value = false
-    queryClient.invalidateQueries({ queryKey: ['sprints', slug.value] })
-    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+    showCompleteSprintModal.value = false;
+    queryClient.invalidateQueries({ queryKey: ["sprints", slug.value] });
+    queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
   },
-})
+});
 
 function doCompleteSprint({ moveToSprintId }) {
-  completeSprintMutation({ sprintId: activeSprint.value.id, moveToSprintId })
+  completeSprintMutation({ sprintId: activeSprint.value.id, moveToSprintId });
 }
 
 // ── Status column config ──────────────────────────────────────────────────────
 
 const SOFTWARE_COLUMNS = [
-  { key: 'todo',        label: 'To Do',       scheme: 'gray',   icon: CircleIcon },
-  { key: 'in_progress', label: 'In Progress', scheme: 'blue',   icon: CircleDotIcon },
-  { key: 'in_review',   label: 'In Review',   scheme: 'violet', icon: GitPullRequestIcon },
-  { key: 'done',        label: 'Done',        scheme: 'green',  icon: CheckCircle2Icon },
-  { key: 'cancelled',   label: 'Cancelled',   scheme: 'gray',   icon: XCircleIcon },
-]
+  { key: "todo", label: "To Do", scheme: "gray", icon: CircleIcon },
+  {
+    key: "in_progress",
+    label: "In Progress",
+    scheme: "blue",
+    icon: CircleDotIcon,
+  },
+  {
+    key: "in_review",
+    label: "In Review",
+    scheme: "violet",
+    icon: GitPullRequestIcon,
+  },
+  { key: "done", label: "Done", scheme: "green", icon: CheckCircle2Icon },
+  { key: "cancelled", label: "Cancelled", scheme: "gray", icon: XCircleIcon },
+];
 
 const SUPPORT_COLUMNS = [
-  { key: 'open',        label: 'Open',        scheme: 'sky',    icon: CircleIcon },
-  { key: 'in_progress', label: 'In Progress', scheme: 'blue',   icon: CircleDotIcon },
-  { key: 'resolved',    label: 'Resolved',    scheme: 'teal',   icon: CheckCircle2Icon },
-  { key: 'closed',      label: 'Closed',      scheme: 'gray',   icon: XCircleIcon },
-]
+  { key: "open", label: "Open", scheme: "sky", icon: CircleIcon },
+  {
+    key: "in_progress",
+    label: "In Progress",
+    scheme: "blue",
+    icon: CircleDotIcon,
+  },
+  {
+    key: "resolved",
+    label: "Resolved",
+    scheme: "teal",
+    icon: CheckCircle2Icon,
+  },
+  { key: "closed", label: "Closed", scheme: "gray", icon: XCircleIcon },
+];
 
 const columns = computed(() => {
-  if (!project.value) return []
-  return project.value.archetype === 'support' ? SUPPORT_COLUMNS : SOFTWARE_COLUMNS
-})
+  if (!project.value) return [];
+  return project.value.archetype === "support"
+    ? SUPPORT_COLUMNS
+    : SOFTWARE_COLUMNS;
+});
 
 // ── Board search / filter ────────────────────────────────────────────────────
 
-const searchQuery = ref('')
-const showSearch = ref(false)
-const searchInputEl = ref(null)
+const searchQuery = ref("");
+const showSearch = ref(false);
+const searchInputEl = ref(null);
 
 function toggleSearch() {
-  showSearch.value = !showSearch.value
+  showSearch.value = !showSearch.value;
   if (showSearch.value) {
-    nextTick(() => searchInputEl.value?.focus())
+    nextTick(() => searchInputEl.value?.focus());
   } else {
-    searchQuery.value = ''
+    searchQuery.value = "";
   }
 }
 
 function matchesSearch(issue) {
-  if (!searchQuery.value) return true
-  const q = searchQuery.value.toLowerCase()
-  const id = `${slug.value}-${issue.number}`.toLowerCase()
-  return issue.title.toLowerCase().includes(q) || id.includes(q)
+  if (!searchQuery.value) return true;
+  const q = searchQuery.value.toLowerCase();
+  const id = `${slug.value}-${issue.number}`.toLowerCase();
+  return issue.title.toLowerCase().includes(q) || id.includes(q);
 }
 
 // ── Drag-and-drop state ─────────────────────────────────────────────────────
 
-const isDragging = ref(false)
-const columnIssues = ref({})
+const isDragging = ref(false);
+const columnIssues = ref({});
 
 function rebuildColumnIssues() {
-  const newMap = {}
+  const newMap = {};
   for (const col of columns.value) {
     newMap[col.key] = (boardIssues.value ?? [])
-      .filter(i => i.status === col.key && matchesSearch(i))
-      .slice()
+      .filter((i) => i.status === col.key && matchesSearch(i))
+      .slice();
   }
-  columnIssues.value = newMap
+  columnIssues.value = newMap;
 }
 
-watch([boardIssues, columns, searchQuery], () => {
-  if (!isDragging.value) rebuildColumnIssues()
-}, { immediate: true })
+watch(
+  [boardIssues, columns, searchQuery],
+  () => {
+    if (!isDragging.value) rebuildColumnIssues();
+  },
+  { immediate: true },
+);
 
 function computeRank(items, newIdx) {
-  const prev = newIdx > 0 ? (items[newIdx - 1]?.rank ?? null) : null
-  const next = newIdx < items.length - 1 ? (items[newIdx + 1]?.rank ?? null) : null
+  const prev = newIdx > 0 ? (items[newIdx - 1]?.rank ?? null) : null;
+  const next =
+    newIdx < items.length - 1 ? (items[newIdx + 1]?.rank ?? null) : null;
   try {
-    return generateKeyBetween(prev, next)
+    return generateKeyBetween(prev, next);
   } catch {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   }
 }
 
 // ── Reorder mutation ────────────────────────────────────────────────────────
 
 const { mutate: reorderIssue } = useMutation({
-  mutationFn: ({ issueNumber, data }) => updateIssue(slug.value, issueNumber, data),
+  mutationFn: ({ issueNumber, data }) =>
+    updateIssue(slug.value, issueNumber, data),
   onMutate: async ({ issueNumber, data }) => {
-    const queryKey = ['issues', slug.value, { triaged: true }]
-    await queryClient.cancelQueries({ queryKey })
-    const previous = queryClient.getQueryData(queryKey)
-    queryClient.setQueryData(queryKey, old => {
-      if (!old) return old
-      return { ...old, items: old.items.map(i => i.number === issueNumber ? { ...i, ...data } : i) }
-    })
-    return { previous }
+    const queryKey = ["issues", slug.value, { triaged: true }];
+    await queryClient.cancelQueries({ queryKey });
+    const previous = queryClient.getQueryData(queryKey);
+    queryClient.setQueryData(queryKey, (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        items: old.items.map((i) =>
+          i.number === issueNumber ? { ...i, ...data } : i,
+        ),
+      };
+    });
+    return { previous };
   },
   onError: (_err, _vars, context) => {
     if (context?.previous) {
-      queryClient.setQueryData(['issues', slug.value, { triaged: true }], context.previous)
+      queryClient.setQueryData(
+        ["issues", slug.value, { triaged: true }],
+        context.previous,
+      );
     }
   },
   onSettled: () => {
-    isDragging.value = false
-    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+    isDragging.value = false;
+    queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
   },
-})
+});
 
 // ── Drag handlers ───────────────────────────────────────────────────────────
 
 function onDragStart() {
-  isDragging.value = true
+  isDragging.value = true;
 }
 
 function onDragEnd() {
-  setTimeout(() => { isDragging.value = false }, 0)
+  setTimeout(() => {
+    isDragging.value = false;
+  }, 0);
 }
 
 function onWithinColumnDrag(evt, colKey) {
-  const items = columnIssues.value[colKey]
-  const newIdx = evt.newDraggableIndex
-  const movedItem = items[newIdx]
-  const newRank = computeRank(items, newIdx)
-  movedItem.rank = newRank
-  reorderIssue({ issueNumber: movedItem.number, data: { rank: newRank } })
+  const items = columnIssues.value[colKey];
+  const newIdx = evt.newDraggableIndex;
+  const movedItem = items[newIdx];
+  const newRank = computeRank(items, newIdx);
+  movedItem.rank = newRank;
+  reorderIssue({ issueNumber: movedItem.number, data: { rank: newRank } });
 }
 
 function onCrossColumnDrop(evt, toColKey) {
-  const items = columnIssues.value[toColKey]
-  const newIdx = evt.newDraggableIndex
-  const movedItem = items[newIdx]
-  const newRank = computeRank(items, newIdx)
-  movedItem.rank = newRank
-  movedItem.status = toColKey
-  reorderIssue({ issueNumber: movedItem.number, data: { rank: newRank, status: toColKey } })
+  const items = columnIssues.value[toColKey];
+  const newIdx = evt.newDraggableIndex;
+  const movedItem = items[newIdx];
+  const newRank = computeRank(items, newIdx);
+  movedItem.rank = newRank;
+  movedItem.status = toColKey;
+  reorderIssue({
+    issueNumber: movedItem.number,
+    data: { rank: newRank, status: toColKey },
+  });
 }
 
 // ── Priority / estimate helpers ───────────────────────────────────────────────
 
 const PRIORITY_BORDER = {
-  none:     'border-l-slate-200',
-  low:      'border-l-sky-400',
-  medium:   'border-l-amber-400',
-  high:     'border-l-orange-500',
-  critical: 'border-l-red-500',
-}
+  none: "border-l-slate-200",
+  low: "border-l-sky-400",
+  medium: "border-l-amber-400",
+  high: "border-l-orange-500",
+  critical: "border-l-red-500",
+};
 
-const ESTIMATE_LABEL = { none: null, xs: 'XS', s: 'S', m: 'M', l: 'L', xl: 'XL' }
+const ESTIMATE_LABEL = {
+  none: null,
+  xs: "XS",
+  s: "S",
+  m: "M",
+  l: "L",
+  xl: "XL",
+};
 
 function priorityBorder(priority) {
-  return PRIORITY_BORDER[priority] ?? 'border-l-slate-200'
+  return PRIORITY_BORDER[priority] ?? "border-l-slate-200";
 }
 
 function estimateLabel(estimate) {
-  return ESTIMATE_LABEL[estimate] ?? null
+  return ESTIMATE_LABEL[estimate] ?? null;
 }
 
 function formatDateRange(startDate, endDate) {
-  const fmt = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  return `${fmt(startDate)} – ${fmt(endDate)}`
+  const fmt = (d) =>
+    new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${fmt(startDate)} – ${fmt(endDate)}`;
 }
 
 // ── New issue modal ───────────────────────────────────────────────────────────
 
-const showCreateIssue = ref(false)
+const showCreateIssue = ref(false);
 
 const defaultCreateStatus = computed(() => {
-  if (!project.value) return null
-  return project.value.archetype === 'support' ? 'open' : 'todo'
-})
+  if (!project.value) return null;
+  return project.value.archetype === "support" ? "open" : "todo";
+});
 </script>
 
 <template>
   <MainLayout @create-issue="showCreateIssue = true">
     <div class="flex flex-col h-full">
-
       <!-- ── Board header ───────────────────────────────────────────────── -->
-      <div class="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white">
+      <div
+        class="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white"
+      >
         <div class="flex items-center gap-3 min-w-0">
           <div v-if="project" class="flex items-center gap-2 min-w-0">
-            <span class="size-7 rounded flex items-center justify-center text-xs font-semibold bg-slate-100 text-slate-600 flex-shrink-0">
+            <span
+              class="size-7 rounded flex items-center justify-center text-xs font-semibold bg-slate-100 text-slate-600 flex-shrink-0"
+            >
               {{ project.slug.slice(0, 2).toUpperCase() }}
             </span>
-            <span class="font-semibold text-slate-900 truncate">{{ project.name }}</span>
-            <Badge :colorScheme="project.archetype === 'software' ? 'blue' : 'teal'" compact>
+            <span class="font-semibold text-slate-900 truncate">{{
+              project.name
+            }}</span>
+            <Badge
+              :color-scheme="project.archetype === 'software' ? 'blue' : 'teal'"
+              compact
+            >
               {{ project.archetype }}
             </Badge>
           </div>
-          <div v-else-if="loadingProject" class="h-5 w-40 rounded bg-slate-100 animate-pulse" />
+          <div
+            v-else-if="loadingProject"
+            class="h-5 w-40 rounded bg-slate-100 animate-pulse"
+          />
         </div>
 
         <div class="flex items-center gap-2">
           <!-- Search -->
           <div v-if="showSearch" class="relative">
-            <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+            <SearchIcon
+              class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400"
+            />
             <input
               ref="searchInputEl"
               v-model="searchQuery"
@@ -356,26 +432,48 @@ const defaultCreateStatus = computed(() => {
       <!-- ── Context bar ────────────────────────────────────────────────── -->
       <template v-if="!isLoading">
         <!-- Active sprint -->
-        <div v-if="activeSprint" class="flex-shrink-0 px-6 py-2 bg-blue-50 border-b border-blue-100">
+        <div
+          v-if="activeSprint"
+          class="flex-shrink-0 px-6 py-2 bg-blue-50 border-b border-blue-100"
+        >
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2.5 min-w-0">
-              <span class="text-xs font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0">Sprint</span>
-              <span class="text-sm font-semibold text-slate-900 truncate">{{ activeSprint.name }}</span>
-              <span v-if="activeSprint.start_date" class="text-xs text-slate-500 flex-shrink-0">
-                {{ formatDateRange(activeSprint.start_date, activeSprint.end_date) }}
+              <span
+                class="text-xs font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0"
+                >Sprint</span
+              >
+              <span class="text-sm font-semibold text-slate-900 truncate">{{
+                activeSprint.name
+              }}</span>
+              <span
+                v-if="activeSprint.start_date"
+                class="text-xs text-slate-500 flex-shrink-0"
+              >
+                {{
+                  formatDateRange(
+                    activeSprint.start_date,
+                    activeSprint.end_date,
+                  )
+                }}
               </span>
-              <span class="text-xs text-slate-400 tabular-nums flex-shrink-0">{{ boardIssues.length }} issues</span>
+              <div class="w-32 flex-shrink-0">
+                <ProgressBar
+                  :done="doneInSprint"
+                  :total="boardIssues.length"
+                />
+              </div>
             </div>
             <button
-            class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer flex-shrink-0"
-            @click="requestCompleteSprint()"
-          >
-            <CheckIcon class="size-3.5" />
-            Complete sprint
-          </button>
+              class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer flex-shrink-0"
+              @click="requestCompleteSprint()"
+            >
+              <CheckIcon class="size-3.5" />
+              Complete sprint
+            </button>
           </div>
           <p v-if="activeSprint.goal" class="text-xs text-slate-600 mt-1.5">
-            <span class="text-slate-400 font-medium">Goal:</span> {{ activeSprint.goal }}
+            <span class="text-slate-400 font-medium">Goal:</span>
+            {{ activeSprint.goal }}
           </p>
         </div>
 
@@ -399,9 +497,11 @@ const defaultCreateStatus = computed(() => {
       </div>
 
       <!-- ── Board columns ──────────────────────────────────────────────── -->
-      <div v-else-if="boardIssues.length > 0" class="flex-1 overflow-x-auto overflow-y-hidden">
+      <div
+        v-else-if="boardIssues.length > 0"
+        class="flex-1 overflow-x-auto overflow-y-hidden"
+      >
         <div class="flex h-full gap-3 px-6 py-4" style="min-width: max-content">
-
           <div
             v-for="col in columns"
             :key="col.key"
@@ -413,15 +513,17 @@ const defaultCreateStatus = computed(() => {
                 :is="col.icon"
                 class="size-3.5 flex-shrink-0"
                 :class="{
-                  'text-slate-400':  col.scheme === 'gray',
-                  'text-blue-500':   col.scheme === 'blue',
+                  'text-slate-400': col.scheme === 'gray',
+                  'text-blue-500': col.scheme === 'blue',
                   'text-violet-500': col.scheme === 'violet',
-                  'text-green-500':  col.scheme === 'green',
-                  'text-sky-500':    col.scheme === 'sky',
-                  'text-teal-500':   col.scheme === 'teal',
+                  'text-green-500': col.scheme === 'green',
+                  'text-sky-500': col.scheme === 'sky',
+                  'text-teal-500': col.scheme === 'teal',
                 }"
               />
-              <span class="text-sm font-medium text-slate-700">{{ col.label }}</span>
+              <span class="text-sm font-medium text-slate-700">{{
+                col.label
+              }}</span>
               <span class="ml-auto text-xs text-slate-400 tabular-nums">
                 {{ columnIssues[col.key]?.length ?? 0 }}
               </span>
@@ -455,7 +557,10 @@ const defaultCreateStatus = computed(() => {
                     >
                       {{ slug.toUpperCase() }}-{{ issue.number }}
                     </RouterLink>
-                    <LayersIcon v-if="issue.type === 'epic'" class="size-3 text-violet-400" />
+                    <LayersIcon
+                      v-if="issue.type === 'epic'"
+                      class="size-3 text-violet-400"
+                    />
                     <span
                       v-if="issue.on_hold"
                       class="text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded"
@@ -463,10 +568,7 @@ const defaultCreateStatus = computed(() => {
                       on hold
                     </span>
                     <span class="flex-1" />
-                    <div
-                      v-if="issue.assignees?.length"
-                      class="flex -space-x-1"
-                    >
+                    <div v-if="issue.assignees?.length" class="flex -space-x-1">
                       <Avatar
                         v-for="a in issue.assignees.slice(0, 2)"
                         :key="a.id"
@@ -485,7 +587,9 @@ const defaultCreateStatus = computed(() => {
                   </div>
 
                   <!-- Title -->
-                  <p class="text-sm text-slate-800 leading-snug line-clamp-2 group-hover:text-slate-900 mb-2">
+                  <p
+                    class="text-sm text-slate-800 leading-snug line-clamp-2 group-hover:text-slate-900 mb-2"
+                  >
                     {{ issue.title }}
                   </p>
 
@@ -498,18 +602,28 @@ const defaultCreateStatus = computed(() => {
                       @click.stop
                     >
                       <LayersIcon class="size-3 flex-shrink-0" />
-                      <span class="truncate">{{ epicMap[issue.parent_id].title }}</span>
+                      <span class="truncate">{{
+                        epicMap[issue.parent_id].title
+                      }}</span>
                     </RouterLink>
                     <span class="flex-1" />
                     <PrioritySelect
                       :priority="issue.priority ?? 'none'"
-                      @update:priority="reorderIssue({ issueNumber: issue.number, data: { priority: $event } })"
+                      @update:priority="
+                        reorderIssue({
+                          issueNumber: issue.number,
+                          data: { priority: $event },
+                        })
+                      "
                     />
                   </div>
 
                   <!-- Footer: estimate + labels -->
                   <div class="flex items-center gap-1.5 flex-wrap">
-                    <span v-if="estimateLabel(issue.estimate)" class="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                    <span
+                      v-if="estimateLabel(issue.estimate)"
+                      class="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded"
+                    >
                       {{ estimateLabel(issue.estimate) }}
                     </span>
                     <Badge
@@ -518,8 +632,12 @@ const defaultCreateStatus = computed(() => {
                       dot
                       :dot-color="l.color"
                       compact
-                    >{{ l.name }}</Badge>
-                    <span v-if="(issue.labels ?? []).length > 3" class="text-[10px] text-slate-400">
+                      >{{ l.name }}</Badge
+                    >
+                    <span
+                      v-if="(issue.labels ?? []).length > 3"
+                      class="text-[10px] text-slate-400"
+                    >
                       +{{ issue.labels.length - 3 }}
                     </span>
                   </div>
@@ -534,9 +652,7 @@ const defaultCreateStatus = computed(() => {
                 <p class="text-xs text-slate-400">No issues</p>
               </div>
             </div>
-
           </div>
-
         </div>
       </div>
 
@@ -548,14 +664,17 @@ const defaultCreateStatus = computed(() => {
         <div class="text-center">
           <InboxIcon class="size-10 text-slate-300 mx-auto mb-3" />
           <p class="text-sm font-medium text-slate-600">
-            {{ activeSprint ? 'Sprint is empty' : 'Backlog is empty' }}
+            {{ activeSprint ? "Sprint is empty" : "Backlog is empty" }}
           </p>
           <p class="text-sm text-slate-400 mt-1">
-            {{ activeSprint ? 'Add issues to this sprint from the Backlog.' : 'Create an issue or triage items from the inbox.' }}
+            {{
+              activeSprint
+                ? "Add issues to this sprint from the Backlog."
+                : "Create an issue or triage items from the inbox."
+            }}
           </p>
         </div>
       </div>
-
     </div>
 
     <!-- ── Create issue modal ──────────────────────────────────────────── -->

@@ -43,6 +43,7 @@ import CreateIssueModal from "@/components/issue/CreateIssueModal.vue";
 import CompleteSprintModal from "@/components/sprint/CompleteSprintModal.vue";
 import StatusSelect from "@/components/issue/StatusSelect.vue";
 import PrioritySelect from "@/components/issue/PrioritySelect.vue";
+import ProgressBar from "@/components/ui/ProgressBar.vue";
 import { fetchProject } from "@/api/projects";
 import { fetchIssues, createIssue, updateIssue } from "@/api/issues";
 import {
@@ -424,6 +425,12 @@ const showCompleteSprintModal = ref(false);
 const openIssuesInActiveSprint = computed(() => {
   if (!activeSprint.value) return [];
   return sectionIssues.value[activeSprint.value.id] ?? [];
+});
+
+const doneInActiveSprint = computed(() => {
+  if (!activeSprint.value) return 0;
+  const total = (sectionIssues.value[activeSprint.value.id] ?? []).length;
+  return total - openIssuesInActiveSprint.value.length;
 });
 
 const completionTargetSprints = computed(() => planningSprints.value);
@@ -818,9 +825,12 @@ function formatDateRange(startDate, endDate) {
                 class="text-xs text-slate-500 italic truncate max-w-48"
                 >{{ activeSprint.goal }}</span
               >
-              <span class="text-xs text-slate-400 tabular-nums flex-shrink-0">
-                {{ (sectionIssues[activeSprint.id] ?? []).length }} issues
-              </span>
+              <div class="w-28 flex-shrink-0">
+                <ProgressBar
+                  :done="doneInActiveSprint"
+                  :total="(sectionIssues[activeSprint.id] ?? []).length"
+                />
+              </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
               <button
