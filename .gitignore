@@ -5,6 +5,10 @@ bin/
 *.test
 *.out
 vendor/
+mcp/hivetrack-mcp
+
+# Claude Code
+.claude/
 
 # Frontend
 hivetrack-ui/node_modules/
