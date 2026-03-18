@@ -15,7 +15,7 @@
     C         Create a new issue (emits 'create-issue')
 -->
 <script setup>
-import { computed, onMounted, onBeforeUnmount } from "vue";
+import { computed, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import {
   LayoutDashboardIcon,
@@ -28,6 +28,7 @@ import {
   SettingsIcon,
   SearchIcon,
   ChevronRightIcon,
+  ChevronLeftIcon,
   LogOutIcon,
 } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
@@ -43,6 +44,11 @@ const projectSlug = computed(() => route.params.slug ?? null);
 const userName = computed(
   () => user.value?.profile?.name ?? user.value?.profile?.email ?? "You",
 );
+
+// ── Sidebar collapsed state ────────────────────────────────────────────────────
+
+const collapsed = ref(localStorage.getItem('hivetrack:sidebar:collapsed') === 'true');
+watch(collapsed, (v) => localStorage.setItem('hivetrack:sidebar:collapsed', String(v)));
 
 // ── Keyboard shortcuts ────────────────────────────────────────────────────────
 
@@ -77,40 +83,70 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
   <div class="flex h-screen overflow-hidden bg-white">
     <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
     <aside
-      class="hidden lg:flex w-56 flex-shrink-0 flex-col bg-slate-900 text-slate-100 overflow-y-auto"
+      :class="collapsed ? 'w-14' : 'w-56'"
+      class="hidden lg:flex flex-shrink-0 flex-col bg-slate-900 text-slate-100 overflow-y-auto transition-[width] duration-200 ease-in-out"
     >
-      <!-- App identity -->
-      <div class="flex items-center gap-2 px-4 py-3 border-b border-slate-800">
-        <img src="@/assets/logo.svg" alt="Hivetrack" class="size-6" />
-        <span class="font-semibold tracking-tight text-white text-sm"
-          >Hivetrack</span
+      <!-- App identity + collapse toggle -->
+      <!-- Expanded: single row with logo, title, chevron -->
+      <div
+        v-if="!collapsed"
+        class="flex items-center gap-2 px-3 py-3 border-b border-slate-800"
+      >
+        <img src="@/assets/logo.svg" alt="Hivetrack" class="size-6 flex-shrink-0" />
+        <span class="font-semibold tracking-tight text-white text-sm flex-1">Hivetrack</span>
+        <button
+          class="flex items-center justify-center size-6 rounded text-slate-500 hover:text-slate-200 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 cursor-pointer flex-shrink-0"
+          title="Collapse sidebar"
+          @click="collapsed = !collapsed"
         >
+          <ChevronLeftIcon class="size-4" />
+        </button>
+      </div>
+      <!-- Collapsed: logo above chevron, centered -->
+      <div
+        v-else
+        class="flex flex-col items-center gap-1 px-2 py-3 border-b border-slate-800"
+      >
+        <img src="@/assets/logo.svg" alt="Hivetrack" class="size-6" />
+        <button
+          class="flex items-center justify-center size-6 rounded text-slate-500 hover:text-slate-200 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 cursor-pointer"
+          title="Expand sidebar"
+          @click="collapsed = !collapsed"
+        >
+          <ChevronRightIcon class="size-4" />
+        </button>
       </div>
 
       <!-- Global navigation -->
-      <nav class="flex-1 px-2 py-3 space-y-0.5">
+      <nav class="flex-1 px-2 py-2 space-y-0.5">
         <RouterLink
           to="/"
-          class="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
-          :class="{ 'bg-slate-800 text-slate-100': route.path === '/' }"
+          :class="[
+            collapsed ? 'justify-center px-0' : 'gap-2.5 px-2',
+            route.path === '/' ? 'bg-slate-800 text-slate-100' : '',
+          ]"
+          class="flex items-center w-full rounded-md py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
           exact-active-class="bg-slate-800 text-slate-100"
+          title="My Work"
         >
           <LayoutDashboardIcon class="size-4 flex-shrink-0" />
-          <span>My Work</span>
+          <span v-if="!collapsed">My Work</span>
         </RouterLink>
 
         <RouterLink
           to="/projects"
-          class="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+          :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
+          class="flex items-center w-full rounded-md py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
           active-class="bg-slate-800 text-slate-100"
+          title="Projects"
         >
           <FolderKanbanIcon class="size-4 flex-shrink-0" />
-          <span>Projects</span>
+          <span v-if="!collapsed">Projects</span>
         </RouterLink>
 
         <!-- Project-level navigation — only shown when inside a project -->
         <template v-if="projectSlug">
-          <div class="pt-3 pb-1 px-2 flex items-center gap-1">
+          <div v-if="!collapsed" class="pt-3 pb-1 px-2 flex items-center gap-1">
             <RouterLink
               to="/projects"
               class="text-[11px] font-medium uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
@@ -124,59 +160,74 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
               {{ projectSlug }}
             </span>
           </div>
+          <div v-else class="pt-2 pb-1 flex justify-center">
+            <div class="w-5 border-t border-slate-700" />
+          </div>
 
           <RouterLink
             :to="`/projects/${projectSlug}/board`"
-            class="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
             active-class="bg-slate-800 text-slate-100"
+            title="Board"
           >
             <KanbanIcon class="size-4 flex-shrink-0" />
-            <span>Board</span>
+            <span v-if="!collapsed">Board</span>
           </RouterLink>
 
           <RouterLink
             :to="`/projects/${projectSlug}/backlog`"
-            class="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
             active-class="bg-slate-800 text-slate-100"
+            title="Backlog"
           >
             <ListIcon class="size-4 flex-shrink-0" />
-            <span>Backlog</span>
+            <span v-if="!collapsed">Backlog</span>
           </RouterLink>
 
           <RouterLink
             :to="`/projects/${projectSlug}/epics`"
-            class="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
             active-class="bg-slate-800 text-slate-100"
+            title="Epics"
           >
             <LayersIcon class="size-4 flex-shrink-0" />
-            <span>Epics</span>
+            <span v-if="!collapsed">Epics</span>
           </RouterLink>
 
           <RouterLink
             :to="`/projects/${projectSlug}/triage`"
-            class="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
             active-class="bg-slate-800 text-slate-100"
+            title="Triage"
           >
             <InboxIcon class="size-4 flex-shrink-0" />
-            <span>Triage</span>
+            <span v-if="!collapsed">Triage</span>
           </RouterLink>
 
           <RouterLink
             :to="`/projects/${projectSlug}/milestones`"
-            class="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
             active-class="bg-slate-800 text-slate-100"
+            title="Milestones"
           >
             <FlagIcon class="size-4 flex-shrink-0" />
-            <span>Milestones</span>
+            <span v-if="!collapsed">Milestones</span>
           </RouterLink>
 
           <RouterLink
             :to="`/projects/${projectSlug}/settings`"
-            class="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
             active-class="bg-slate-800 text-slate-100"
+            title="Settings"
           >
             <SettingsIcon class="size-4 flex-shrink-0" />
-            <span>Settings</span>
+            <span v-if="!collapsed">Settings</span>
           </RouterLink>
         </template>
       </nav>
@@ -184,7 +235,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
       <!-- Search hint + bottom section -->
       <div class="px-2 py-2 border-t border-slate-800 space-y-0.5">
         <button
-          class="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 text-left cursor-pointer"
+          :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
+          class="flex items-center w-full rounded-md py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 text-left cursor-pointer"
           title="Press / to search"
           @click="
             () => {
@@ -193,8 +245,9 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           "
         >
           <SearchIcon class="size-4 flex-shrink-0" />
-          <span class="flex-1">Search</span>
+          <span v-if="!collapsed" class="flex-1">Search</span>
           <kbd
+            v-if="!collapsed"
             class="text-[10px] font-mono text-slate-600 bg-slate-800 px-1 rounded"
             >/</kbd
           >
@@ -202,29 +255,32 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
 
         <RouterLink
           to="/settings"
-          class="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+          :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
+          class="flex items-center w-full rounded-md py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
           active-class="bg-slate-800 text-slate-100"
+          title="Instance settings"
         >
           <SettingsIcon class="size-4 flex-shrink-0" />
-          <span>Instance settings</span>
+          <span v-if="!collapsed">Instance settings</span>
         </RouterLink>
       </div>
 
       <!-- User profile -->
       <div
-        class="px-3 py-2.5 border-t border-slate-800 flex items-center gap-2.5 min-w-0"
+        :class="collapsed ? 'justify-center px-2' : 'px-3 gap-2.5'"
+        class="py-2.5 border-t border-slate-800 flex items-center min-w-0"
       >
-        <Avatar :name="userName" size="sm" :src="user?.profile?.picture" />
-        <span class="text-sm text-slate-300 truncate flex-1 min-w-0">{{
-          userName
-        }}</span>
-        <button
-          class="flex-shrink-0 text-slate-500 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors duration-100 cursor-pointer"
-          title="Sign out"
-          @click="signOut"
-        >
-          <LogOutIcon class="size-4" />
-        </button>
+        <Avatar :name="userName" size="sm" :src="user?.profile?.picture" :title="collapsed ? userName : undefined" />
+        <template v-if="!collapsed">
+          <span class="text-sm text-slate-300 truncate flex-1 min-w-0">{{ userName }}</span>
+          <button
+            class="flex-shrink-0 text-slate-500 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors duration-100 cursor-pointer"
+            title="Sign out"
+            @click="signOut"
+          >
+            <LogOutIcon class="size-4" />
+          </button>
+        </template>
       </div>
     </aside>
 
