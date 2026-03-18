@@ -38,6 +38,11 @@ const router = createRouter({
       meta: { requiresAuth: true, layout: 'main' },
     },
     {
+      path: '/projects/:slug/triage',
+      component: () => import('@/views/ProjectTriageView.vue'),
+      meta: { requiresAuth: true, layout: 'main' },
+    },
+    {
       path: '/projects/:slug/milestones',
       component: () => import('@/views/ProjectMilestonesView.vue'),
       meta: { requiresAuth: true, layout: 'main' },
