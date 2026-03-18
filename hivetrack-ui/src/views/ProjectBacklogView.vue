@@ -33,6 +33,7 @@ import {
   Trash2Icon,
   ArrowRightIcon,
   SearchIcon,
+  PencilIcon,
 } from "lucide-vue-next";
 import MainLayout from "@/layouts/MainLayout.vue";
 import Badge from "@/components/ui/Badge.vue";
@@ -508,6 +509,61 @@ function handleCreateSprint() {
   submitNewSprint(data);
 }
 
+// ── Edit sprint ───────────────────────────────────────────────────────────────
+
+const editingSprintId = ref(null);
+const editSprintForm = ref({ name: "", start_date: "", end_date: "", goal: "" });
+const editSprintError = ref("");
+
+function isoToDateInput(iso) {
+  if (!iso) return "";
+  return iso.slice(0, 10);
+}
+
+function startEditSprint(sprint) {
+  editingSprintId.value = sprint.id;
+  editSprintForm.value = {
+    name: sprint.name,
+    start_date: isoToDateInput(sprint.start_date),
+    end_date: isoToDateInput(sprint.end_date),
+    goal: sprint.goal ?? "",
+  };
+  editSprintError.value = "";
+}
+
+function cancelEditSprint() {
+  editingSprintId.value = null;
+  editSprintError.value = "";
+}
+
+const { mutate: submitEditSprint, isPending: editingSprintPending } =
+  useMutation({
+    mutationFn: ({ id, data }) => updateSprint(slug.value, id, data),
+    onSuccess: () => {
+      editingSprintId.value = null;
+      editSprintError.value = "";
+      queryClient.invalidateQueries({ queryKey: ["sprints", slug.value] });
+    },
+    onError: () => {
+      editSprintError.value = "Failed to update sprint.";
+    },
+  });
+
+function handleEditSprint() {
+  if (!editSprintForm.value.name.trim()) {
+    editSprintError.value = "Name is required.";
+    return;
+  }
+  const data = { name: editSprintForm.value.name.trim() };
+  if (editSprintForm.value.start_date)
+    data.start_date = editSprintForm.value.start_date + "T00:00:00Z";
+  if (editSprintForm.value.end_date)
+    data.end_date = editSprintForm.value.end_date + "T00:00:00Z";
+  if (editSprintForm.value.goal.trim())
+    data.goal = editSprintForm.value.goal.trim();
+  submitEditSprint({ id: editingSprintId.value, data });
+}
+
 // ── Move-to-sprint dropdown ───────────────────────────────────────────────────
 
 const openDropdown = ref(null);
@@ -843,12 +899,82 @@ function formatDateRange(startDate, endDate) {
                 Complete sprint
               </button>
               <button
+                class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 h-7 text-slate-400 hover:text-slate-600 hover:border-slate-400 focus-visible:outline-none transition-colors cursor-pointer"
+                title="Edit sprint"
+                @click="startEditSprint(activeSprint)"
+              >
+                <PencilIcon class="size-3.5" />
+              </button>
+              <button
                 class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 h-7 text-slate-400 hover:text-red-600 hover:border-red-300 focus-visible:outline-none transition-colors cursor-pointer"
                 title="Delete sprint (moves issues to backlog)"
                 @click="doDeleteSprint(activeSprint.id)"
               >
                 <Trash2Icon class="size-3.5" />
               </button>
+            </div>
+          </div>
+
+          <!-- Inline edit form for active sprint -->
+          <div
+            v-if="editingSprintId === activeSprint.id"
+            class="px-6 py-4 border-b border-slate-100 bg-blue-50/40"
+          >
+            <div class="max-w-lg space-y-3">
+              <div class="text-sm font-medium text-slate-700">Edit sprint</div>
+
+              <input
+                v-model="editSprintForm.name"
+                type="text"
+                placeholder="Sprint name (required)"
+                class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+
+              <div class="flex gap-3">
+                <div class="flex-1">
+                  <label class="text-xs text-slate-500 mb-1 block">Start date</label>
+                  <input
+                    v-model="editSprintForm.start_date"
+                    type="date"
+                    class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div class="flex-1">
+                  <label class="text-xs text-slate-500 mb-1 block">End date</label>
+                  <input
+                    v-model="editSprintForm.end_date"
+                    type="date"
+                    class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <input
+                v-model="editSprintForm.goal"
+                type="text"
+                placeholder="Sprint goal (optional)"
+                class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+
+              <div v-if="editSprintError" class="text-xs text-red-600">
+                {{ editSprintError }}
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button
+                  class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 h-7 text-xs font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer disabled:opacity-50"
+                  :disabled="editingSprintPending"
+                  @click="handleEditSprint"
+                >
+                  Save
+                </button>
+                <button
+                  class="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none transition-colors cursor-pointer"
+                  @click="cancelEditSprint"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1004,12 +1130,82 @@ function formatDateRange(startDate, endDate) {
                 Activate
               </button>
               <button
+                class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 h-7 text-slate-400 hover:text-slate-600 hover:border-slate-400 focus-visible:outline-none transition-colors cursor-pointer"
+                title="Edit sprint"
+                @click="startEditSprint(sprint)"
+              >
+                <PencilIcon class="size-3.5" />
+              </button>
+              <button
                 class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 h-7 text-slate-400 hover:text-red-600 hover:border-red-300 focus-visible:outline-none transition-colors cursor-pointer"
                 title="Delete sprint (moves issues to backlog)"
                 @click="doDeleteSprint(sprint.id)"
               >
                 <Trash2Icon class="size-3.5" />
               </button>
+            </div>
+          </div>
+
+          <!-- Inline edit form for planning sprint -->
+          <div
+            v-if="editingSprintId === sprint.id"
+            class="px-6 py-4 border-b border-slate-100 bg-slate-50"
+          >
+            <div class="max-w-lg space-y-3">
+              <div class="text-sm font-medium text-slate-700">Edit sprint</div>
+
+              <input
+                v-model="editSprintForm.name"
+                type="text"
+                placeholder="Sprint name (required)"
+                class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+
+              <div class="flex gap-3">
+                <div class="flex-1">
+                  <label class="text-xs text-slate-500 mb-1 block">Start date</label>
+                  <input
+                    v-model="editSprintForm.start_date"
+                    type="date"
+                    class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div class="flex-1">
+                  <label class="text-xs text-slate-500 mb-1 block">End date</label>
+                  <input
+                    v-model="editSprintForm.end_date"
+                    type="date"
+                    class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <input
+                v-model="editSprintForm.goal"
+                type="text"
+                placeholder="Sprint goal (optional)"
+                class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+
+              <div v-if="editSprintError" class="text-xs text-red-600">
+                {{ editSprintError }}
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button
+                  class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 h-7 text-xs font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer disabled:opacity-50"
+                  :disabled="editingSprintPending"
+                  @click="handleEditSprint"
+                >
+                  Save
+                </button>
+                <button
+                  class="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none transition-colors cursor-pointer"
+                  @click="cancelEditSprint"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
 
