@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /var/home/karo/repos/hivetrack && just test-unit 2>&1 | tail -10"
+            "command": "just test-unit 2>&1 | tail -10"
           }
         ]
       }
