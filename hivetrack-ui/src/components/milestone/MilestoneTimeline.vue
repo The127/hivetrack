@@ -10,8 +10,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { updateMilestone } from '@/api/milestones'
-import Badge from '@/components/ui/Badge.vue'
-import ProgressBar from '@/components/ui/ProgressBar.vue'
 
 const props = defineProps({
   milestones: { type: Array, required: true },
