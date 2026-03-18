@@ -137,6 +137,7 @@ const isLoading = computed(() => sprintsLoading.value || issuesLoading.value)
         <!-- Sprint header -->
         <div class="mb-6 space-y-1">
           <div class="flex items-center gap-3">
+            <span class="text-sm font-mono text-slate-400">#{{ sprint.number }}</span>
             <h1 class="text-lg font-semibold text-slate-900">{{ sprint.name }}</h1>
             <span v-if="dateRange(sprint)" class="text-sm text-slate-400">{{ dateRange(sprint) }}</span>
           </div>

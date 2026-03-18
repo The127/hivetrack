@@ -34,6 +34,11 @@ func HandleCreateSprint(ctx context.Context, cmd CreateSprintCommand) (*CreateSp
 		return nil, fmt.Errorf("project %q: %w", cmd.ProjectSlug, models.ErrNotFound)
 	}
 
+	number, err := db.Projects().NextSprintNumber(ctx, project.GetId())
+	if err != nil {
+		return nil, fmt.Errorf("getting sprint number: %w", err)
+	}
+
 	var startDate, endDate time.Time
 	if cmd.StartDate != nil {
 		startDate = *cmd.StartDate
@@ -41,7 +46,7 @@ func HandleCreateSprint(ctx context.Context, cmd CreateSprintCommand) (*CreateSp
 	if cmd.EndDate != nil {
 		endDate = *cmd.EndDate
 	}
-	sprint := models.NewSprint(project.GetId(), cmd.Name, cmd.Goal, startDate, endDate, models.SprintStatusPlanning)
+	sprint := models.NewSprint(project.GetId(), number, cmd.Name, cmd.Goal, startDate, endDate, models.SprintStatusPlanning)
 	db.Sprints().Insert(sprint)
 
 	if err := db.SaveChanges(ctx); err != nil {

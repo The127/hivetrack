@@ -17,6 +17,7 @@ type GetSprintsQuery struct {
 
 type SprintSummary struct {
 	ID         uuid.UUID           `json:"id"`
+	Number     int                 `json:"number"`
 	Name       string              `json:"name"`
 	Goal       *string             `json:"goal,omitempty"`
 	StartDate  *time.Time          `json:"start_date,omitempty"`
@@ -56,6 +57,7 @@ func HandleGetSprints(ctx context.Context, q GetSprintsQuery) (*GetSprintsResult
 		counts := issueCounts[s.GetId()]
 		sum := SprintSummary{
 			ID:         s.GetId(),
+			Number:     s.GetNumber(),
 			Name:       s.GetName(),
 			Goal:       s.GetGoal(),
 			Status:     s.GetStatus(),

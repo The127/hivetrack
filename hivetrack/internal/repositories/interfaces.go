@@ -72,6 +72,9 @@ type ProjectRepository interface {
 
 	// Issue counter — direct-execute
 	NextIssueNumber(ctx context.Context, projectID uuid.UUID) (int, error)
+
+	// Sprint counter — direct-execute
+	NextSprintNumber(ctx context.Context, projectID uuid.UUID) (int, error)
 }
 
 // ProjectFilter filters project list queries.

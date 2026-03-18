@@ -23,7 +23,7 @@ func TestHandleGetSprints(t *testing.T) {
 	db.Projects().Insert(p)
 	require.NoError(t, db.SaveChanges(context.Background()))
 
-	sprint := models.NewSprint(p.GetId(), "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusPlanning)
+	sprint := models.NewSprint(p.GetId(), 1, "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusPlanning)
 	db.Sprints().Insert(sprint)
 	require.NoError(t, db.SaveChanges(context.Background()))
 
@@ -32,4 +32,5 @@ func TestHandleGetSprints(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, result.Sprints, 1)
 	assert.Equal(t, "Sprint 1", result.Sprints[0].Name)
+	assert.Equal(t, 1, result.Sprints[0].Number)
 }

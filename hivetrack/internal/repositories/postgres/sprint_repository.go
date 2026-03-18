@@ -38,10 +38,10 @@ func (r *SprintRepository) Delete(sprint *models.Sprint) {
 func (r *SprintRepository) ExecuteInsert(ctx context.Context, tx *sql.Tx, sprint *models.Sprint) error {
 	var version int
 	err := tx.QueryRowContext(ctx,
-		`INSERT INTO sprints (id, project_id, name, goal, start_date, end_date, status, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+		`INSERT INTO sprints (id, project_id, number, name, goal, start_date, end_date, status, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
 		RETURNING version`,
-		sprint.GetId(), sprint.GetProjectID(), sprint.GetName(), sprint.GetGoal(),
+		sprint.GetId(), sprint.GetProjectID(), sprint.GetNumber(), sprint.GetName(), sprint.GetGoal(),
 		sprint.GetStartDate(), sprint.GetEndDate(), sprint.GetStatus(), sprint.GetCreatedAt(),
 	).Scan(&version)
 	if err != nil {
@@ -130,13 +130,13 @@ func (r *SprintRepository) ExecuteDelete(ctx context.Context, tx *sql.Tx, sprint
 
 func (r *SprintRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Sprint, error) {
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
-		`SELECT id, project_id, name, goal, start_date, end_date, status, created_at, version FROM sprints WHERE id=$1`, id)
+		`SELECT id, project_id, number, name, goal, start_date, end_date, status, created_at, version FROM sprints WHERE id=$1`, id)
 	return scanSprint(row)
 }
 
 func (r *SprintRepository) List(ctx context.Context, projectID uuid.UUID) ([]*models.Sprint, error) {
 	rows, err := r.ctx.queryContext(ctx).QueryContext(ctx,
-		`SELECT id, project_id, name, goal, start_date, end_date, status, created_at, version FROM sprints WHERE project_id=$1 ORDER BY start_date`,
+		`SELECT id, project_id, number, name, goal, start_date, end_date, status, created_at, version FROM sprints WHERE project_id=$1 ORDER BY start_date`,
 		projectID)
 	if err != nil {
 		return nil, fmt.Errorf("listing sprints: %w", err)
@@ -146,19 +146,20 @@ func (r *SprintRepository) List(ctx context.Context, projectID uuid.UUID) ([]*mo
 	var sprints []*models.Sprint
 	for rows.Next() {
 		var id, projectID uuid.UUID
+		var number int
 		var name string
 		var goal sql.NullString
 		var startDate, endDate, createdAt time.Time
 		var status models.SprintStatus
 		var version int
-		if err := rows.Scan(&id, &projectID, &name, &goal, &startDate, &endDate, &status, &createdAt, &version); err != nil {
+		if err := rows.Scan(&id, &projectID, &number, &name, &goal, &startDate, &endDate, &status, &createdAt, &version); err != nil {
 			return nil, fmt.Errorf("scanning sprint: %w", err)
 		}
 		var goalPtr *string
 		if goal.Valid {
 			goalPtr = &goal.String
 		}
-		sprints = append(sprints, models.NewSprintFromDB(id, createdAt, version, projectID, name, goalPtr, startDate, endDate, status))
+		sprints = append(sprints, models.NewSprintFromDB(id, createdAt, version, projectID, number, name, goalPtr, startDate, endDate, status))
 	}
 	return sprints, rows.Err()
 }
@@ -190,13 +191,14 @@ func (r *SprintRepository) GetIssueCountsForProject(ctx context.Context, project
 
 func scanSprint(row *sql.Row) (*models.Sprint, error) {
 	var id, projectID uuid.UUID
+	var number int
 	var name string
 	var goal sql.NullString
 	var startDate, endDate, createdAt time.Time
 	var status models.SprintStatus
 	var version int
 
-	err := row.Scan(&id, &projectID, &name, &goal, &startDate, &endDate, &status, &createdAt, &version)
+	err := row.Scan(&id, &projectID, &number, &name, &goal, &startDate, &endDate, &status, &createdAt, &version)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -209,5 +211,5 @@ func scanSprint(row *sql.Row) (*models.Sprint, error) {
 		goalPtr = &goal.String
 	}
 
-	return models.NewSprintFromDB(id, createdAt, version, projectID, name, goalPtr, startDate, endDate, status), nil
+	return models.NewSprintFromDB(id, createdAt, version, projectID, number, name, goalPtr, startDate, endDate, status), nil
 }
