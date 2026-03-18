@@ -117,6 +117,9 @@ func matchesIssueFilter(issue *models.Issue, filter *repositories.IssueFilter) b
 	if filter.Triaged != nil && issue.GetTriaged() != *filter.Triaged {
 		return false
 	}
+	if filter.Refined != nil && issue.GetRefined() != *filter.Refined {
+		return false
+	}
 	if filter.Text != nil && *filter.Text != "" {
 		text := strings.ToLower(*filter.Text)
 		if !strings.Contains(strings.ToLower(issue.GetTitle()), text) {

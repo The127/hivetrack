@@ -41,6 +41,10 @@ func (h *IssueHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
 		triaged := t == "true"
 		q.Triaged = &triaged
 	}
+	if rf := r.URL.Query().Get("refined"); rf != "" {
+		refined := rf == "true"
+		q.Refined = &refined
+	}
 	if b := r.URL.Query().Get("backlog"); b != "" {
 		inBacklog := b == "true"
 		q.InBacklog = &inBacklog
@@ -320,6 +324,39 @@ func (h *IssueHandler) TriageIssue(w http.ResponseWriter, r *http.Request) {
 		Status:      body.Status,
 		SprintID:    body.SprintID,
 		MilestoneID: body.MilestoneID,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	RespondJSON(w, http.StatusNoContent, nil)
+}
+
+func (h *IssueHandler) RefineIssue(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	slug := vars["slug"]
+	numberStr := vars["number"]
+	number, err := strconv.Atoi(numberStr)
+	if err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	issueResult, err := mediatr.Send[*queries.IssueDetail](r.Context(), h.mediator, queries.GetIssueQuery{
+		ProjectSlug: slug,
+		Number:      number,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	if issueResult == nil {
+		RespondError(w, models.ErrNotFound)
+		return
+	}
+
+	_, err = mediatr.Send[*commands.RefineIssueResult](r.Context(), h.mediator, commands.RefineIssueCommand{
+		IssueID: issueResult.ID,
 	})
 	if err != nil {
 		RespondError(w, err)

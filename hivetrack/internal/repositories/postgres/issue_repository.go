@@ -47,15 +47,15 @@ func (r *IssueRepository) ExecuteInsert(ctx context.Context, tx *sql.Tx, issue *
 		`INSERT INTO issues (id, project_id, number, type, title, description, status,
 		on_hold, hold_reason, hold_since, hold_note,
 		priority, estimate, reporter_id, parent_id, milestone_id, sprint_id, sprint_carry_count,
-		triaged, visibility, customer_email, customer_name, customer_token, "rank", checklist, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
+		triaged, refined, visibility, customer_email, customer_name, customer_token, "rank", checklist, created_at, updated_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)
 		RETURNING version`,
 		issue.GetId(), issue.GetProjectID(), issue.GetNumber(), issue.GetType(),
 		issue.GetTitle(), issue.GetDescription(), issue.GetStatus(),
 		issue.GetOnHold(), issue.GetHoldReason(), issue.GetHoldSince(), issue.GetHoldNote(),
 		issue.GetPriority(), issue.GetEstimate(), issue.GetReporterID(), issue.GetParentID(),
 		issue.GetMilestoneID(), issue.GetSprintID(), issue.GetSprintCarryCount(),
-		issue.GetTriaged(), issue.GetVisibility(),
+		issue.GetTriaged(), issue.GetRefined(), issue.GetVisibility(),
 		issue.GetCustomerEmail(), issue.GetCustomerName(), issue.GetCustomerToken(),
 		issue.GetRank(), checklistJSON, issue.GetCreatedAt(), issue.GetUpdatedAt(),
 	).Scan(&version)
@@ -150,6 +150,11 @@ func (r *IssueRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, issue *
 	if issue.HasChange(models.IssueChangeTriaged) {
 		setClauses = append(setClauses, fmt.Sprintf("triaged=$%d", argIdx))
 		args = append(args, issue.GetTriaged())
+		argIdx++
+	}
+	if issue.HasChange(models.IssueChangeRefined) {
+		setClauses = append(setClauses, fmt.Sprintf("refined=$%d", argIdx))
+		args = append(args, issue.GetRefined())
 		argIdx++
 	}
 	if issue.HasChange(models.IssueChangeVisibility) {
@@ -268,6 +273,11 @@ func (r *IssueRepository) List(ctx context.Context, filter *repositories.IssueFi
 		args = append(args, *filter.Triaged)
 		argIdx++
 	}
+	if filter.Refined != nil {
+		baseQuery += fmt.Sprintf(` AND i.refined=$%d`, argIdx)
+		args = append(args, *filter.Refined)
+		argIdx++
+	}
 	if filter.AssigneeID != nil {
 		baseQuery += fmt.Sprintf(` AND EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.user_id=$%d)`, argIdx)
 		args = append(args, *filter.AssigneeID)
@@ -352,7 +362,7 @@ const issueSelectQuery = `
 	SELECT i.id, i.project_id, i.number, i.type, i.title, i.description, i.status,
 		i.on_hold, i.hold_reason, i.hold_since, i.hold_note,
 		i.priority, i.estimate, i.reporter_id, i.parent_id, i.milestone_id, i.sprint_id, i.sprint_carry_count,
-		i.triaged, i.visibility, i.customer_email, i.customer_name, i.customer_token,
+		i.triaged, i.refined, i.visibility, i.customer_email, i.customer_name, i.customer_token,
 		i."rank", i.checklist, i.created_at, i.updated_at, i.version,
 		COALESCE((SELECT array_agg(user_id) FROM issue_assignees WHERE issue_id=i.id), '{}'),
 		COALESCE((SELECT array_agg(label_id) FROM issue_labels WHERE issue_id=i.id), '{}')
@@ -372,7 +382,7 @@ func scanIssue(row *sql.Row) (*models.Issue, error) {
 	var reporterID, parentID, milestoneID, sprintID uuid.NullUUID
 	var customerToken uuid.NullUUID
 	var sprintCarryCount int
-	var triaged bool
+	var triaged, refined bool
 	var visibility models.IssueVisibility
 	var checklistJSON []byte
 	var createdAt, updatedAt time.Time
@@ -383,7 +393,7 @@ func scanIssue(row *sql.Row) (*models.Issue, error) {
 		&id, &projectID, &number, &issueType, &title, &desc, &status,
 		&onHold, &holdReason, &holdSince, &holdNote,
 		&priority, &estimate, &reporterID, &parentID, &milestoneID, &sprintID, &sprintCarryCount,
-		&triaged, &visibility, &customerEmail, &customerName, &customerToken,
+		&triaged, &refined, &visibility, &customerEmail, &customerName, &customerToken,
 		&rankStr, &checklistJSON, &createdAt, &updatedAt, &version,
 		&assigneeArr, &labelArr,
 	)
@@ -400,7 +410,7 @@ func scanIssue(row *sql.Row) (*models.Issue, error) {
 		status, onHold, holdSince, customerToken,
 		priority, estimate,
 		reporterID, parentID, milestoneID, sprintID,
-		sprintCarryCount, triaged, visibility,
+		sprintCarryCount, triaged, refined, visibility,
 		rankStr, checklistJSON, createdAt, updatedAt, version,
 		assigneeArr, labelArr,
 	), nil
@@ -420,7 +430,7 @@ func scanIssueRow(rows *sql.Rows) (*models.Issue, error) {
 	var reporterID, parentID, milestoneID, sprintID uuid.NullUUID
 	var customerToken uuid.NullUUID
 	var sprintCarryCount int
-	var triaged bool
+	var triaged, refined bool
 	var visibility models.IssueVisibility
 	var checklistJSON []byte
 	var createdAt, updatedAt time.Time
@@ -431,7 +441,7 @@ func scanIssueRow(rows *sql.Rows) (*models.Issue, error) {
 		&id, &projectID, &number, &issueType, &title, &desc, &status,
 		&onHold, &holdReason, &holdSince, &holdNote,
 		&priority, &estimate, &reporterID, &parentID, &milestoneID, &sprintID, &sprintCarryCount,
-		&triaged, &visibility, &customerEmail, &customerName, &customerToken,
+		&triaged, &refined, &visibility, &customerEmail, &customerName, &customerToken,
 		&rankStr, &checklistJSON, &createdAt, &updatedAt, &version,
 		&assigneeArr, &labelArr,
 	)
@@ -445,7 +455,7 @@ func scanIssueRow(rows *sql.Rows) (*models.Issue, error) {
 		status, onHold, holdSince, customerToken,
 		priority, estimate,
 		reporterID, parentID, milestoneID, sprintID,
-		sprintCarryCount, triaged, visibility,
+		sprintCarryCount, triaged, refined, visibility,
 		rankStr, checklistJSON, createdAt, updatedAt, version,
 		assigneeArr, labelArr,
 	), nil
@@ -458,7 +468,7 @@ func buildIssue(
 	customerToken uuid.NullUUID,
 	priority models.IssuePriority, estimate models.IssueEstimate,
 	reporterID, parentID, milestoneID, sprintID uuid.NullUUID,
-	sprintCarryCount int, triaged bool, visibility models.IssueVisibility,
+	sprintCarryCount int, triaged bool, refined bool, visibility models.IssueVisibility,
 	rankStr sql.NullString,
 	checklistJSON []byte, createdAt, updatedAt time.Time, version int,
 	assigneeArr, labelArr []byte,
@@ -527,7 +537,7 @@ func buildIssue(
 		onHold, holdReasonPtr, holdSincePtr, holdNotePtr,
 		priority, estimate,
 		reporterIDPtr, parentIDPtr, milestoneIDPtr, sprintIDPtr,
-		sprintCarryCount, triaged, visibility,
+		sprintCarryCount, triaged, refined, visibility,
 		customerEmailPtr, customerNamePtr, customerTokenPtr,
 		rankPtr, checklist, assignees, labels, nil,
 	)

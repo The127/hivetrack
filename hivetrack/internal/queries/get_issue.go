@@ -27,6 +27,7 @@ type IssueDetail struct {
 	Priority       models.IssuePriority   `json:"priority"`
 	Estimate       models.IssueEstimate   `json:"estimate"`
 	Triaged        bool                   `json:"triaged"`
+	Refined        bool                   `json:"refined"`
 	Visibility     models.IssueVisibility `json:"visibility"`
 	OnHold         bool                   `json:"on_hold"`
 	HoldReason     *models.HoldReason     `json:"hold_reason,omitempty"`
@@ -85,6 +86,7 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 		Priority:    issue.GetPriority(),
 		Estimate:    issue.GetEstimate(),
 		Triaged:     issue.GetTriaged(),
+		Refined:     issue.GetRefined(),
 		Visibility:  issue.GetVisibility(),
 		OnHold:      issue.GetOnHold(),
 		HoldReason:  issue.GetHoldReason(),
