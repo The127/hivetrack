@@ -197,6 +197,41 @@ func formatListProjects(data json.RawMessage) string {
 	return sb.String()
 }
 
+// formatListComments formats a list_comments response.
+func formatListComments(data json.RawMessage) string {
+	var resp struct {
+		Items []struct {
+			ID          string `json:"id"`
+			AuthorName  string `json:"author_name"`
+			AuthorEmail string `json:"author_email"`
+			Body        string `json:"body"`
+			CreatedAt   string `json:"created_at"`
+		} `json:"items"`
+		Total int `json:"total"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return string(data)
+	}
+
+	if len(resp.Items) == 0 {
+		return "No comments."
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d comment(s):\n\n", resp.Total))
+	for _, c := range resp.Items {
+		author := c.AuthorName
+		if author == "" {
+			author = c.AuthorEmail
+		}
+		if author == "" {
+			author = "unknown"
+		}
+		sb.WriteString(fmt.Sprintf("— %s (%s):\n%s\n\n", author, c.CreatedAt, c.Body))
+	}
+	return sb.String()
+}
+
 // formatGetIssue formats a get_issue response with full details.
 func formatGetIssue(data json.RawMessage) string {
 	var issue struct {

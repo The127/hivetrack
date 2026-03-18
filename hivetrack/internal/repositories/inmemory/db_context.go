@@ -19,6 +19,7 @@ type DbContext struct {
 	sprints    *SprintRepository
 	milestones *MilestoneRepository
 	labels     *LabelRepository
+	comments   *CommentRepository
 	outbox     *OutboxRepository
 }
 
@@ -32,6 +33,7 @@ func NewDbContext() *DbContext {
 		sprints:       NewSprintRepository(tracker),
 		milestones:    NewMilestoneRepository(tracker),
 		labels:        NewLabelRepository(tracker),
+		comments:      NewCommentRepository(tracker),
 		outbox:        NewOutboxRepository(),
 	}
 }
@@ -58,6 +60,10 @@ func (d *DbContext) Milestones() repositories.MilestoneRepository {
 
 func (d *DbContext) Labels() repositories.LabelRepository {
 	return d.labels
+}
+
+func (d *DbContext) Comments() repositories.CommentRepository {
+	return d.comments
 }
 
 func (d *DbContext) Outbox() repositories.OutboxRepository {
@@ -163,6 +169,20 @@ func (d *DbContext) SaveChanges(_ context.Context) error {
 				item.ClearChanges()
 			case change.Deleted:
 				delete(d.labels.byID, item.GetId())
+			}
+		case *models.Comment:
+			switch entry.GetChangeType() {
+			case change.Added:
+				d.comments.byID[item.GetId()] = item
+				item.ClearChanges()
+			case change.Updated:
+				if _, ok := d.comments.byID[item.GetId()]; !ok {
+					return fmt.Errorf("comment %s: %w", item.GetId(), models.ErrNotFound)
+				}
+				d.comments.byID[item.GetId()] = item
+				item.ClearChanges()
+			case change.Deleted:
+				delete(d.comments.byID, item.GetId())
 			}
 		}
 	}

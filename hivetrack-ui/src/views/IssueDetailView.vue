@@ -19,6 +19,7 @@ import Badge from '@/components/ui/Badge.vue'
 import Spinner from '@/components/ui/Spinner.vue'
 import EpicSelector from '@/components/issue/EpicSelector.vue'
 import EpicChildList from '@/components/issue/EpicChildList.vue'
+import CommentSection from '@/components/issue/CommentSection.vue'
 import StatusSelect from '@/components/issue/StatusSelect.vue'
 import PrioritySelect from '@/components/issue/PrioritySelect.vue'
 import AssigneeSelect from '@/components/issue/AssigneeSelect.vue'
@@ -225,6 +226,9 @@ const { mutate: updateAssignees } = useMutation({
               </div>
             </div>
           </div>
+
+          <!-- Comments -->
+          <CommentSection :project-slug="slug" :issue-number="number" />
 
         </div>
       </div>

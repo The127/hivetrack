@@ -27,6 +27,9 @@ func Mediator(dc *ioc.DependencyCollection) {
 	mediatr.RegisterHandler(m, commands.HandleAddChecklistItem)
 	mediatr.RegisterHandler(m, commands.HandleUpdateChecklistItem)
 	mediatr.RegisterHandler(m, commands.HandleRemoveChecklistItem)
+	mediatr.RegisterHandler(m, commands.HandleCreateComment)
+	mediatr.RegisterHandler(m, commands.HandleUpdateComment)
+	mediatr.RegisterHandler(m, commands.HandleDeleteComment)
 
 	// Queries
 	mediatr.RegisterHandler(m, queries.HandleGetUsers)
@@ -38,6 +41,7 @@ func Mediator(dc *ioc.DependencyCollection) {
 	mediatr.RegisterHandler(m, queries.HandleGetSprints)
 	mediatr.RegisterHandler(m, queries.HandleGetMilestones)
 	mediatr.RegisterHandler(m, queries.HandleGetLabels)
+	mediatr.RegisterHandler(m, queries.HandleGetComments)
 
 	ioc.RegisterSingleton(dc, func(_ *ioc.DependencyProvider) mediatr.Mediator {
 		return m

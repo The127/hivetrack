@@ -15,6 +15,7 @@ type DbContext interface {
 	Sprints() SprintRepository
 	Milestones() MilestoneRepository
 	Labels() LabelRepository
+	Comments() CommentRepository
 	Outbox() OutboxRepository
 
 	// SaveChanges executes all queued Insert/Update/Delete in a single transaction.
@@ -196,6 +197,17 @@ type LabelRepository interface {
 
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Label, error)
 	List(ctx context.Context, projectID uuid.UUID) ([]*models.Label, error)
+}
+
+// CommentRepository handles comment persistence.
+// Insert/Update/Delete queue changes; reads are direct-execute.
+type CommentRepository interface {
+	Insert(comment *models.Comment)
+	Update(comment *models.Comment)
+	Delete(comment *models.Comment)
+
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Comment, error)
+	List(ctx context.Context, issueID uuid.UUID, limit, offset int) ([]*models.Comment, int, error)
 }
 
 // OutboxRepository handles outbox message persistence.

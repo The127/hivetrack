@@ -23,6 +23,7 @@ type DbContext struct {
 	sprints    *SprintRepository
 	milestones *MilestoneRepository
 	labels     *LabelRepository
+	comments   *CommentRepository
 	outbox     *OutboxRepository
 }
 
@@ -74,6 +75,13 @@ func (d *DbContext) Labels() repositories.LabelRepository {
 		d.labels = NewLabelRepository(d)
 	}
 	return d.labels
+}
+
+func (d *DbContext) Comments() repositories.CommentRepository {
+	if d.comments == nil {
+		d.comments = NewCommentRepository(d)
+	}
+	return d.comments
 }
 
 func (d *DbContext) Outbox() repositories.OutboxRepository {
@@ -161,6 +169,16 @@ func (d *DbContext) applyChange(ctx context.Context, tx *sql.Tx, entry change.En
 			return d.Labels().(*LabelRepository).ExecuteUpdate(ctx, tx, lbl)
 		case change.Deleted:
 			return d.Labels().(*LabelRepository).ExecuteDelete(ctx, tx, lbl)
+		}
+	case commentEntityType:
+		cmt := entry.GetItem().(*models.Comment)
+		switch entry.GetChangeType() {
+		case change.Added:
+			return d.Comments().(*CommentRepository).ExecuteInsert(ctx, tx, cmt)
+		case change.Updated:
+			return d.Comments().(*CommentRepository).ExecuteUpdate(ctx, tx, cmt)
+		case change.Deleted:
+			return d.Comments().(*CommentRepository).ExecuteDelete(ctx, tx, cmt)
 		}
 	}
 	return nil

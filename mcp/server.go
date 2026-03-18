@@ -16,6 +16,7 @@ func NewServer(client *Client) *server.MCPServer {
 	registerUserTools(s, client)
 	registerProjectTools(s, client)
 	registerIssueTools(s, client)
+	registerCommentTools(s, client)
 	registerSprintTools(s, client)
 	registerMetadataTools(s, client)
 

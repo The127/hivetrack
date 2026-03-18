@@ -7,4 +7,5 @@ const (
 	sprintEntityType
 	milestoneEntityType
 	labelEntityType
+	commentEntityType
 )

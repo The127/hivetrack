@@ -71,6 +71,13 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 	protected.HandleFunc("/projects/{slug}/issues/{number}/checklist/{item_id}", issueH.RemoveChecklistItem).Methods("DELETE")
 	protected.HandleFunc("/me/issues", issueH.GetMyIssues).Methods("GET")
 
+	// Comments
+	commentH := handlers.NewCommentHandler(med)
+	protected.HandleFunc("/projects/{slug}/issues/{number}/comments", commentH.ListComments).Methods("GET")
+	protected.HandleFunc("/projects/{slug}/issues/{number}/comments", commentH.CreateComment).Methods("POST")
+	protected.HandleFunc("/projects/{slug}/issues/{number}/comments/{comment_id}", commentH.UpdateComment).Methods("PATCH")
+	protected.HandleFunc("/projects/{slug}/issues/{number}/comments/{comment_id}", commentH.DeleteComment).Methods("DELETE")
+
 	// Sprints
 	sprintH := handlers.NewSprintHandler(med)
 	protected.HandleFunc("/projects/{slug}/sprints", sprintH.ListSprints).Methods("GET")
