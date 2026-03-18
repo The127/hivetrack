@@ -23,39 +23,39 @@ linters:
     # Architecture (complements the architecture_test.go)
     - depguard          # restrict which packages can be imported where
 
-linters-settings:
-  revive:
-    rules:
-      - name: exported
-        severity: warning
-      - name: error-return
-        severity: warning
-      - name: var-naming
-        severity: warning
-      - name: blank-imports
-        severity: error
-      - name: context-as-argument
-        severity: error        # ctx must be the first argument
-      - name: context-keys-type
-        severity: error        # no built-in types as context keys
+  settings:
+    revive:
+      rules:
+        - name: exported
+          severity: warning
+        - name: error-return
+          severity: warning
+        - name: var-naming
+          severity: warning
+        - name: blank-imports
+          severity: error
+        - name: context-as-argument
+          severity: error        # ctx must be the first argument
+        - name: context-keys-type
+          severity: error        # no built-in types as context keys
 
-  exhaustive:
-    default-signifies-exhaustive: true
+    exhaustive:
+      default-signifies-exhaustive: true
 
-  gosec:
-    excludes:
-      - G104  # errors unhandled — covered by errcheck
+    gosec:
+      excludes:
+        - G104  # errors unhandled — covered by errcheck
 
-  depguard:
-    rules:
-      no-direct-db-in-handlers:
-        files:
-          - "**/handlers/**"
-        deny:
-          - pkg: "database/sql"
-            desc: "handlers must not use sql directly — use DbContext via IoC"
-          - pkg: "github.com/lib/pq"
-            desc: "handlers must not import the postgres driver"
+    depguard:
+      rules:
+        no-direct-db-in-handlers:
+          files:
+            - "**/handlers/**"
+          deny:
+            - pkg: "database/sql"
+              desc: "handlers must not use sql directly — use DbContext via IoC"
+            - pkg: "github.com/lib/pq"
+              desc: "handlers must not import the postgres driver"
 
 formatters:
   enable:
@@ -63,21 +63,23 @@ formatters:
 
   settings:
     goimports:
-      local-prefixes: github.com/the127/hivetrack
+      local-prefixes:
+        - github.com/the127/hivetrack
 
 issues:
-  exclude-rules:
-    # Allow unused parameters in test files (common in table-driven tests)
-    - path: "_test.go"
-      linters:
-        - unparam
-    # Allow dot imports in test files (for testify etc.)
-    - path: "_test.go"
-      linters:
-        - revive
-      text: "dot-imports"
-    # Architecture test file uses reflection-heavy code
-    - path: "internal/architecture"
-      linters:
-        - exhaustive
-        - unparam
+  exclusions:
+    rules:
+      # Allow unused parameters in test files (common in table-driven tests)
+      - path: "_test.go"
+        linters:
+          - unparam
+      # Allow dot imports in test files (for testify etc.)
+      - path: "_test.go"
+        linters:
+          - revive
+        text: "dot-imports"
+      # Architecture test file uses reflection-heavy code
+      - path: "internal/architecture"
+        linters:
+          - exhaustive
+          - unparam
