@@ -66,9 +66,8 @@ formatters:
       local-prefixes:
         - github.com/the127/hivetrack
 
-issues:
-  exclusions:
-    rules:
+exclusions:
+  rules:
       # Allow unused parameters in test files (common in table-driven tests)
       - path: "_test.go"
         linters:
