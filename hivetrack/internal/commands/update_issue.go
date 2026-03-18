@@ -137,5 +137,12 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 		return nil, fmt.Errorf("saving issue: %w", err)
 	}
 
+	// Record status transition for burndown tracking
+	if cmd.Status != nil && *cmd.Status != oldStatus {
+		if err := db.IssueStatusLog().Insert(ctx, issue.GetId(), string(*cmd.Status), time.Now()); err != nil {
+			return nil, fmt.Errorf("logging issue status: %w", err)
+		}
+	}
+
 	return &UpdateIssueResult{}, nil
 }

@@ -17,3 +17,6 @@ export const updateSprint = (slug, id, data) =>
 
 export const deleteSprint = (slug, id) =>
   apiFetch(`/api/v1/projects/${slug}/sprints/${id}`, { method: 'DELETE' })
+
+export const fetchSprintBurndown = (slug, sprintId) =>
+  apiFetch(`/api/v1/projects/${slug}/sprints/${sprintId}/burndown`)

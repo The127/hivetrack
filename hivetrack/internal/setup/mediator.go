@@ -52,6 +52,7 @@ func Mediator(dc *ioc.DependencyCollection) {
 	mediatr.RegisterHandler(m, queries.HandleGetIssue)
 	mediatr.RegisterHandler(m, queries.HandleGetMyIssues)
 	mediatr.RegisterHandler(m, queries.HandleGetSprints)
+	mediatr.RegisterHandler(m, queries.HandleGetSprintBurndown)
 	mediatr.RegisterHandler(m, queries.HandleGetMilestones)
 	mediatr.RegisterHandler(m, queries.HandleGetLabels)
 	mediatr.RegisterHandler(m, queries.HandleGetComments)

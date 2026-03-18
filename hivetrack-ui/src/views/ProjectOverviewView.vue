@@ -29,9 +29,10 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Spinner from '@/components/ui/Spinner.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
+import SprintBurndownChart from '@/components/sprint/SprintBurndownChart.vue'
 import { fetchProject } from '@/api/projects'
 import { fetchIssues } from '@/api/issues'
-import { fetchSprints } from '@/api/sprints'
+import { fetchSprints, fetchSprintBurndown } from '@/api/sprints'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug)
@@ -66,6 +67,12 @@ const { data: inboxResult } = useQuery({
 const activeSprint = computed(
   () => (sprintsResult.value?.sprints ?? []).find((s) => s.status === 'active') ?? null,
 )
+
+const { data: burndownResult } = useQuery({
+  queryKey: computed(() => ['sprint-burndown', slug.value, activeSprint.value?.id]),
+  queryFn: () => fetchSprintBurndown(slug.value, activeSprint.value.id),
+  enabled: computed(() => !!activeSprint.value),
+})
 
 const allIssues = computed(() => issuesResult.value?.items ?? [])
 const inboxCount = computed(() => inboxResult.value?.total ?? 0)
@@ -220,6 +227,14 @@ function formatDateRange(start, end) {
           <p v-if="activeSprint.goal" class="text-xs text-slate-600 mt-2">
             <span class="text-slate-400 font-medium">Goal:</span> {{ activeSprint.goal }}
           </p>
+          <div v-if="burndownResult && activeSprint.start_date && activeSprint.end_date" class="mt-3">
+            <SprintBurndownChart
+              :points="burndownResult.points"
+              :total="burndownResult.total"
+              :start-date="activeSprint.start_date"
+              :end-date="activeSprint.end_date"
+            />
+          </div>
         </div>
       </section>
 

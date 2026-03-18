@@ -17,14 +17,15 @@ type DbContext struct {
 	db            *sql.DB
 	changeTracker *change.Tracker
 
-	users      *UserRepository
-	projects   *ProjectRepository
-	issues     *IssueRepository
-	sprints    *SprintRepository
-	milestones *MilestoneRepository
-	labels     *LabelRepository
-	comments   *CommentRepository
-	outbox     *OutboxRepository
+	users          *UserRepository
+	projects       *ProjectRepository
+	issues         *IssueRepository
+	sprints        *SprintRepository
+	milestones     *MilestoneRepository
+	labels         *LabelRepository
+	comments       *CommentRepository
+	outbox         *OutboxRepository
+	issueStatusLog *IssueStatusLogRepository
 }
 
 // NewDbContext creates a new DbContext.
@@ -89,6 +90,13 @@ func (d *DbContext) Outbox() repositories.OutboxRepository {
 		d.outbox = NewOutboxRepository(d)
 	}
 	return d.outbox
+}
+
+func (d *DbContext) IssueStatusLog() repositories.IssueStatusLogRepository {
+	if d.issueStatusLog == nil {
+		d.issueStatusLog = NewIssueStatusLogRepository(d)
+	}
+	return d.issueStatusLog
 }
 
 // SaveChanges executes all queued Insert/Update/Delete operations in a single transaction.

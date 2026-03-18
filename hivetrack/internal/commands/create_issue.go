@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -110,6 +111,13 @@ func HandleCreateIssue(ctx context.Context, cmd CreateIssueCommand) (*CreateIssu
 
 	if err := db.SaveChanges(ctx); err != nil {
 		return nil, fmt.Errorf("saving issue: %w", err)
+	}
+
+	// Record initial status for burndown tracking when issue is in a sprint
+	if cmd.SprintID != nil {
+		if err := db.IssueStatusLog().Insert(ctx, issue.GetId(), string(issue.GetStatus()), time.Now()); err != nil {
+			return nil, fmt.Errorf("logging issue status: %w", err)
+		}
 	}
 
 	return &CreateIssueResult{

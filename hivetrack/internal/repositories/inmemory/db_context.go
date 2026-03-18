@@ -13,29 +13,31 @@ import (
 type DbContext struct {
 	changeTracker *change.Tracker
 
-	users      *UserRepository
-	projects   *ProjectRepository
-	issues     *IssueRepository
-	sprints    *SprintRepository
-	milestones *MilestoneRepository
-	labels     *LabelRepository
-	comments   *CommentRepository
-	outbox     *OutboxRepository
+	users          *UserRepository
+	projects       *ProjectRepository
+	issues         *IssueRepository
+	sprints        *SprintRepository
+	milestones     *MilestoneRepository
+	labels         *LabelRepository
+	comments       *CommentRepository
+	outbox         *OutboxRepository
+	issueStatusLog *IssueStatusLogRepository
 }
 
 func NewDbContext() *DbContext {
 	tracker := change.NewTracker()
 	issueRepo := NewIssueRepository(tracker)
 	return &DbContext{
-		changeTracker: tracker,
-		users:         NewUserRepository(),
-		projects:      NewProjectRepository(tracker),
-		issues:        issueRepo,
-		sprints:       NewSprintRepository(tracker),
-		milestones:    NewMilestoneRepository(tracker, issueRepo),
-		labels:        NewLabelRepository(tracker),
-		comments:      NewCommentRepository(tracker),
-		outbox:        NewOutboxRepository(),
+		changeTracker:  tracker,
+		users:          NewUserRepository(),
+		projects:       NewProjectRepository(tracker),
+		issues:         issueRepo,
+		sprints:        NewSprintRepository(tracker),
+		milestones:     NewMilestoneRepository(tracker, issueRepo),
+		labels:         NewLabelRepository(tracker),
+		comments:       NewCommentRepository(tracker),
+		outbox:         NewOutboxRepository(),
+		issueStatusLog: NewIssueStatusLogRepository(issueRepo),
 	}
 }
 
@@ -69,6 +71,10 @@ func (d *DbContext) Comments() repositories.CommentRepository {
 
 func (d *DbContext) Outbox() repositories.OutboxRepository {
 	return d.outbox
+}
+
+func (d *DbContext) IssueStatusLog() repositories.IssueStatusLogRepository {
+	return d.issueStatusLog
 }
 
 // SaveChanges applies all queued Insert/Update/Delete operations to the in-memory stores.
