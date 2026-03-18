@@ -303,23 +303,27 @@ const defaultCreateStatus = computed(() => {
       <!-- ── Context bar ────────────────────────────────────────────────── -->
       <template v-if="!isLoading">
         <!-- Active sprint -->
-        <div v-if="activeSprint" class="flex-shrink-0 flex items-center justify-between px-6 py-2 bg-blue-50 border-b border-blue-100">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <span class="text-xs font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0">Sprint</span>
-            <span class="text-sm font-semibold text-slate-900 truncate">{{ activeSprint.name }}</span>
-            <span v-if="activeSprint.start_date" class="text-xs text-slate-500 flex-shrink-0">
-              {{ formatDateRange(activeSprint.start_date, activeSprint.end_date) }}
-            </span>
-            <span v-if="activeSprint.goal" class="text-xs text-slate-500 italic truncate max-w-64">{{ activeSprint.goal }}</span>
-            <span class="text-xs text-slate-400 tabular-nums flex-shrink-0">{{ boardIssues.length }} issues</span>
-          </div>
-          <button
+        <div v-if="activeSprint" class="flex-shrink-0 px-6 py-2 bg-blue-50 border-b border-blue-100">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="text-xs font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0">Sprint</span>
+              <span class="text-sm font-semibold text-slate-900 truncate">{{ activeSprint.name }}</span>
+              <span v-if="activeSprint.start_date" class="text-xs text-slate-500 flex-shrink-0">
+                {{ formatDateRange(activeSprint.start_date, activeSprint.end_date) }}
+              </span>
+              <span class="text-xs text-slate-400 tabular-nums flex-shrink-0">{{ boardIssues.length }} issues</span>
+            </div>
+            <button
             class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer flex-shrink-0"
             @click="requestCompleteSprint()"
           >
             <CheckIcon class="size-3.5" />
             Complete sprint
           </button>
+          </div>
+          <p v-if="activeSprint.goal" class="text-xs text-slate-600 mt-1.5">
+            <span class="text-slate-400 font-medium">Goal:</span> {{ activeSprint.goal }}
+          </p>
         </div>
 
         <!-- No active sprint — showing backlog -->
