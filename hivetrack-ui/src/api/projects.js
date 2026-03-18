@@ -18,3 +18,6 @@ export const updateProject = (id, data) =>
 
 export const deleteProject = (id) =>
   apiFetch(`/api/v1/projects/${id}`, { method: 'DELETE' })
+
+export const removeProjectMember = (slug, userId) =>
+  apiFetch(`/api/v1/projects/${slug}/members/${userId}`, { method: 'DELETE' })

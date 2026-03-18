@@ -29,6 +29,7 @@ import "md-editor-v3/lib/style.css";
 import MarkdownEditor from "@/components/ui/MarkdownEditor.vue";
 import RelativeTime from "@/components/ui/RelativeTime.vue";
 import SplitIssueModal from "@/components/issue/SplitIssueModal.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { fetchIssue, updateIssue } from "@/api/issues";
 import { fetchProject } from "@/api/projects";
 import { fetchSprints } from "@/api/sprints";
@@ -79,15 +80,26 @@ const ESTIMATE_LABEL = {
 
 // ── Status mutation ───────────────────────────────────────────────────────────
 
-const { mutate: updateStatus } = useMutation({
+const showCancelConfirm = ref(false);
+
+const { mutate: doUpdateStatus, isPending: cancelPending } = useMutation({
   mutationFn: (status) => updateIssue(slug.value, number.value, { status }),
   onSuccess: () => {
+    showCancelConfirm.value = false;
     queryClient.invalidateQueries({
       queryKey: ["issue", slug.value, number.value],
     });
     queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
   },
 });
+
+function updateStatus(status) {
+  if (status === "cancelled") {
+    showCancelConfirm.value = true;
+  } else {
+    doUpdateStatus(status);
+  }
+}
 
 // ── Priority mutation ─────────────────────────────────────────────────────────
 
@@ -592,6 +604,17 @@ const { mutate: updateMilestone } = useMutation({
       :project-slug="slug"
       @close="showSplitModal = false"
       @split="showSplitModal = false"
+    />
+
+    <!-- Cancel issue confirmation -->
+    <ConfirmDialog
+      :open="showCancelConfirm"
+      title="Cancel this issue?"
+      message="This issue will be marked as cancelled and won't appear on the active board."
+      confirm-text="Cancel issue"
+      :loading="cancelPending"
+      @confirm="doUpdateStatus('cancelled')"
+      @cancel="showCancelConfirm = false"
     />
   </MainLayout>
 </template>
