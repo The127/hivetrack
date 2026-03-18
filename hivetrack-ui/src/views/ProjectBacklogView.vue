@@ -34,6 +34,7 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import CreateIssueModal from '@/components/issue/CreateIssueModal.vue'
 import CompleteSprintModal from '@/components/sprint/CompleteSprintModal.vue'
 import StatusSelect from '@/components/issue/StatusSelect.vue'
+import PrioritySelect from '@/components/issue/PrioritySelect.vue'
 import { fetchProject } from '@/api/projects'
 import { fetchIssues, createIssue, updateIssue } from '@/api/issues'
 import { fetchSprints, createSprint, updateSprint, deleteSprint } from '@/api/sprints'
@@ -304,10 +305,6 @@ const { mutate: moveIssue } = useMutation({
 
 // ── Priority / estimate display ───────────────────────────────────────────────
 
-const PRIORITY_SCHEME = {
-  none: 'gray', low: 'sky', medium: 'amber', high: 'orange', critical: 'red',
-}
-
 const PRIORITY_BORDER = {
   none:     'border-l-slate-200',
   low:      'border-l-sky-400',
@@ -320,10 +317,6 @@ const ESTIMATE_LABEL = { none: null, xs: 'XS', s: 'S', m: 'M', l: 'L', xl: 'XL' 
 
 function priorityBorder(priority) {
   return PRIORITY_BORDER[priority] ?? 'border-l-slate-200'
-}
-
-function priorityScheme(priority) {
-  return PRIORITY_SCHEME[priority] ?? 'gray'
 }
 
 function estimateLabel(estimate) {
@@ -452,6 +445,10 @@ function moveToBacklog(issue) {
 
 function updateStatus(issue, newStatus) {
   reorderIssue({ issueNumber: issue.number, data: { status: newStatus } })
+}
+
+function updatePriority(issue, newPriority) {
+  reorderIssue({ issueNumber: issue.number, data: { priority: newPriority } })
 }
 
 // ── Inline issue creation (per-section) ─────────────────────────────────────
@@ -714,8 +711,7 @@ function formatDateRange(startDate, endDate) {
               <router-link :to="`/projects/${slug}/issues/${issue.number}`" class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline">{{ issue.title }}</router-link>
               <span v-if="issue.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
               <StatusSelect :status="issue.status" :archetype="project.archetype" @update:status="updateStatus(issue, $event)" />
-              <Badge v-if="issue.priority && issue.priority !== 'none'" :colorScheme="priorityScheme(issue.priority)" compact class="flex-shrink-0">{{ issue.priority }}</Badge>
-              <span v-else class="w-14 flex-shrink-0" />
+              <PrioritySelect :priority="issue.priority ?? 'none'" @update:priority="updatePriority(issue, $event)" />
               <span v-if="estimateLabel(issue.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(issue.estimate) }}</span>
               <span v-else class="w-7 flex-shrink-0" />
               <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
@@ -817,8 +813,7 @@ function formatDateRange(startDate, endDate) {
               <router-link :to="`/projects/${slug}/issues/${issue.number}`" class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline">{{ issue.title }}</router-link>
               <span v-if="issue.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
               <StatusSelect :status="issue.status" :archetype="project.archetype" @update:status="updateStatus(issue, $event)" />
-              <Badge v-if="issue.priority && issue.priority !== 'none'" :colorScheme="priorityScheme(issue.priority)" compact class="flex-shrink-0">{{ issue.priority }}</Badge>
-              <span v-else class="w-14 flex-shrink-0" />
+              <PrioritySelect :priority="issue.priority ?? 'none'" @update:priority="updatePriority(issue, $event)" />
               <span v-if="estimateLabel(issue.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(issue.estimate) }}</span>
               <span v-else class="w-7 flex-shrink-0" />
               <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
@@ -962,8 +957,7 @@ function formatDateRange(startDate, endDate) {
             <router-link :to="`/projects/${slug}/issues/${issue.number}`" class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline">{{ issue.title }}</router-link>
             <span v-if="issue.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
             <StatusSelect :status="issue.status" :archetype="project.archetype" @update:status="updateStatus(issue, $event)" />
-            <Badge v-if="issue.priority && issue.priority !== 'none'" :colorScheme="priorityScheme(issue.priority)" compact class="flex-shrink-0">{{ issue.priority }}</Badge>
-            <span v-else class="w-14 flex-shrink-0" />
+            <PrioritySelect :priority="issue.priority ?? 'none'" @update:priority="updatePriority(issue, $event)" />
             <span v-if="estimateLabel(issue.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(issue.estimate) }}</span>
             <span v-else class="w-7 flex-shrink-0" />
             <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">

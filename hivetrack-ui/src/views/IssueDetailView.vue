@@ -20,6 +20,7 @@ import Spinner from '@/components/ui/Spinner.vue'
 import EpicSelector from '@/components/issue/EpicSelector.vue'
 import EpicChildList from '@/components/issue/EpicChildList.vue'
 import StatusSelect from '@/components/issue/StatusSelect.vue'
+import PrioritySelect from '@/components/issue/PrioritySelect.vue'
 import { fetchIssue, updateIssue } from '@/api/issues'
 import { fetchProject } from '@/api/projects'
 
@@ -42,16 +43,22 @@ const { data: issue, isLoading } = useQuery({
   enabled: computed(() => !!slug.value && !!number.value),
 })
 
-const PRIORITY_SCHEME = {
-  none: 'gray', low: 'sky', medium: 'amber', high: 'orange', critical: 'red',
-}
-
 const ESTIMATE_LABEL = { none: null, xs: 'XS', s: 'S', m: 'M', l: 'L', xl: 'XL' }
 
 // ── Status mutation ───────────────────────────────────────────────────────────
 
 const { mutate: updateStatus } = useMutation({
   mutationFn: (status) => updateIssue(slug.value, number.value, { status }),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['issue', slug.value, number.value] })
+    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+  },
+})
+
+// ── Priority mutation ─────────────────────────────────────────────────────────
+
+const { mutate: updatePriority } = useMutation({
+  mutationFn: (priority) => updateIssue(slug.value, number.value, { priority }),
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ['issue', slug.value, number.value] })
     queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
@@ -128,15 +135,11 @@ const { mutate: updateParent } = useMutation({
             <!-- Priority -->
             <div class="space-y-1">
               <span class="text-xs font-medium text-slate-500">Priority</span>
-              <div>
-                <Badge
-                  v-if="issue.priority && issue.priority !== 'none'"
-                  :colorScheme="PRIORITY_SCHEME[issue.priority]"
-                  compact
-                >
-                  {{ issue.priority }}
-                </Badge>
-                <span v-else class="text-sm text-slate-400">None</span>
+              <div class="pt-1">
+                <PrioritySelect
+                  :priority="issue.priority ?? 'none'"
+                  @update:priority="updatePriority"
+                />
               </div>
             </div>
 

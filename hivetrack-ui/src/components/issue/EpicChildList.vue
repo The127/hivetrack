@@ -26,10 +26,10 @@ import {
   SearchIcon,
   XIcon,
 } from 'lucide-vue-next'
-import Badge from '@/components/ui/Badge.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import StatusSelect from '@/components/issue/StatusSelect.vue'
+import PrioritySelect from '@/components/issue/PrioritySelect.vue'
 import { fetchIssues, createIssue, updateIssue } from '@/api/issues'
 
 const props = defineProps({
@@ -79,10 +79,6 @@ function statusIconClass(scheme) {
   }
 }
 
-const PRIORITY_SCHEME = {
-  none: 'gray', low: 'sky', medium: 'amber', high: 'orange', critical: 'red',
-}
-
 const PRIORITY_BORDER = {
   none:     'border-l-slate-200',
   low:      'border-l-sky-400',
@@ -95,10 +91,6 @@ const ESTIMATE_LABEL = { none: null, xs: 'XS', s: 'S', m: 'M', l: 'L', xl: 'XL' 
 
 function priorityBorder(priority) {
   return PRIORITY_BORDER[priority] ?? 'border-l-slate-200'
-}
-
-function priorityScheme(priority) {
-  return PRIORITY_SCHEME[priority] ?? 'gray'
 }
 
 function estimateLabel(estimate) {
@@ -176,6 +168,29 @@ const { mutate: updateChildStatus } = useMutation({
     queryClient.invalidateQueries({ queryKey: ['issue', props.projectSlug] })
   },
 })
+
+const { mutate: updateChildPriority } = useMutation({
+  mutationFn: ({ number, priority }) => updateIssue(props.projectSlug, number, { priority }),
+  onMutate: async ({ number, priority }) => {
+    const key = ['issues', props.projectSlug, { parent_id: props.epicId }]
+    await queryClient.cancelQueries({ queryKey: key })
+    const previous = queryClient.getQueryData(key)
+    queryClient.setQueryData(key, old => {
+      if (!old) return old
+      return { ...old, items: old.items.map(i => i.number === number ? { ...i, priority } : i) }
+    })
+    return { previous }
+  },
+  onError: (_err, _vars, context) => {
+    if (context?.previous) {
+      queryClient.setQueryData(['issues', props.projectSlug, { parent_id: props.epicId }], context.previous)
+    }
+  },
+  onSettled: () => {
+    queryClient.invalidateQueries({ queryKey: ['issues', props.projectSlug] })
+    queryClient.invalidateQueries({ queryKey: ['issue', props.projectSlug] })
+  },
+})
 </script>
 
 <template>
@@ -207,8 +222,7 @@ const { mutate: updateChildStatus } = useMutation({
         <span class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900">{{ child.title }}</span>
         <span v-if="child.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
         <StatusSelect :status="child.status" :archetype="archetype" @update:status="updateChildStatus({ number: child.number, status: $event })" />
-        <Badge v-if="child.priority && child.priority !== 'none'" :colorScheme="priorityScheme(child.priority)" compact class="flex-shrink-0">{{ child.priority }}</Badge>
-        <span v-else class="w-14 flex-shrink-0" />
+        <PrioritySelect :priority="child.priority ?? 'none'" @update:priority="updateChildPriority({ number: child.number, priority: $event })" />
         <span v-if="estimateLabel(child.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(child.estimate) }}</span>
         <span v-else class="w-7 flex-shrink-0" />
         <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
