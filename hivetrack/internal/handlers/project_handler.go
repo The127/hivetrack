@@ -78,9 +78,11 @@ func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Name        *string `json:"name"`
-		Description *string `json:"description"`
-		Archived    *bool   `json:"archived"`
+		Name               *string `json:"name"`
+		Description        *string `json:"description"`
+		Archived           *bool   `json:"archived"`
+		WipLimitInProgress **int   `json:"wip_limit_in_progress"`
+		WipLimitInReview   **int   `json:"wip_limit_in_review"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		RespondError(w, models.ErrBadRequest)
@@ -88,10 +90,12 @@ func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = mediatr.Send[*commands.UpdateProjectResult](r.Context(), h.mediator, commands.UpdateProjectCommand{
-		ID:          id,
-		Name:        body.Name,
-		Description: body.Description,
-		Archived:    body.Archived,
+		ID:                 id,
+		Name:               body.Name,
+		Description:        body.Description,
+		Archived:           body.Archived,
+		WipLimitInProgress: body.WipLimitInProgress,
+		WipLimitInReview:   body.WipLimitInReview,
 	})
 	if err != nil {
 		RespondError(w, err)

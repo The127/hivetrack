@@ -104,6 +104,16 @@ func (r *ProjectRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, proje
 		args = append(args, project.GetAutoArchiveDoneAfterDays())
 		argIdx++
 	}
+	if project.HasChange(models.ProjectChangeWipLimitInProgress) {
+		setClauses = append(setClauses, fmt.Sprintf("wip_limit_in_progress=$%d", argIdx))
+		args = append(args, project.GetWipLimitInProgress())
+		argIdx++
+	}
+	if project.HasChange(models.ProjectChangeWipLimitInReview) {
+		setClauses = append(setClauses, fmt.Sprintf("wip_limit_in_review=$%d", argIdx))
+		args = append(args, project.GetWipLimitInReview())
+		argIdx++
+	}
 
 	if len(setClauses) == 0 {
 		return nil
@@ -148,14 +158,14 @@ func (r *ProjectRepository) ExecuteDelete(ctx context.Context, tx *sql.Tx, proje
 
 func (r *ProjectRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Project, error) {
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
-		`SELECT id, slug, name, description, archetype, archived, created_by, created_at, auto_archive_done_after_days, version
+		`SELECT id, slug, name, description, archetype, archived, created_by, created_at, auto_archive_done_after_days, wip_limit_in_progress, wip_limit_in_review, version
 		FROM projects WHERE id=$1`, id)
 	return scanProject(row)
 }
 
 func (r *ProjectRepository) GetBySlug(ctx context.Context, slug string) (*models.Project, error) {
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
-		`SELECT id, slug, name, description, archetype, archived, created_by, created_at, auto_archive_done_after_days, version
+		`SELECT id, slug, name, description, archetype, archived, created_by, created_at, auto_archive_done_after_days, wip_limit_in_progress, wip_limit_in_review, version
 		FROM projects WHERE slug=$1`, slug)
 	return scanProject(row)
 }
@@ -164,7 +174,7 @@ func (r *ProjectRepository) List(ctx context.Context, filter *repositories.Proje
 	var rows *sql.Rows
 	var err error
 
-	const selectCols = `SELECT id, slug, name, description, archetype, archived, created_by, created_at, auto_archive_done_after_days, version`
+	const selectCols = `SELECT id, slug, name, description, archetype, archived, created_by, created_at, auto_archive_done_after_days, wip_limit_in_progress, wip_limit_in_review, version`
 
 	if filter.IsAdmin {
 		rows, err = r.ctx.queryContext(ctx).QueryContext(ctx,
@@ -280,10 +290,10 @@ func scanProject(row *sql.Row) (*models.Project, error) {
 	var archived bool
 	var createdBy uuid.UUID
 	var createdAt time.Time
-	var autoArchive sql.NullInt32
+	var autoArchive, wipInProgress, wipInReview sql.NullInt32
 	var version int
 
-	err := row.Scan(&id, &slug, &name, &desc, &archetype, &archived, &createdBy, &createdAt, &autoArchive, &version)
+	err := row.Scan(&id, &slug, &name, &desc, &archetype, &archived, &createdBy, &createdAt, &autoArchive, &wipInProgress, &wipInReview, &version)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -300,8 +310,18 @@ func scanProject(row *sql.Row) (*models.Project, error) {
 		n := int(autoArchive.Int32)
 		autoArchivePtr = &n
 	}
+	var wipInProgressPtr *int
+	if wipInProgress.Valid {
+		n := int(wipInProgress.Int32)
+		wipInProgressPtr = &n
+	}
+	var wipInReviewPtr *int
+	if wipInReview.Valid {
+		n := int(wipInReview.Int32)
+		wipInReviewPtr = &n
+	}
 
-	return models.NewProjectFromDB(id, createdAt, version, slug, name, descPtr, archetype, archived, createdBy, autoArchivePtr), nil
+	return models.NewProjectFromDB(id, createdAt, version, slug, name, descPtr, archetype, archived, createdBy, autoArchivePtr, wipInProgressPtr, wipInReviewPtr), nil
 }
 
 func scanProjectRow(rows *sql.Rows) (*models.Project, error) {
@@ -312,10 +332,10 @@ func scanProjectRow(rows *sql.Rows) (*models.Project, error) {
 	var archived bool
 	var createdBy uuid.UUID
 	var createdAt time.Time
-	var autoArchive sql.NullInt32
+	var autoArchive, wipInProgress, wipInReview sql.NullInt32
 	var version int
 
-	err := rows.Scan(&id, &slug, &name, &desc, &archetype, &archived, &createdBy, &createdAt, &autoArchive, &version)
+	err := rows.Scan(&id, &slug, &name, &desc, &archetype, &archived, &createdBy, &createdAt, &autoArchive, &wipInProgress, &wipInReview, &version)
 	if err != nil {
 		return nil, fmt.Errorf("scanning project: %w", err)
 	}
@@ -329,6 +349,16 @@ func scanProjectRow(rows *sql.Rows) (*models.Project, error) {
 		n := int(autoArchive.Int32)
 		autoArchivePtr = &n
 	}
+	var wipInProgressPtr *int
+	if wipInProgress.Valid {
+		n := int(wipInProgress.Int32)
+		wipInProgressPtr = &n
+	}
+	var wipInReviewPtr *int
+	if wipInReview.Valid {
+		n := int(wipInReview.Int32)
+		wipInReviewPtr = &n
+	}
 
-	return models.NewProjectFromDB(id, createdAt, version, slug, name, descPtr, archetype, archived, createdBy, autoArchivePtr), nil
+	return models.NewProjectFromDB(id, createdAt, version, slug, name, descPtr, archetype, archived, createdBy, autoArchivePtr, wipInProgressPtr, wipInReviewPtr), nil
 }

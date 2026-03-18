@@ -22,14 +22,16 @@ type ProjectMemberInfo struct {
 }
 
 type GetProjectResult struct {
-	ID          uuid.UUID               `json:"id"`
-	Slug        string                  `json:"slug"`
-	Name        string                  `json:"name"`
-	Description *string                 `json:"description,omitempty"`
-	Archetype   models.ProjectArchetype `json:"archetype"`
-	Archived    bool                    `json:"archived"`
-	CreatedBy   uuid.UUID               `json:"created_by"`
-	Members     []ProjectMemberInfo     `json:"members"`
+	ID                 uuid.UUID               `json:"id"`
+	Slug               string                  `json:"slug"`
+	Name               string                  `json:"name"`
+	Description        *string                 `json:"description,omitempty"`
+	Archetype          models.ProjectArchetype `json:"archetype"`
+	Archived           bool                    `json:"archived"`
+	CreatedBy          uuid.UUID               `json:"created_by"`
+	Members            []ProjectMemberInfo     `json:"members"`
+	WipLimitInProgress *int                    `json:"wip_limit_in_progress,omitempty"`
+	WipLimitInReview   *int                    `json:"wip_limit_in_review,omitempty"`
 }
 
 func HandleGetProject(ctx context.Context, q GetProjectQuery) (*GetProjectResult, error) {
@@ -66,13 +68,15 @@ func HandleGetProject(ctx context.Context, q GetProjectQuery) (*GetProjectResult
 	}
 
 	return &GetProjectResult{
-		ID:          project.GetId(),
-		Slug:        project.GetSlug(),
-		Name:        project.GetName(),
-		Description: project.GetDescription(),
-		Archetype:   project.GetArchetype(),
-		Archived:    project.GetArchived(),
-		CreatedBy:   project.GetCreatedBy(),
-		Members:     memberInfos,
+		ID:                 project.GetId(),
+		Slug:               project.GetSlug(),
+		Name:               project.GetName(),
+		Description:        project.GetDescription(),
+		Archetype:          project.GetArchetype(),
+		Archived:           project.GetArchived(),
+		CreatedBy:          project.GetCreatedBy(),
+		Members:            memberInfos,
+		WipLimitInProgress: project.GetWipLimitInProgress(),
+		WipLimitInReview:   project.GetWipLimitInReview(),
 	}, nil
 }

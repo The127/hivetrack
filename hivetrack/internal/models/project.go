@@ -31,6 +31,8 @@ const (
 	ProjectChangeDescription              ProjectChange = iota
 	ProjectChangeArchived                 ProjectChange = iota
 	ProjectChangeAutoArchiveDoneAfterDays ProjectChange = iota
+	ProjectChangeWipLimitInProgress       ProjectChange = iota
+	ProjectChangeWipLimitInReview         ProjectChange = iota
 )
 
 type Project struct {
@@ -44,6 +46,8 @@ type Project struct {
 	archived                 bool
 	createdBy                uuid.UUID
 	autoArchiveDoneAfterDays *int
+	wipLimitInProgress       *int
+	wipLimitInReview         *int
 }
 
 func NewProject(createdBy uuid.UUID, slug, name string, archetype ProjectArchetype) *Project {
@@ -59,7 +63,8 @@ func NewProject(createdBy uuid.UUID, slug, name string, archetype ProjectArchety
 
 func NewProjectFromDB(id uuid.UUID, createdAt time.Time, version any,
 	slug, name string, description *string, archetype ProjectArchetype,
-	archived bool, createdBy uuid.UUID, autoArchiveDoneAfterDays *int) *Project {
+	archived bool, createdBy uuid.UUID, autoArchiveDoneAfterDays *int,
+	wipLimitInProgress *int, wipLimitInReview *int) *Project {
 	return &Project{
 		BaseModel:                NewBaseModelFromDB(id, createdAt, createdAt, version),
 		List:                     change.NewList[ProjectChange](),
@@ -70,6 +75,8 @@ func NewProjectFromDB(id uuid.UUID, createdAt time.Time, version any,
 		archived:                 archived,
 		createdBy:                createdBy,
 		autoArchiveDoneAfterDays: autoArchiveDoneAfterDays,
+		wipLimitInProgress:       wipLimitInProgress,
+		wipLimitInReview:         wipLimitInReview,
 	}
 }
 
@@ -80,6 +87,8 @@ func (p *Project) GetArchetype() ProjectArchetype    { return p.archetype }
 func (p *Project) GetArchived() bool                 { return p.archived }
 func (p *Project) GetCreatedBy() uuid.UUID           { return p.createdBy }
 func (p *Project) GetAutoArchiveDoneAfterDays() *int { return p.autoArchiveDoneAfterDays }
+func (p *Project) GetWipLimitInProgress() *int       { return p.wipLimitInProgress }
+func (p *Project) GetWipLimitInReview() *int         { return p.wipLimitInReview }
 
 func (p *Project) SetSlug(v string) {
 	if p.slug == v {
@@ -113,6 +122,16 @@ func (p *Project) SetArchived(v bool) {
 func (p *Project) SetAutoArchiveDoneAfterDays(v *int) {
 	p.autoArchiveDoneAfterDays = v
 	p.TrackChange(ProjectChangeAutoArchiveDoneAfterDays)
+}
+
+func (p *Project) SetWipLimitInProgress(v *int) {
+	p.wipLimitInProgress = v
+	p.TrackChange(ProjectChangeWipLimitInProgress)
+}
+
+func (p *Project) SetWipLimitInReview(v *int) {
+	p.wipLimitInReview = v
+	p.TrackChange(ProjectChangeWipLimitInReview)
 }
 
 // ProjectMember is a join table record — not a tracked entity.
