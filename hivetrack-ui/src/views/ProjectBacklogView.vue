@@ -466,7 +466,11 @@ function activateInlineCreate(sectionId) {
   activeInlineCreate.value = sectionId
   inlineCreateTitle.value = ''
   inlineCreateError.value = ''
-  nextTick(() => inlineCreateInputs.value[sectionId]?.focus())
+  nextTick(() => {
+    const el = inlineCreateInputs.value[sectionId]
+    el?.focus()
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  })
 }
 
 const { mutate: inlineCreate, isPending: inlineCreatePending } = useMutation({
@@ -477,7 +481,9 @@ const { mutate: inlineCreate, isPending: inlineCreatePending } = useMutation({
     queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
     nextTick(() => {
       if (activeInlineCreate.value) {
-        inlineCreateInputs.value[activeInlineCreate.value]?.focus()
+        const el = inlineCreateInputs.value[activeInlineCreate.value]
+        el?.focus()
+        el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       }
     })
   },
