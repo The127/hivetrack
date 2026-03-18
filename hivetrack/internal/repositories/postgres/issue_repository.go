@@ -222,6 +222,40 @@ func (r *IssueRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, issue *
 	return nil
 }
 
+func (r *IssueRepository) InsertLink(ctx context.Context, link models.IssueLink) error {
+	return r.ctx.execDirect(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx,
+			`INSERT INTO issue_links (id, source_issue_id, target_issue_id, link_type) VALUES ($1,$2,$3,$4)`,
+			link.ID, link.SourceIssueID, link.TargetIssueID, link.LinkType,
+		)
+		if err != nil {
+			return fmt.Errorf("inserting issue link: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *IssueRepository) ListLinks(ctx context.Context, issueID uuid.UUID) ([]models.IssueLink, error) {
+	rows, err := r.ctx.queryContext(ctx).QueryContext(ctx,
+		`SELECT id, source_issue_id, target_issue_id, link_type FROM issue_links WHERE source_issue_id=$1 OR target_issue_id=$1`,
+		issueID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("listing issue links: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var links []models.IssueLink
+	for rows.Next() {
+		var l models.IssueLink
+		if err := rows.Scan(&l.ID, &l.SourceIssueID, &l.TargetIssueID, &l.LinkType); err != nil {
+			return nil, fmt.Errorf("scanning issue link: %w", err)
+		}
+		links = append(links, l)
+	}
+	return links, rows.Err()
+}
+
 func (r *IssueRepository) ExecuteDelete(ctx context.Context, tx *sql.Tx, issue *models.Issue) error {
 	_, err := tx.ExecContext(ctx, `DELETE FROM issues WHERE id=$1`, issue.GetId())
 	if err != nil {

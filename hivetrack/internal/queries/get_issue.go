@@ -16,6 +16,15 @@ type GetIssueQuery struct {
 	Number      int
 }
 
+type IssueLinkInfo struct {
+	ID            uuid.UUID       `json:"id"`
+	SourceIssueID uuid.UUID       `json:"source_issue_id"`
+	TargetIssueID uuid.UUID       `json:"target_issue_id"`
+	LinkType      models.LinkType `json:"link_type"`
+	// LinkedIssueNumber is the number of the other issue in the link (the one that is not the current issue).
+	LinkedIssueNumber int `json:"linked_issue_number"`
+}
+
 type IssueDetail struct {
 	ID             uuid.UUID              `json:"id"`
 	ProjectID      uuid.UUID              `json:"project_id"`
@@ -40,6 +49,7 @@ type IssueDetail struct {
 	ParentID       *uuid.UUID             `json:"parent_id,omitempty"`
 	ReporterID     *uuid.UUID             `json:"reporter_id,omitempty"`
 	Checklist      []models.ChecklistItem `json:"checklist"`
+	Links          []IssueLinkInfo        `json:"links"`
 	ChildCount     int                    `json:"child_count"`
 	ChildDoneCount int                    `json:"child_done_count"`
 	CreatedAt      time.Time              `json:"created_at"`
@@ -75,6 +85,33 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 		return nil, fmt.Errorf("resolving labels: %w", err)
 	}
 
+	rawLinks, err := db.Issues().ListLinks(ctx, issue.GetId())
+	if err != nil {
+		return nil, fmt.Errorf("listing issue links: %w", err)
+	}
+	links := make([]IssueLinkInfo, 0, len(rawLinks))
+	for _, l := range rawLinks {
+		otherID := l.TargetIssueID
+		if l.TargetIssueID == issue.GetId() {
+			otherID = l.SourceIssueID
+		}
+		other, err := db.Issues().GetByID(ctx, otherID)
+		if err != nil {
+			return nil, fmt.Errorf("resolving linked issue: %w", err)
+		}
+		var linkedNumber int
+		if other != nil {
+			linkedNumber = other.GetNumber()
+		}
+		links = append(links, IssueLinkInfo{
+			ID:                l.ID,
+			SourceIssueID:     l.SourceIssueID,
+			TargetIssueID:     l.TargetIssueID,
+			LinkType:          l.LinkType,
+			LinkedIssueNumber: linkedNumber,
+		})
+	}
+
 	detail := &IssueDetail{
 		ID:          issue.GetId(),
 		ProjectID:   issue.GetProjectID(),
@@ -99,6 +136,7 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 		ParentID:    issue.GetParentID(),
 		ReporterID:  issue.GetReporterID(),
 		Checklist:   issue.GetChecklist(),
+		Links:       links,
 		CreatedAt:   issue.GetCreatedAt(),
 		UpdatedAt:   issue.GetUpdatedAt(),
 	}
