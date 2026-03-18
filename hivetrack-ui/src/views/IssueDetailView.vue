@@ -24,6 +24,7 @@ import StatusSelect from '@/components/issue/StatusSelect.vue'
 import PrioritySelect from '@/components/issue/PrioritySelect.vue'
 import AssigneeSelect from '@/components/issue/AssigneeSelect.vue'
 import LabelSelect from '@/components/issue/LabelSelect.vue'
+import MarkdownContent from '@/components/ui/MarkdownContent.vue'
 import { fetchIssue, updateIssue } from '@/api/issues'
 import { fetchProject } from '@/api/projects'
 
@@ -213,9 +214,7 @@ const { mutate: updateLabels } = useMutation({
           <!-- Description -->
           <div v-if="issue.description" class="space-y-2">
             <h2 class="text-sm font-medium text-slate-700">Description</h2>
-            <div class="prose prose-sm prose-slate max-w-none text-slate-600">
-              {{ issue.description }}
-            </div>
+            <MarkdownContent :content="issue.description" />
           </div>
 
           <!-- Epic selector (for tasks) -->

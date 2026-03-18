@@ -6,6 +6,13 @@ import { fileURLToPath, URL } from "node:url";
 export default defineConfig({
   build: {
     target: "es2022",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-markdown': ['marked', 'dompurify', 'highlight.js'],
+        },
+      },
+    },
   },
   plugins: [vue(), tailwindcss()],
   resolve: {

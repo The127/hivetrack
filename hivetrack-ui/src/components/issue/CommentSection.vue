@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { fetchComments, createComment, updateComment, deleteComment } from '@/api/comments'
 import Avatar from '@/components/ui/Avatar.vue'
 import Button from '@/components/ui/Button.vue'
+import MarkdownContent from '@/components/ui/MarkdownContent.vue'
 
 const props = defineProps({
   projectSlug: { type: String, required: true },
@@ -145,7 +146,7 @@ function relativeTime(dateStr) {
 
           <!-- Display mode -->
           <div v-else>
-            <p class="text-sm text-slate-600 whitespace-pre-wrap mt-0.5">{{ comment.body }}</p>
+            <MarkdownContent :content="comment.body" class="mt-0.5" />
             <div class="flex gap-2 mt-1">
               <button
                 class="text-xs text-slate-400 hover:text-slate-600 transition-colors"
