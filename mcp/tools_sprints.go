@@ -46,7 +46,7 @@ func makeListSprints(client *Client) server.ToolHandlerFunc {
 		if err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+		return textResult(formatListSprints(data)), nil
 	}
 }
 
@@ -70,7 +70,7 @@ func makeCreateSprint(client *Client) server.ToolHandlerFunc {
 		if err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+		return textResult(formatCreateSprint(data, name)), nil
 	}
 }
 
@@ -98,6 +98,7 @@ func makeUpdateSprint(client *Client) server.ToolHandlerFunc {
 		if err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+		_ = data
+		return textResult(formatUpdateSprint(args)), nil
 	}
 }

@@ -27,6 +27,11 @@ func jsonResult(data []byte) *mcp.CallToolResult {
 	return mcp.NewToolResultText(string(data))
 }
 
+// helper to build a text result from a formatted string
+func textResult(text string) *mcp.CallToolResult {
+	return mcp.NewToolResultText(text)
+}
+
 // helper to build an error result
 func errResult(err error) *mcp.CallToolResult {
 	return mcp.NewToolResultError(err.Error())

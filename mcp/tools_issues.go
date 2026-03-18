@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 
@@ -89,7 +90,7 @@ func makeListIssues(client *Client) server.ToolHandlerFunc {
 		if err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+		return textResult(formatListIssues(data)), nil
 	}
 }
 
@@ -106,7 +107,7 @@ func makeGetIssue(client *Client) server.ToolHandlerFunc {
 		if err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+		return textResult(formatGetIssue(data)), nil
 	}
 }
 
@@ -116,7 +117,7 @@ func makeGetMyIssues(client *Client) server.ToolHandlerFunc {
 		if err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+		return textResult(formatListIssues(data)), nil
 	}
 }
 
@@ -145,7 +146,33 @@ func makeCreateIssue(client *Client) server.ToolHandlerFunc {
 		if err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+
+		result := formatCreateIssue(data, args)
+
+		// Auto-triage when sprint_id is provided — assigning to a sprint implies triage.
+		if sprintID, ok := args["sprint_id"].(string); ok && sprintID != "" {
+			var created struct {
+				Number int `json:"Number"`
+			}
+			if err := json.Unmarshal(data, &created); err == nil && created.Number > 0 {
+				triageBody := map[string]any{"status": stringOr(args, "status", "todo")}
+				triageBody["sprint_id"] = sprintID
+				if milestoneID, ok := args["milestone_id"].(string); ok && milestoneID != "" {
+					triageBody["milestone_id"] = milestoneID
+				}
+				_, triageErr := client.post(
+					fmt.Sprintf("/api/v1/projects/%s/issues/%d/triage", slug, created.Number),
+					triageBody,
+				)
+				if triageErr != nil {
+					result += fmt.Sprintf("\n⚠ Auto-triage failed: %v", triageErr)
+				} else {
+					result += " ✓ triaged"
+				}
+			}
+		}
+
+		return textResult(result), nil
 	}
 }
 
@@ -166,13 +193,26 @@ func makeUpdateIssue(client *Client) server.ToolHandlerFunc {
 		setOptionalString(body, args, "estimate")
 
 		// Handle nullable UUID fields — "null" string clears the field
-		for _, key := range []string{"sprint_id", "milestone_id", "parent_id"} {
+		for _, key := range []string{"sprint_id", "milestone_id"} {
 			if v, ok := args[key].(string); ok {
 				if v == "null" {
 					body[key] = nil
 				} else if v != "" {
 					body[key] = v
 				}
+			}
+		}
+
+		// parent_id: accept issue number (resolve to UUID) or UUID directly
+		if v, ok := args["parent_id"].(string); ok {
+			if v == "null" {
+				body["parent_id"] = nil
+			} else if v != "" {
+				resolved, err := resolveIssueID(client, slug, v)
+				if err != nil {
+					return errResult(fmt.Errorf("resolving parent_id: %w", err)), nil
+				}
+				body["parent_id"] = resolved
 			}
 		}
 
@@ -184,7 +224,8 @@ func makeUpdateIssue(client *Client) server.ToolHandlerFunc {
 		if err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+		_ = data
+		return textResult(formatUpdateIssue(number, args)), nil
 	}
 }
 
@@ -204,10 +245,10 @@ func makeTriageIssue(client *Client) server.ToolHandlerFunc {
 		setOptionalString(body, args, "sprint_id")
 		setOptionalString(body, args, "milestone_id")
 
-		data, err := client.post(fmt.Sprintf("/api/v1/projects/%s/issues/%d/triage", slug, number), body)
+		_, err := client.post(fmt.Sprintf("/api/v1/projects/%s/issues/%d/triage", slug, number), body)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+		return textResult(formatTriageIssue(number, status, args)), nil
 	}
 }

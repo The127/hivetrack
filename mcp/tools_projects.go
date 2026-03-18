@@ -74,7 +74,7 @@ func makeListProjects(client *Client) server.ToolHandlerFunc {
 		if err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+		return textResult(formatListProjects(data)), nil
 	}
 }
 
@@ -99,7 +99,7 @@ func makeCreateProject(client *Client) server.ToolHandlerFunc {
 		if err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+		return textResult(formatCreateProject(data, slug, name, archetype)), nil
 	}
 }
 
