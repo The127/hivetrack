@@ -20,6 +20,7 @@ import { RouterLink, useRoute } from "vue-router";
 import {
   LayoutDashboardIcon,
   FolderKanbanIcon,
+  LayoutIcon,
   KanbanIcon,
   ListIcon,
   LayersIcon,
@@ -163,6 +164,17 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           <div v-else class="pt-2 pb-1 flex justify-center">
             <div class="w-5 border-t border-slate-700" />
           </div>
+
+          <RouterLink
+            :to="`/projects/${projectSlug}/overview`"
+            :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            active-class="bg-slate-800 text-slate-100"
+            title="Overview"
+          >
+            <LayoutIcon class="size-4 flex-shrink-0" />
+            <span v-if="!collapsed">Overview</span>
+          </RouterLink>
 
           <RouterLink
             :to="`/projects/${projectSlug}/board`"
