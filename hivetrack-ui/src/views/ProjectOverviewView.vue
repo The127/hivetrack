@@ -6,7 +6,7 @@
   no dedicated overview endpoint needed.
 -->
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import {
@@ -26,6 +26,7 @@ import {
   CheckCircle2Icon,
   XCircleIcon,
   Trash2Icon,
+  SlidersHorizontalIcon,
 } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -33,7 +34,7 @@ import Spinner from '@/components/ui/Spinner.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import SprintBurndownChart from '@/components/sprint/SprintBurndownChart.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
-import { fetchProject, removeProjectMember } from '@/api/projects'
+import { fetchProject, removeProjectMember, updateProject } from '@/api/projects'
 import { fetchLabels, deleteLabel } from '@/api/labels'
 import { fetchIssues } from '@/api/issues'
 import { fetchSprints, fetchSprintBurndown } from '@/api/sprints'
@@ -95,6 +96,45 @@ const { mutate: doDeleteLabel, isPending: deleteLabelPending } = useMutation({
     queryClient.invalidateQueries({ queryKey: ['labels', slug.value] })
   },
 })
+
+// ── WIP limit settings ────────────────────────────────────────────────────────
+
+const wipInProgressInput = ref(null)
+const wipInReviewInput = ref(null)
+
+watch(project, (p) => {
+  if (p) {
+    wipInProgressInput.value = p.wip_limit_in_progress ?? ''
+    wipInReviewInput.value = p.wip_limit_in_review ?? ''
+  }
+}, { immediate: true })
+
+const { mutate: saveWipLimits, isPending: savingWip } = useMutation({
+  mutationFn: ({ field, value }) => {
+    const body = {}
+    body[field] = value
+    return updateProject(project.value.id, body)
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['project', slug.value] })
+  },
+})
+
+function saveWipInProgress() {
+  const raw = wipInProgressInput.value
+  const parsed = raw === '' || raw === null ? null : parseInt(raw, 10)
+  if (parsed === null || !isNaN(parsed)) {
+    saveWipLimits({ field: 'wip_limit_in_progress', value: parsed })
+  }
+}
+
+function saveWipInReview() {
+  const raw = wipInReviewInput.value
+  const parsed = raw === '' || raw === null ? null : parseInt(raw, 10)
+  if (parsed === null || !isNaN(parsed)) {
+    saveWipLimits({ field: 'wip_limit_in_review', value: parsed })
+  }
+}
 
 // ── Derived state ─────────────────────────────────────────────────────────────
 
@@ -358,6 +398,45 @@ function formatDateRange(start, end) {
             </button>
           </div>
         </div>
+      </section>
+
+      <!-- ── Board settings (WIP limits, software only) ──────────────────── -->
+      <section v-if="project.archetype === 'software'">
+        <h2 class="text-sm font-medium text-slate-700 mb-3 flex items-center gap-1.5">
+          <SlidersHorizontalIcon class="size-4 text-slate-500" />
+          Board
+        </h2>
+        <div class="rounded-lg border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+          <div class="flex items-center gap-3 px-4 py-2.5">
+            <CircleDotIcon class="size-4 flex-shrink-0 text-blue-500" />
+            <span class="text-sm text-slate-700 flex-1">In Progress limit</span>
+            <input
+              v-model="wipInProgressInput"
+              type="number"
+              min="1"
+              placeholder="None"
+              class="w-20 text-sm text-right border border-slate-200 rounded px-2 py-0.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
+              :disabled="savingWip"
+              @blur="saveWipInProgress"
+              @keydown.enter="$event.target.blur()"
+            />
+          </div>
+          <div class="flex items-center gap-3 px-4 py-2.5">
+            <GitPullRequestIcon class="size-4 flex-shrink-0 text-violet-500" />
+            <span class="text-sm text-slate-700 flex-1">In Review limit</span>
+            <input
+              v-model="wipInReviewInput"
+              type="number"
+              min="1"
+              placeholder="None"
+              class="w-20 text-sm text-right border border-slate-200 rounded px-2 py-0.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
+              :disabled="savingWip"
+              @blur="saveWipInReview"
+              @keydown.enter="$event.target.blur()"
+            />
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-1.5">Informational only — the board highlights columns that exceed these limits.</p>
       </section>
 
     </div>

@@ -63,6 +63,45 @@ func TestHandleUpdateProject_Archive(t *testing.T) {
 	assert.True(t, updated.GetArchived())
 }
 
+func TestHandleUpdateProject_WipLimits(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	actor.SetIsAdmin(true)
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+
+	project := models.NewProject(actor.GetId(), "p1", "Project", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	limit := 3
+	limitPtr := &limit
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+
+	_, err := commands.HandleUpdateProject(ctx, commands.UpdateProjectCommand{
+		ID:                 project.GetId(),
+		WipLimitInProgress: &limitPtr,
+	})
+	require.NoError(t, err)
+
+	updated, err := db.Projects().GetByID(context.Background(), project.GetId())
+	require.NoError(t, err)
+	require.NotNil(t, updated.GetWipLimitInProgress())
+	assert.Equal(t, 3, *updated.GetWipLimitInProgress())
+	assert.Nil(t, updated.GetWipLimitInReview())
+
+	// Clear the limit
+	var nilLimit *int
+	_, err = commands.HandleUpdateProject(ctx, commands.UpdateProjectCommand{
+		ID:                 project.GetId(),
+		WipLimitInProgress: &nilLimit,
+	})
+	require.NoError(t, err)
+
+	updated, err = db.Projects().GetByID(context.Background(), project.GetId())
+	require.NoError(t, err)
+	assert.Nil(t, updated.GetWipLimitInProgress())
+}
+
 func TestHandleUpdateProject_NotFound(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")

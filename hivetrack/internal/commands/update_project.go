@@ -11,10 +11,12 @@ import (
 )
 
 type UpdateProjectCommand struct {
-	ID          uuid.UUID
-	Name        *string
-	Description *string
-	Archived    *bool
+	ID                 uuid.UUID
+	Name               *string
+	Description        *string
+	Archived           *bool
+	WipLimitInProgress **int
+	WipLimitInReview   **int
 }
 
 type UpdateProjectResult struct{}
@@ -38,6 +40,12 @@ func HandleUpdateProject(ctx context.Context, cmd UpdateProjectCommand) (*Update
 	}
 	if cmd.Archived != nil {
 		project.SetArchived(*cmd.Archived)
+	}
+	if cmd.WipLimitInProgress != nil {
+		project.SetWipLimitInProgress(*cmd.WipLimitInProgress)
+	}
+	if cmd.WipLimitInReview != nil {
+		project.SetWipLimitInReview(*cmd.WipLimitInReview)
 	}
 
 	db.Projects().Update(project)

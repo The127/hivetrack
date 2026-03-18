@@ -186,6 +186,11 @@ const SUPPORT_COLUMNS = [
   { key: "closed", label: "Closed", scheme: "gray", icon: XCircleIcon },
 ];
 
+const wipLimits = computed(() => ({
+  in_progress: project.value?.wip_limit_in_progress ?? null,
+  in_review: project.value?.wip_limit_in_review ?? null,
+}));
+
 const columns = computed(() => {
   if (!project.value) return [];
   return project.value.archetype === "support"
@@ -532,8 +537,21 @@ const defaultCreateStatus = computed(() => {
               <span class="text-sm font-medium text-slate-700">{{
                 col.label
               }}</span>
-              <span class="ml-auto text-xs text-slate-400 tabular-nums">
-                {{ columnIssues[col.key]?.length ?? 0 }}
+              <span
+                class="ml-auto text-xs tabular-nums"
+                :class="
+                  wipLimits[col.key] != null &&
+                  (columnIssues[col.key]?.length ?? 0) > wipLimits[col.key]
+                    ? 'text-amber-500 font-medium'
+                    : 'text-slate-400'
+                "
+              >
+                <template v-if="wipLimits[col.key] != null">
+                  {{ columnIssues[col.key]?.length ?? 0 }} / {{ wipLimits[col.key] }}
+                </template>
+                <template v-else>
+                  {{ columnIssues[col.key]?.length ?? 0 }}
+                </template>
               </span>
             </div>
 
