@@ -63,6 +63,13 @@ func formatUpdateIssue(number int, args map[string]any) string {
 			}
 		}
 	}
+	if v, ok := args["assignee_ids"].(string); ok {
+		if v == "null" {
+			changes = append(changes, "assignees cleared")
+		} else if v != "" {
+			changes = append(changes, "assignees updated")
+		}
+	}
 	return fmt.Sprintf("Updated #%d: %s", number, strings.Join(changes, ", "))
 }
 
@@ -97,17 +104,20 @@ func formatCreateProject(data json.RawMessage, slug, name, archetype string) str
 func formatListIssues(data json.RawMessage) string {
 	var resp struct {
 		Items []struct {
-			Number   int      `json:"number"`
-			Type     string   `json:"type"`
-			Title    string   `json:"title"`
-			Status   string   `json:"status"`
-			Priority string   `json:"priority"`
-			Estimate string   `json:"estimate"`
-			Triaged  bool     `json:"triaged"`
-			ParentID *string  `json:"parent_id"`
-			SprintID *string  `json:"sprint_id"`
-			OnHold   bool     `json:"on_hold"`
-			Labels   []string `json:"labels"`
+			Number    int      `json:"number"`
+			Type      string   `json:"type"`
+			Title     string   `json:"title"`
+			Status    string   `json:"status"`
+			Priority  string   `json:"priority"`
+			Estimate  string   `json:"estimate"`
+			Triaged   bool     `json:"triaged"`
+			ParentID  *string  `json:"parent_id"`
+			SprintID  *string  `json:"sprint_id"`
+			OnHold    bool     `json:"on_hold"`
+			Labels    []string `json:"labels"`
+			Assignees []struct {
+				DisplayName string `json:"display_name"`
+			} `json:"assignees"`
 		} `json:"items"`
 		Total int `json:"total"`
 	}
@@ -141,7 +151,16 @@ func formatListIssues(data json.RawMessage) string {
 			meta = append(meta, "ON HOLD")
 		}
 
-		sb.WriteString(fmt.Sprintf("%s#%-4d %-50s (%s)\n", marker, item.Number, item.Title, strings.Join(meta, ", ")))
+		assigneeStr := ""
+		if len(item.Assignees) > 0 {
+			var names []string
+			for _, a := range item.Assignees {
+				names = append(names, a.DisplayName)
+			}
+			assigneeStr = " → " + strings.Join(names, ", ")
+		}
+
+		sb.WriteString(fmt.Sprintf("%s#%-4d %-50s (%s)%s\n", marker, item.Number, item.Title, strings.Join(meta, ", "), assigneeStr))
 	}
 	return sb.String()
 }

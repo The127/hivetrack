@@ -22,6 +22,7 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("triaged", mcp.Description("Filter by triaged status (true/false)")),
 		mcp.WithString("backlog", mcp.Description("Filter backlog issues with no sprint (true/false)")),
 		mcp.WithString("sprint_id", mcp.Description("Filter by sprint ID (UUID)")),
+		mcp.WithString("assignee_id", mcp.Description("Filter by assignee user ID (UUID)")),
 	), makeListIssues(client))
 
 	s.AddTool(mcp.NewTool("get_issue",
@@ -46,6 +47,7 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("sprint_id", mcp.Description("Sprint ID to assign to (UUID)")),
 		mcp.WithString("milestone_id", mcp.Description("Milestone ID (UUID)")),
 		mcp.WithString("parent_id", mcp.Description("Parent epic ID (UUID) — only for tasks")),
+		mcp.WithString("assignee_ids", mcp.Description("Comma-separated user IDs (UUIDs) to assign")),
 	), makeCreateIssue(client))
 
 	s.AddTool(mcp.NewTool("update_issue",
@@ -60,6 +62,7 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("sprint_id", mcp.Description("Sprint ID (UUID), or 'null' to move to backlog")),
 		mcp.WithString("milestone_id", mcp.Description("Milestone ID (UUID)")),
 		mcp.WithString("parent_id", mcp.Description("Parent epic ID (UUID), or 'null' to remove parent")),
+		mcp.WithString("assignee_ids", mcp.Description("Comma-separated user IDs (UUIDs) to assign, or 'null' to clear all assignees")),
 	), makeUpdateIssue(client))
 
 	s.AddTool(mcp.NewTool("add_checklist_item",
@@ -104,7 +107,7 @@ func makeListIssues(client *Client) server.ToolHandlerFunc {
 		}
 
 		q := url.Values{}
-		for _, key := range []string{"status", "priority", "type", "text", "triaged", "backlog", "sprint_id"} {
+		for _, key := range []string{"status", "priority", "type", "text", "triaged", "backlog", "sprint_id", "assignee_id"} {
 			if v, ok := args[key].(string); ok && v != "" {
 				q.Set(key, v)
 			}
@@ -165,6 +168,11 @@ func makeCreateIssue(client *Client) server.ToolHandlerFunc {
 		setOptionalString(body, args, "sprint_id")
 		setOptionalString(body, args, "milestone_id")
 		setOptionalString(body, args, "parent_id")
+		if ids, err := parseUUIDList(args, "assignee_ids"); err != nil {
+			return errResult(fmt.Errorf("invalid assignee_ids: %w", err)), nil
+		} else if ids != nil {
+			body["assignee_ids"] = ids
+		}
 
 		data, err := client.post("/api/v1/projects/"+slug+"/issues", body)
 		if err != nil {
@@ -223,6 +231,21 @@ func makeUpdateIssue(client *Client) server.ToolHandlerFunc {
 					body[key] = nil
 				} else if v != "" {
 					body[key] = v
+				}
+			}
+		}
+
+		// assignee_ids: comma-separated UUIDs, or "null" to clear
+		if v, ok := args["assignee_ids"].(string); ok {
+			if v == "null" {
+				body["assignee_ids"] = []string{}
+			} else if v != "" {
+				ids, err := parseUUIDList(args, "assignee_ids")
+				if err != nil {
+					return errResult(fmt.Errorf("invalid assignee_ids: %w", err)), nil
+				}
+				if ids != nil {
+					body["assignee_ids"] = ids
 				}
 			}
 		}

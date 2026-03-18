@@ -60,6 +60,16 @@ func (h *IssueHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
 		v := true
 		q.HasNoParent = &v
 	}
+	if sid := r.URL.Query().Get("sprint_id"); sid != "" {
+		if sprintID, err := uuid.Parse(sid); err == nil {
+			q.SprintID = &sprintID
+		}
+	}
+	if aid := r.URL.Query().Get("assignee_id"); aid != "" {
+		if assigneeID, err := uuid.Parse(aid); err == nil {
+			q.AssigneeID = &assigneeID
+		}
+	}
 	if l := r.URL.Query().Get("limit"); l != "" {
 		limit, _ := strconv.Atoi(l)
 		q.Limit = limit

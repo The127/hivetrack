@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
+
+	"github.com/google/uuid"
 )
 
 // errMissing returns a descriptive error for missing required arguments.
@@ -32,6 +35,29 @@ func setOptionalString(body map[string]any, args map[string]any, key string) {
 	if v, ok := args[key].(string); ok && v != "" {
 		body[key] = v
 	}
+}
+
+// parseUUIDList extracts a comma-separated list of UUIDs from an argument.
+// Returns nil (not error) if the key is absent or empty.
+func parseUUIDList(args map[string]any, key string) ([]string, error) {
+	v, ok := args[key].(string)
+	if !ok || v == "" {
+		return nil, nil
+	}
+	parts := strings.Split(v, ",")
+	ids := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		// Validate UUID format
+		if _, err := uuid.Parse(p); err != nil {
+			return nil, fmt.Errorf("invalid UUID %q: %w", p, err)
+		}
+		ids = append(ids, p)
+	}
+	return ids, nil
 }
 
 // resolveIssueID takes a value that is either a UUID or an issue number string,
