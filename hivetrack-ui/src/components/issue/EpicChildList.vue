@@ -21,11 +21,6 @@ import { VueDraggable } from 'vue-draggable-plus'
 import {
   PlusIcon,
   LinkIcon,
-  CircleIcon,
-  CircleDotIcon,
-  CheckCircle2Icon,
-  XCircleIcon,
-  GitPullRequestIcon,
   SearchIcon,
   XIcon,
 } from 'lucide-vue-next'

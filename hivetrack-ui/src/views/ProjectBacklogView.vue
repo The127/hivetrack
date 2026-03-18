@@ -475,7 +475,7 @@ function activateInlineCreate(sectionId) {
 
 const { mutate: inlineCreate, isPending: inlineCreatePending } = useMutation({
   mutationFn: (data) => createIssue(slug.value, data),
-  onSuccess: (_result, variables) => {
+  onSuccess: (_result, _variables) => {
     inlineCreateTitle.value = ''
     inlineCreateError.value = ''
     queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })

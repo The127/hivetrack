@@ -18,7 +18,6 @@ linters:
     - unconvert         # remove unnecessary type conversions
     - unparam           # unused function parameters
     - exhaustive        # exhaustive switch on enums
-    - goimports         # import grouping and formatting
     # Security
     - gosec             # common security issues
     # Architecture (complements the architecture_test.go)
@@ -58,8 +57,13 @@ linters-settings:
           - pkg: "github.com/lib/pq"
             desc: "handlers must not import the postgres driver"
 
-  goimports:
-    local-prefixes: github.com/the127/hivetrack
+formatters:
+  enable:
+    - goimports
+
+  settings:
+    goimports:
+      local-prefixes: github.com/the127/hivetrack
 
 issues:
   exclude-rules:

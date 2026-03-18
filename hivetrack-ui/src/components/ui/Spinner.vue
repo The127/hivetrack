@@ -7,7 +7,7 @@
 
   @example
   <Spinner class="size-4 text-blue-600" />
-  <Spinner class="size-5" />   <!-- inherits text colour -->
+  <Spinner class="size-5" />
 -->
 <template>
   <svg

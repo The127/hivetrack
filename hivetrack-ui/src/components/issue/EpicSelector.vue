@@ -9,7 +9,7 @@
     update:modelValue — selected epic ID or null to clear
 -->
 <script setup>
-import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import { fetchIssues } from '@/api/issues'
 import { LayersIcon, XIcon, SearchIcon, CheckIcon } from 'lucide-vue-next'

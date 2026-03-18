@@ -6,9 +6,9 @@
   a single key label.
 
   @example
-  <Kbd>C</Kbd>                          <!-- single key: C -->
-  <Kbd :keys="['⌘', 'K']" />           <!-- combo: ⌘K -->
-  <Kbd :keys="['Ctrl', 'K']" />        <!-- combo: Ctrl+K -->
+  <Kbd>C</Kbd>
+  <Kbd :keys="['⌘', 'K']" />
+  <Kbd :keys="['Ctrl', 'K']" />
 -->
 <script setup>
 defineProps({
@@ -27,7 +27,7 @@ defineProps({
   <span class="inline-flex items-center gap-0.5">
     <template v-if="keys">
       <kbd
-        v-for="(key, i) in keys"
+        v-for="key in keys"
         :key="key"
         class="inline-flex items-center rounded border border-slate-300 bg-slate-50 px-1 py-0.5 font-mono text-[11px] text-slate-600 shadow-[0_1px_0_rgba(0,0,0,0.15)] leading-none"
       >

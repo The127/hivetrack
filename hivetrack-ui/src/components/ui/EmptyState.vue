@@ -5,7 +5,6 @@
   next step (per the "no dead ends" principle).
 
   @example
-  <!-- Empty backlog -->
   <EmptyState
     title="Nothing in the backlog"
     description="Issues that haven't been added to a sprint live here."
@@ -13,7 +12,6 @@
     @action="openCreateDialog"
   />
 
-  <!-- Empty state without an action (read-only view) -->
   <EmptyState
     title="No milestones yet"
     description="Milestones mark target dates for groups of issues."
