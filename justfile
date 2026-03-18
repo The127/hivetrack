@@ -107,7 +107,7 @@ ui-lint:
 dev-deps:
     docker compose up -d
     @echo "Waiting for postgres to be ready..."
-    @until pg_isready -h localhost -p 5432 -U hivetrack > /dev/null 2>&1; do sleep 1; done
+    @until docker compose exec -T postgres pg_isready -U hivetrack > /dev/null 2>&1; do sleep 1; done
     @echo "Postgres is ready."
 
 # Start the full local development stack (deps + backend + frontend)
