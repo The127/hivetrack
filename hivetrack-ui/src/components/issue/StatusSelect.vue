@@ -111,7 +111,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
   <div ref="root" class="flex items-center flex-shrink-0">
     <button
       ref="triggerBtn"
-      class="flex items-center gap-1 cursor-pointer rounded px-1 -mx-1 hover:bg-slate-100 transition-colors"
+      class="flex items-center gap-1 cursor-pointer rounded px-2 py-1.5 -mx-2 -my-1.5 hover:bg-slate-100 transition-colors"
       @click="toggle"
     >
       <component :is="meta.icon" class="size-3.5" :class="iconColor" />
