@@ -14,6 +14,7 @@ import { fetchComments, createComment, updateComment, deleteComment } from '@/ap
 import Avatar from '@/components/ui/Avatar.vue'
 import Button from '@/components/ui/Button.vue'
 import MarkdownContent from '@/components/ui/MarkdownContent.vue'
+import RelativeTime from '@/components/ui/RelativeTime.vue'
 
 const props = defineProps({
   projectSlug: { type: String, required: true },
@@ -87,19 +88,6 @@ const { mutate: removeComment } = useMutation({
 
 // ── Formatting ──────────────────────────────────────────────────────────────
 
-function relativeTime(dateStr) {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffMs = now - date
-  const diffMin = Math.floor(diffMs / 60000)
-  if (diffMin < 1) return 'just now'
-  if (diffMin < 60) return `${diffMin}m ago`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr}h ago`
-  const diffDay = Math.floor(diffHr / 24)
-  if (diffDay < 30) return `${diffDay}d ago`
-  return date.toLocaleDateString()
-}
 </script>
 
 <template>
@@ -127,7 +115,7 @@ function relativeTime(dateStr) {
             <span class="text-sm font-medium text-slate-700">
               {{ comment.author_name || comment.author_email || 'User' }}
             </span>
-            <span class="text-xs text-slate-400">{{ relativeTime(comment.created_at) }}</span>
+            <RelativeTime :datetime="comment.created_at" class="text-xs text-slate-400" />
             <span v-if="comment.updated_at !== comment.created_at" class="text-xs text-slate-400 italic">(edited)</span>
           </div>
 
