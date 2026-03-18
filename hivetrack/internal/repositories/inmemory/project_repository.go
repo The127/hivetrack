@@ -12,20 +12,22 @@ import (
 )
 
 type ProjectRepository struct {
-	tracker  *change.Tracker
-	byID     map[uuid.UUID]*models.Project
-	bySlug   map[string]*models.Project
-	members  map[uuid.UUID]map[uuid.UUID]*models.ProjectMember // projectID -> userID -> member
-	counters map[uuid.UUID]int
+	tracker        *change.Tracker
+	byID           map[uuid.UUID]*models.Project
+	bySlug         map[string]*models.Project
+	members        map[uuid.UUID]map[uuid.UUID]*models.ProjectMember // projectID -> userID -> member
+	counters       map[uuid.UUID]int
+	sprintCounters map[uuid.UUID]int
 }
 
 func NewProjectRepository(tracker *change.Tracker) *ProjectRepository {
 	return &ProjectRepository{
-		tracker:  tracker,
-		byID:     make(map[uuid.UUID]*models.Project),
-		bySlug:   make(map[string]*models.Project),
-		members:  make(map[uuid.UUID]map[uuid.UUID]*models.ProjectMember),
-		counters: make(map[uuid.UUID]int),
+		tracker:        tracker,
+		byID:           make(map[uuid.UUID]*models.Project),
+		bySlug:         make(map[string]*models.Project),
+		members:        make(map[uuid.UUID]map[uuid.UUID]*models.ProjectMember),
+		counters:       make(map[uuid.UUID]int),
+		sprintCounters: make(map[uuid.UUID]int),
 	}
 }
 
@@ -134,5 +136,14 @@ func (r *ProjectRepository) NextIssueNumber(_ context.Context, projectID uuid.UU
 		return 0, fmt.Errorf("project %s not found: %w", projectID, models.ErrNotFound)
 	}
 	r.counters[projectID] = n + 1
+	return n, nil
+}
+
+func (r *ProjectRepository) NextSprintNumber(_ context.Context, projectID uuid.UUID) (int, error) {
+	n, ok := r.sprintCounters[projectID]
+	if !ok {
+		return 0, fmt.Errorf("project %s not found: %w", projectID, models.ErrNotFound)
+	}
+	r.sprintCounters[projectID] = n + 1
 	return n, nil
 }

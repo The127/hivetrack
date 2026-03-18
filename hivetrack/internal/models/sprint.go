@@ -31,6 +31,7 @@ type Sprint struct {
 	change.List[SprintChange]
 
 	projectID uuid.UUID
+	number    int
 	name      string
 	goal      *string
 	startDate time.Time
@@ -38,11 +39,12 @@ type Sprint struct {
 	status    SprintStatus
 }
 
-func NewSprint(projectID uuid.UUID, name string, goal *string, startDate, endDate time.Time, status SprintStatus) *Sprint {
+func NewSprint(projectID uuid.UUID, number int, name string, goal *string, startDate, endDate time.Time, status SprintStatus) *Sprint {
 	return &Sprint{
 		BaseModel: NewBaseModel(),
 		List:      change.NewList[SprintChange](),
 		projectID: projectID,
+		number:    number,
 		name:      name,
 		goal:      goal,
 		startDate: startDate,
@@ -52,12 +54,13 @@ func NewSprint(projectID uuid.UUID, name string, goal *string, startDate, endDat
 }
 
 func NewSprintFromDB(id uuid.UUID, createdAt time.Time, version any,
-	projectID uuid.UUID, name string, goal *string,
+	projectID uuid.UUID, number int, name string, goal *string,
 	startDate, endDate time.Time, status SprintStatus) *Sprint {
 	return &Sprint{
 		BaseModel: NewBaseModelFromDB(id, createdAt, createdAt, version),
 		List:      change.NewList[SprintChange](),
 		projectID: projectID,
+		number:    number,
 		name:      name,
 		goal:      goal,
 		startDate: startDate,
@@ -67,6 +70,7 @@ func NewSprintFromDB(id uuid.UUID, createdAt time.Time, version any,
 }
 
 func (s *Sprint) GetProjectID() uuid.UUID { return s.projectID }
+func (s *Sprint) GetNumber() int          { return s.number }
 func (s *Sprint) GetName() string         { return s.name }
 func (s *Sprint) GetGoal() *string        { return s.goal }
 func (s *Sprint) GetStartDate() time.Time { return s.startDate }

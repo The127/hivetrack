@@ -39,7 +39,7 @@ func makeIssue(projectID uuid.UUID, number int, status models.IssueStatus, sprin
 func TestHandleUpdateSprint_Complete_MovesToBacklog(t *testing.T) {
 	db, project, actor := setupSprintTest(t)
 
-	sprint := models.NewSprint(project.GetId(), "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusActive)
+	sprint := models.NewSprint(project.GetId(), 1, "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusActive)
 	db.Sprints().Insert(sprint)
 	require.NoError(t, db.SaveChanges(context.Background()))
 
@@ -73,8 +73,8 @@ func TestHandleUpdateSprint_Complete_MovesToBacklog(t *testing.T) {
 func TestHandleUpdateSprint_Complete_MovesToAnotherSprint(t *testing.T) {
 	db, project, actor := setupSprintTest(t)
 
-	sprint := models.NewSprint(project.GetId(), "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusActive)
-	nextSprint := models.NewSprint(project.GetId(), "Sprint 2", nil, time.Now().Add(14*24*time.Hour), time.Now().Add(28*24*time.Hour), models.SprintStatusPlanning)
+	sprint := models.NewSprint(project.GetId(), 1, "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusActive)
+	nextSprint := models.NewSprint(project.GetId(), 2, "Sprint 2", nil, time.Now().Add(14*24*time.Hour), time.Now().Add(28*24*time.Hour), models.SprintStatusPlanning)
 	db.Sprints().Insert(sprint)
 	db.Sprints().Insert(nextSprint)
 	require.NoError(t, db.SaveChanges(context.Background()))
@@ -112,8 +112,8 @@ func TestHandleUpdateSprint_Complete_MovesToAnotherSprint(t *testing.T) {
 func TestHandleUpdateSprint_Complete_MovesMultipleOpenIssues(t *testing.T) {
 	db, project, actor := setupSprintTest(t)
 
-	sprint := models.NewSprint(project.GetId(), "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusActive)
-	nextSprint := models.NewSprint(project.GetId(), "Sprint 2", nil, time.Now().Add(14*24*time.Hour), time.Now().Add(28*24*time.Hour), models.SprintStatusPlanning)
+	sprint := models.NewSprint(project.GetId(), 1, "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusActive)
+	nextSprint := models.NewSprint(project.GetId(), 2, "Sprint 2", nil, time.Now().Add(14*24*time.Hour), time.Now().Add(28*24*time.Hour), models.SprintStatusPlanning)
 	db.Sprints().Insert(sprint)
 	db.Sprints().Insert(nextSprint)
 	require.NoError(t, db.SaveChanges(context.Background()))
@@ -163,7 +163,7 @@ func TestHandleUpdateSprint_Complete_MovesMultipleOpenIssues(t *testing.T) {
 func TestHandleUpdateSprint_Complete_InvalidTargetSprint(t *testing.T) {
 	db, project, actor := setupSprintTest(t)
 
-	sprint := models.NewSprint(project.GetId(), "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusActive)
+	sprint := models.NewSprint(project.GetId(), 1, "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusActive)
 	db.Sprints().Insert(sprint)
 	require.NoError(t, db.SaveChanges(context.Background()))
 
@@ -182,7 +182,7 @@ func TestHandleUpdateSprint_Complete_InvalidTargetSprint(t *testing.T) {
 func TestHandleUpdateSprint_Complete_CannotMoveToSameSprint(t *testing.T) {
 	db, project, actor := setupSprintTest(t)
 
-	sprint := models.NewSprint(project.GetId(), "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusActive)
+	sprint := models.NewSprint(project.GetId(), 1, "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusActive)
 	db.Sprints().Insert(sprint)
 	require.NoError(t, db.SaveChanges(context.Background()))
 

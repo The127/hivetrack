@@ -25,7 +25,7 @@ func TestHandleGetSprintBurndown_HappyPath(t *testing.T) {
 
 	start := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 3, 16, 0, 0, 0, 0, time.UTC)
-	sprint := models.NewSprint(p.GetId(), "Sprint 1", nil, start, end, models.SprintStatusCompleted)
+	sprint := models.NewSprint(p.GetId(), 1, "Sprint 1", nil, start, end, models.SprintStatusCompleted)
 	db.Sprints().Insert(sprint)
 	require.NoError(t, db.SaveChanges(context.Background()))
 
@@ -91,7 +91,7 @@ func TestHandleGetSprintBurndown_EmptyStatusLog(t *testing.T) {
 
 	start := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 3, 12, 0, 0, 0, 0, time.UTC)
-	sprint := models.NewSprint(p.GetId(), "Sprint 2", nil, start, end, models.SprintStatusCompleted)
+	sprint := models.NewSprint(p.GetId(), 2, "Sprint 2", nil, start, end, models.SprintStatusCompleted)
 	db.Sprints().Insert(sprint)
 	require.NoError(t, db.SaveChanges(context.Background()))
 

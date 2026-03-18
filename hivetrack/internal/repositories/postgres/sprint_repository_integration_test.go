@@ -25,7 +25,7 @@ func TestSprintRepository_InsertAndGetByID(t *testing.T) {
 
 	goal := "Ship the feature"
 	sprint := models.NewSprint(
-		project.GetId(), "Sprint 1", &goal,
+		project.GetId(), 1, "Sprint 1", &goal,
 		time.Now().UTC().Truncate(24*time.Hour),
 		time.Now().UTC().Truncate(24*time.Hour).Add(14*24*time.Hour),
 		models.SprintStatusPlanning,
@@ -52,9 +52,9 @@ func TestSprintRepository_List(t *testing.T) {
 	db.Projects().Insert(project)
 	require.NoError(t, db.SaveChanges(ctx))
 
-	s1 := models.NewSprint(project.GetId(), "Sprint A", nil,
+	s1 := models.NewSprint(project.GetId(), 1, "Sprint A", nil,
 		time.Now().UTC(), time.Now().UTC().Add(7*24*time.Hour), models.SprintStatusPlanning)
-	s2 := models.NewSprint(project.GetId(), "Sprint B", nil,
+	s2 := models.NewSprint(project.GetId(), 2, "Sprint B", nil,
 		time.Now().UTC(), time.Now().UTC().Add(14*24*time.Hour), models.SprintStatusActive)
 	db.Sprints().Insert(s1)
 	db.Sprints().Insert(s2)
@@ -74,7 +74,7 @@ func TestSprintRepository_Update(t *testing.T) {
 	db.Projects().Insert(project)
 	require.NoError(t, db.SaveChanges(ctx))
 
-	sprint := models.NewSprint(project.GetId(), "Sprint 1", nil,
+	sprint := models.NewSprint(project.GetId(), 1, "Sprint 1", nil,
 		time.Now().UTC(), time.Now().UTC().Add(14*24*time.Hour), models.SprintStatusPlanning)
 	db.Sprints().Insert(sprint)
 	require.NoError(t, db.SaveChanges(ctx))

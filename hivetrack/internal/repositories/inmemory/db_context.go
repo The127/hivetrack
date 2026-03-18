@@ -90,6 +90,7 @@ func (d *DbContext) SaveChanges(_ context.Context) error {
 				d.projects.byID[item.GetId()] = item
 				d.projects.bySlug[item.GetSlug()] = item
 				d.projects.counters[item.GetId()] = 1
+				d.projects.sprintCounters[item.GetId()] = 1
 				item.ClearChanges()
 			case change.Updated:
 				existing, ok := d.projects.byID[item.GetId()]
@@ -110,6 +111,7 @@ func (d *DbContext) SaveChanges(_ context.Context) error {
 				delete(d.projects.byID, item.GetId())
 				delete(d.projects.members, item.GetId())
 				delete(d.projects.counters, item.GetId())
+				delete(d.projects.sprintCounters, item.GetId())
 			}
 		case *models.Issue:
 			switch entry.GetChangeType() {

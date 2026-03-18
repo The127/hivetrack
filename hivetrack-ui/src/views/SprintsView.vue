@@ -83,6 +83,7 @@ function dateRange(sprint) {
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1 space-y-1">
               <div class="flex items-center gap-2">
+                <span class="text-xs font-mono text-slate-400">#{{ sprint.number }}</span>
                 <span class="text-sm font-medium text-slate-900">{{ sprint.name }}</span>
                 <span v-if="dateRange(sprint)" class="text-xs text-slate-400">{{ dateRange(sprint) }}</span>
               </div>

@@ -58,6 +58,14 @@ func (r *ProjectRepository) ExecuteInsert(ctx context.Context, tx *sql.Tx, proje
 		return fmt.Errorf("initializing issue counter: %w", err)
 	}
 
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO project_sprint_counters (project_id, next_number) VALUES ($1, 1)`,
+		project.GetId(),
+	)
+	if err != nil {
+		return fmt.Errorf("initializing sprint counter: %w", err)
+	}
+
 	project.ClearChanges()
 	return nil
 }
@@ -249,6 +257,16 @@ func (r *ProjectRepository) NextIssueNumber(ctx context.Context, projectID uuid.
 	err := r.ctx.execDirect(ctx, func(tx *sql.Tx) error {
 		return tx.QueryRowContext(ctx,
 			`UPDATE project_issue_counters SET next_number = next_number + 1 WHERE project_id=$1 RETURNING next_number - 1`,
+			projectID).Scan(&num)
+	})
+	return num, err
+}
+
+func (r *ProjectRepository) NextSprintNumber(ctx context.Context, projectID uuid.UUID) (int, error) {
+	var num int
+	err := r.ctx.execDirect(ctx, func(tx *sql.Tx) error {
+		return tx.QueryRowContext(ctx,
+			`UPDATE project_sprint_counters SET next_number = next_number + 1 WHERE project_id=$1 RETURNING next_number - 1`,
 			projectID).Scan(&num)
 	})
 	return num, err
