@@ -108,6 +108,57 @@ func TestHandleUpdateSprint_Complete_MovesToAnotherSprint(t *testing.T) {
 	assert.Equal(t, sprint.GetId(), *done.GetSprintID())
 }
 
+func TestHandleUpdateSprint_Complete_MovesMultipleOpenIssues(t *testing.T) {
+	db, project, actor := setupSprintTest(t)
+
+	sprint := models.NewSprint(project.GetId(), "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusActive)
+	nextSprint := models.NewSprint(project.GetId(), "Sprint 2", nil, time.Now().Add(14*24*time.Hour), time.Now().Add(28*24*time.Hour), models.SprintStatusPlanning)
+	db.Sprints().Insert(sprint)
+	db.Sprints().Insert(nextSprint)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	sid := sprint.GetId()
+	issues := []*models.Issue{
+		makeIssue(project.GetId(), 1, models.IssueStatusTodo, &sid, actor.GetId()),
+		makeIssue(project.GetId(), 2, models.IssueStatusInProgress, &sid, actor.GetId()),
+		makeIssue(project.GetId(), 3, models.IssueStatusInReview, &sid, actor.GetId()),
+		makeIssue(project.GetId(), 4, models.IssueStatusDone, &sid, actor.GetId()),
+		makeIssue(project.GetId(), 5, models.IssueStatusCancelled, &sid, actor.GetId()),
+	}
+	for _, issue := range issues {
+		db.Issues().Insert(issue)
+	}
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	status := models.SprintStatusCompleted
+	nextID := nextSprint.GetId()
+	_, err := commands.HandleUpdateSprint(ctx, commands.UpdateSprintCommand{
+		SprintID:                 sprint.GetId(),
+		Status:                   &status,
+		MoveOpenIssuesToSprintID: &nextID,
+	})
+	require.NoError(t, err)
+
+	// Non-terminal issues (todo, in_progress, in_review) should move to target sprint.
+	for _, idx := range []int{0, 1, 2} {
+		updated, err := db.Issues().GetByID(context.Background(), issues[idx].GetId())
+		require.NoError(t, err, "issue %d", idx+1)
+		require.NotNil(t, updated.GetSprintID(), "issue %d should have sprint_id", idx+1)
+		assert.Equal(t, nextSprint.GetId(), *updated.GetSprintID(), "issue %d should be in target sprint", idx+1)
+		assert.Equal(t, 1, updated.GetSprintCarryCount(), "issue %d carry count", idx+1)
+	}
+
+	// Terminal issues (done, cancelled) should stay in the original sprint.
+	for _, idx := range []int{3, 4} {
+		updated, err := db.Issues().GetByID(context.Background(), issues[idx].GetId())
+		require.NoError(t, err, "issue %d", idx+1)
+		require.NotNil(t, updated.GetSprintID(), "issue %d should still have sprint_id", idx+1)
+		assert.Equal(t, sprint.GetId(), *updated.GetSprintID(), "issue %d should stay in completed sprint", idx+1)
+		assert.Equal(t, 0, updated.GetSprintCarryCount(), "issue %d carry count", idx+1)
+	}
+}
+
 func TestHandleUpdateSprint_Complete_InvalidTargetSprint(t *testing.T) {
 	db, project, actor := setupSprintTest(t)
 

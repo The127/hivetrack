@@ -105,7 +105,7 @@ function requestCompleteSprint() {
 const { mutate: completeSprintMutation } = useMutation({
   mutationFn: ({ sprintId, moveToSprintId }) => updateSprint(slug.value, sprintId, {
     status: 'completed',
-    ...(moveToSprintId ? { move_open_issues_to_sprint_id: moveToSprintId } : {}),
+    move_open_issues_to_sprint_id: moveToSprintId ?? null,
   }),
   onSuccess: () => {
     showCompleteSprintModal.value = false
