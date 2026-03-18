@@ -3,16 +3,21 @@
 
   Shows all epics in a project with progress bars, status, priority, and
   assignees. Each epic row expands to show child tasks via EpicChildList.
+
+  Unassigned tasks (tasks with no parent epic) are shown at the bottom and
+  can be dragged into any expanded epic's child list.
 -->
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { VueDraggable } from 'vue-draggable-plus'
 import {
   LayersIcon,
   PlusIcon,
   ChevronRightIcon,
   ChevronDownIcon,
+  InboxIcon,
 } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -46,6 +51,26 @@ const { data: epicsResult, isLoading: loadingEpics } = useQuery({
 })
 
 const epics = computed(() => epicsResult.value?.items ?? [])
+
+// ── Unassigned tasks (no parent epic) ────────────────────────────────────────
+
+const { data: unassignedResult, isLoading: loadingUnassigned } = useQuery({
+  queryKey: computed(() => ['issues', slug.value, { type: 'task', no_parent: true, limit: 500 }]),
+  queryFn: () => fetchIssues(slug.value, { type: 'task', no_parent: true, limit: 500 }),
+  enabled: computed(() => !!slug.value),
+})
+
+const unassignedList = ref([])
+const isDragging = ref(false)
+
+watch(() => unassignedResult.value?.items, (items) => {
+  if (!isDragging.value) {
+    unassignedList.value = items ? [...items] : []
+  }
+}, { immediate: true })
+
+const unassignedCount = computed(() => unassignedResult.value?.total ?? unassignedList.value.length)
+
 const isLoading = computed(() => loadingProject.value || loadingEpics.value)
 
 // ── Priority styling ─────────────────────────────────────────────────────────
@@ -58,8 +83,14 @@ const PRIORITY_BORDER = {
   critical: 'border-l-red-500',
 }
 
+const ESTIMATE_LABEL = { none: null, xs: 'XS', s: 'S', m: 'M', l: 'L', xl: 'XL' }
+
 function priorityBorder(priority) {
   return PRIORITY_BORDER[priority] ?? 'border-l-slate-200'
+}
+
+function estimateLabel(estimate) {
+  return ESTIMATE_LABEL[estimate] ?? null
 }
 
 // ── Expand / collapse ────────────────────────────────────────────────────────
@@ -122,20 +153,46 @@ const { mutate: updateEpicPriority } = useMutation({
   },
 })
 
-// ── Move task to different epic ──────────────────────────────────────────────
+// ── Drag-and-drop: unassigned ↔ epic ─────────────────────────────────────────
 
-const openMoveDropdown = ref(null)
-
-function toggleMoveDropdown(childId) {
-  openMoveDropdown.value = openMoveDropdown.value === childId ? null : childId
-}
-
-const { mutate: moveTaskToEpic } = useMutation({
-  mutationFn: ({ number, parentId }) => updateIssue(slug.value, number, { parent_id: parentId }),
-  onSuccess: () => {
-    openMoveDropdown.value = null
+const { mutate: clearParent } = useMutation({
+  mutationFn: ({ number }) => updateIssue(slug.value, number, { parent_id: null }),
+  onSettled: () => {
+    isDragging.value = false
     queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
     queryClient.invalidateQueries({ queryKey: ['issue', slug.value] })
+  },
+})
+
+function onUnassignedDragStart() {
+  isDragging.value = true
+}
+
+function onUnassignedDragEnd() {
+  setTimeout(() => { isDragging.value = false }, 0)
+}
+
+function onTaskReturnedToUnassigned(evt) {
+  const task = unassignedList.value[evt.newDraggableIndex]
+  if (!task) return
+  if (task.parent_id) {
+    clearParent({ number: task.number })
+  }
+}
+
+// ── Inline status/priority for unassigned tasks ──────────────────────────────
+
+const { mutate: updateTaskStatus } = useMutation({
+  mutationFn: ({ number, status }) => updateIssue(slug.value, number, { status }),
+  onSettled: () => {
+    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+  },
+})
+
+const { mutate: updateTaskPriority } = useMutation({
+  mutationFn: ({ number, priority }) => updateIssue(slug.value, number, { priority }),
+  onSettled: () => {
+    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
   },
 })
 
@@ -185,7 +242,7 @@ const defaultCreateStatus = computed(() => {
       </div>
 
       <!-- ── Empty state ────────────────────────────────────────────────── -->
-      <div v-else-if="!epics.length" class="flex-1 flex items-center justify-center">
+      <div v-else-if="!epics.length && !unassignedList.length" class="flex-1 flex items-center justify-center">
         <EmptyState
           title="No epics yet"
           description="Epics group related tasks together. Create one to start organizing work."
@@ -197,10 +254,12 @@ const defaultCreateStatus = computed(() => {
         </EmptyState>
       </div>
 
-      <!-- ── Epic list ──────────────────────────────────────────────────── -->
+      <!-- ── Epic list + Unassigned ────────────────────────────────────── -->
       <div v-else class="flex-1 overflow-y-auto">
-        <div class="max-w-5xl mx-auto px-6 py-4 space-y-0">
-          <div class="border border-slate-200 rounded-lg overflow-hidden">
+        <div class="max-w-5xl mx-auto px-6 py-4 space-y-6">
+
+          <!-- Epics -->
+          <div v-if="epics.length" class="border border-slate-200 rounded-lg overflow-hidden">
             <div v-for="epic in epics" :key="epic.id">
               <!-- Epic row -->
               <div
@@ -277,6 +336,74 @@ const defaultCreateStatus = computed(() => {
               </div>
             </div>
           </div>
+
+          <!-- Unassigned tasks -->
+          <div v-if="unassignedList.length || loadingUnassigned">
+            <div class="flex items-center gap-2 mb-3">
+              <InboxIcon class="size-4 text-slate-400" />
+              <h2 class="text-sm font-semibold text-slate-700">Unassigned tasks</h2>
+              <span class="text-xs text-slate-400">({{ unassignedCount }})</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-3">Drag tasks into an expanded epic to assign them.</p>
+            <div v-if="loadingUnassigned" class="text-sm text-slate-400">Loading...</div>
+            <div v-else class="border border-slate-200 rounded-lg overflow-hidden">
+              <VueDraggable
+                v-model="unassignedList"
+                :group="{ name: 'epic-tasks' }"
+                :animation="150"
+                ghost-class="opacity-30"
+                class="min-h-8"
+                @start="onUnassignedDragStart"
+                @end="onUnassignedDragEnd"
+                @add="onTaskReturnedToUnassigned"
+              >
+                <div
+                  v-for="task in unassignedList"
+                  :key="task.id"
+                  class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100 last:border-b-0"
+                  :class="priorityBorder(task.priority)"
+                >
+                  <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
+                    <router-link
+                      :to="`/projects/${slug}/issues/${task.number}`"
+                      class="text-[11px] font-mono text-slate-400 hover:text-blue-600"
+                      @click.stop
+                    >
+                      {{ slug.toUpperCase() }}-{{ task.number }}
+                    </router-link>
+                  </div>
+                  <router-link
+                    :to="`/projects/${slug}/issues/${task.number}`"
+                    class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline"
+                    @click.stop
+                  >
+                    {{ task.title }}
+                  </router-link>
+                  <span v-if="task.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
+                  <div @click.stop>
+                    <StatusSelect
+                      v-if="project"
+                      :status="task.status"
+                      :archetype="project.archetype"
+                      @update:status="updateTaskStatus({ number: task.number, status: $event })"
+                    />
+                  </div>
+                  <div @click.stop>
+                    <PrioritySelect
+                      :priority="task.priority ?? 'none'"
+                      @update:priority="updateTaskPriority({ number: task.number, priority: $event })"
+                    />
+                  </div>
+                  <span v-if="estimateLabel(task.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(task.estimate) }}</span>
+                  <span v-else class="w-7 flex-shrink-0" />
+                  <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
+                    <Avatar v-for="a in (task.assignees ?? []).slice(0, 2)" :key="a" :name="`${a}`" size="xs" class="ring-1 ring-white" />
+                  </div>
+                </div>
+              </VueDraggable>
+            </div>
+          </div>
+
         </div>
       </div>
 
