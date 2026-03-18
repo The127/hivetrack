@@ -7,105 +7,148 @@
   For tasks: shows EpicSelector to assign/change/clear parent epic.
 -->
 <script setup>
-import { computed } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
-import {
-  ArrowLeftIcon,
-  LayersIcon,
-} from 'lucide-vue-next'
-import MainLayout from '@/layouts/MainLayout.vue'
-import Badge from '@/components/ui/Badge.vue'
-import Spinner from '@/components/ui/Spinner.vue'
-import EpicSelector from '@/components/issue/EpicSelector.vue'
-import EpicChildList from '@/components/issue/EpicChildList.vue'
-import CommentSection from '@/components/issue/CommentSection.vue'
-import StatusSelect from '@/components/issue/StatusSelect.vue'
-import PrioritySelect from '@/components/issue/PrioritySelect.vue'
-import AssigneeSelect from '@/components/issue/AssigneeSelect.vue'
-import LabelSelect from '@/components/issue/LabelSelect.vue'
-import MarkdownContent from '@/components/ui/MarkdownContent.vue'
-import { fetchIssue, updateIssue } from '@/api/issues'
-import { fetchProject } from '@/api/projects'
+import { computed } from "vue";
+import { useRoute, RouterLink } from "vue-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
+import { ArrowLeftIcon, LayersIcon, ZapIcon } from "lucide-vue-next";
+import MainLayout from "@/layouts/MainLayout.vue";
+import Badge from "@/components/ui/Badge.vue";
+import Spinner from "@/components/ui/Spinner.vue";
+import EpicSelector from "@/components/issue/EpicSelector.vue";
+import EpicChildList from "@/components/issue/EpicChildList.vue";
+import CommentSection from "@/components/issue/CommentSection.vue";
+import StatusSelect from "@/components/issue/StatusSelect.vue";
+import PrioritySelect from "@/components/issue/PrioritySelect.vue";
+import AssigneeSelect from "@/components/issue/AssigneeSelect.vue";
+import LabelSelect from "@/components/issue/LabelSelect.vue";
+import MarkdownContent from "@/components/ui/MarkdownContent.vue";
+import { fetchIssue, updateIssue } from "@/api/issues";
+import { fetchProject } from "@/api/projects";
+import { fetchSprints } from "@/api/sprints";
 
-const route = useRoute()
-const queryClient = useQueryClient()
+const route = useRoute();
+const queryClient = useQueryClient();
 
-const slug = computed(() => route.params.slug)
-const number = computed(() => Number(route.params.number))
+const slug = computed(() => route.params.slug);
+const number = computed(() => Number(route.params.number));
 
 // ── Data ──────────────────────────────────────────────────────────────────
 
 const { data: project } = useQuery({
-  queryKey: ['project', slug],
+  queryKey: ["project", slug],
   queryFn: () => fetchProject(slug.value),
-})
+});
+
+const { data: sprintsResult } = useQuery({
+  queryKey: ["sprints", slug],
+  queryFn: () => fetchSprints(slug.value),
+  enabled: computed(() => !!slug.value),
+});
+
+const currentSprint = computed(() => {
+  if (!issue.value?.sprint_id) return null;
+  return (
+    (sprintsResult.value?.sprints ?? []).find(
+      (s) => s.id === issue.value.sprint_id,
+    ) ?? null
+  );
+});
+
+function formatDate(dateStr) {
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 const { data: issue, isLoading } = useQuery({
-  queryKey: ['issue', slug, number],
+  queryKey: ["issue", slug, number],
   queryFn: () => fetchIssue(slug.value, number.value),
   enabled: computed(() => !!slug.value && !!number.value),
-})
+});
 
-const ESTIMATE_LABEL = { none: null, xs: 'XS', s: 'S', m: 'M', l: 'L', xl: 'XL' }
+const ESTIMATE_LABEL = {
+  none: null,
+  xs: "XS",
+  s: "S",
+  m: "M",
+  l: "L",
+  xl: "XL",
+};
 
 // ── Status mutation ───────────────────────────────────────────────────────────
 
 const { mutate: updateStatus } = useMutation({
   mutationFn: (status) => updateIssue(slug.value, number.value, { status }),
   onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['issue', slug.value, number.value] })
-    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+    queryClient.invalidateQueries({
+      queryKey: ["issue", slug.value, number.value],
+    });
+    queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
   },
-})
+});
 
 // ── Priority mutation ─────────────────────────────────────────────────────────
 
 const { mutate: updatePriority } = useMutation({
   mutationFn: (priority) => updateIssue(slug.value, number.value, { priority }),
   onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['issue', slug.value, number.value] })
-    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+    queryClient.invalidateQueries({
+      queryKey: ["issue", slug.value, number.value],
+    });
+    queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
   },
-})
+});
 
 // ── Epic assignment mutation (for tasks) ────────────────────────────────────
 
 const { mutate: updateParent } = useMutation({
-  mutationFn: (parentId) => updateIssue(slug.value, number.value, { parent_id: parentId }),
+  mutationFn: (parentId) =>
+    updateIssue(slug.value, number.value, { parent_id: parentId }),
   onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['issue', slug.value, number.value] })
-    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+    queryClient.invalidateQueries({
+      queryKey: ["issue", slug.value, number.value],
+    });
+    queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
   },
-})
+});
 
 // ── Assignee mutation ─────────────────────────────────────────────────────────
 
 const { mutate: updateAssignees } = useMutation({
-  mutationFn: (assigneeIds) => updateIssue(slug.value, number.value, { assignee_ids: assigneeIds }),
+  mutationFn: (assigneeIds) =>
+    updateIssue(slug.value, number.value, { assignee_ids: assigneeIds }),
   onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['issue', slug.value, number.value] })
-    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
-    queryClient.invalidateQueries({ queryKey: ['me', 'issues'] })
+    queryClient.invalidateQueries({
+      queryKey: ["issue", slug.value, number.value],
+    });
+    queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
+    queryClient.invalidateQueries({ queryKey: ["me", "issues"] });
   },
-})
+});
 
 // ── Label mutation ───────────────────────────────────────────────────────────
 
 const { mutate: updateLabels } = useMutation({
-  mutationFn: (labelIds) => updateIssue(slug.value, number.value, { label_ids: labelIds }),
+  mutationFn: (labelIds) =>
+    updateIssue(slug.value, number.value, { label_ids: labelIds }),
   onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['issue', slug.value, number.value] })
-    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+    queryClient.invalidateQueries({
+      queryKey: ["issue", slug.value, number.value],
+    });
+    queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
   },
-})
+});
 </script>
 
 <template>
   <MainLayout>
     <div class="flex flex-col h-full">
       <!-- Header -->
-      <div class="flex-shrink-0 flex items-center gap-3 px-6 py-3 border-b border-slate-200 bg-white">
+      <div
+        class="flex-shrink-0 flex items-center gap-3 px-6 py-3 border-b border-slate-200 bg-white"
+      >
         <RouterLink
           :to="`/projects/${slug}/backlog`"
           class="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 transition-colors"
@@ -114,10 +157,14 @@ const { mutate: updateLabels } = useMutation({
           Back
         </RouterLink>
         <div v-if="project" class="flex items-center gap-2 text-slate-400">
-          <span class="size-6 rounded flex items-center justify-center text-[10px] font-semibold bg-slate-100 text-slate-600">
+          <span
+            class="size-6 rounded flex items-center justify-center text-[10px] font-semibold bg-slate-100 text-slate-600"
+          >
             {{ project.slug.slice(0, 2).toUpperCase() }}
           </span>
-          <span class="text-sm font-medium text-slate-600">{{ project.name }}</span>
+          <span class="text-sm font-medium text-slate-600">{{
+            project.name
+          }}</span>
         </div>
       </div>
 
@@ -129,18 +176,21 @@ const { mutate: updateLabels } = useMutation({
       <!-- Content -->
       <div v-else-if="issue" class="flex-1 overflow-y-auto">
         <div class="max-w-3xl mx-auto px-6 py-8 space-y-8">
-
           <!-- Issue header -->
           <div class="space-y-3">
             <div class="flex items-center gap-2">
-              <span class="text-xs font-mono text-slate-400">{{ slug.toUpperCase() }}-{{ issue.number }}</span>
-              <Badge v-if="issue.type === 'epic'" colorScheme="violet" compact>
+              <span class="text-xs font-mono text-slate-400"
+                >{{ slug.toUpperCase() }}-{{ issue.number }}</span
+              >
+              <Badge v-if="issue.type === 'epic'" color-scheme="violet" compact>
                 <LayersIcon class="size-3" />
                 Epic
               </Badge>
-              <Badge v-else colorScheme="blue" compact>Task</Badge>
+              <Badge v-else color-scheme="blue" compact>Task</Badge>
             </div>
-            <h1 class="text-2xl font-semibold text-slate-900">{{ issue.title }}</h1>
+            <h1 class="text-2xl font-semibold text-slate-900">
+              {{ issue.title }}
+            </h1>
           </div>
 
           <!-- Metadata grid -->
@@ -172,7 +222,10 @@ const { mutate: updateLabels } = useMutation({
             <div class="space-y-1">
               <span class="text-xs font-medium text-slate-500">Estimate</span>
               <div>
-                <span v-if="ESTIMATE_LABEL[issue.estimate]" class="text-sm font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                <span
+                  v-if="ESTIMATE_LABEL[issue.estimate]"
+                  class="text-sm font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded"
+                >
                   {{ ESTIMATE_LABEL[issue.estimate] }}
                 </span>
                 <span v-else class="text-sm text-slate-400">None</span>
@@ -201,12 +254,36 @@ const { mutate: updateLabels } = useMutation({
               </div>
             </div>
 
+            <!-- Sprint -->
+            <div class="space-y-1">
+              <span class="text-xs font-medium text-slate-500 flex items-center gap-1">
+                <ZapIcon class="size-3" />
+                Sprint
+              </span>
+              <div>
+                <RouterLink
+                  v-if="currentSprint"
+                  :to="`/projects/${slug}/backlog`"
+                  class="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  {{ currentSprint.name }}
+                </RouterLink>
+                <span v-else class="text-sm text-slate-400">Backlog</span>
+              </div>
+            </div>
+
             <!-- On hold -->
             <div v-if="issue.on_hold" class="space-y-1">
               <span class="text-xs font-medium text-slate-500">On Hold</span>
               <div class="flex items-center gap-2">
-                <Badge colorScheme="amber" compact>{{ issue.hold_reason ?? 'on hold' }}</Badge>
-                <span v-if="issue.hold_note" class="text-xs text-slate-500 italic">{{ issue.hold_note }}</span>
+                <Badge color-scheme="amber" compact>{{
+                  issue.hold_reason ?? "on hold"
+                }}</Badge>
+                <span
+                  v-if="issue.hold_note"
+                  class="text-xs text-slate-500 italic"
+                  >{{ issue.hold_note }}</span
+                >
               </div>
             </div>
           </div>
@@ -238,19 +315,44 @@ const { mutate: updateLabels } = useMutation({
           </div>
 
           <!-- Checklist (for tasks) -->
-          <div v-if="issue.type === 'task' && issue.checklist?.length" class="space-y-2">
+          <div
+            v-if="issue.type === 'task' && issue.checklist?.length"
+            class="space-y-2"
+          >
             <h2 class="text-sm font-medium text-slate-700">Checklist</h2>
             <div class="space-y-1">
-              <div v-for="item in issue.checklist" :key="item.id" class="flex items-center gap-2">
-                <input type="checkbox" :checked="item.done" disabled class="rounded border-slate-300" />
-                <span class="text-sm" :class="item.done ? 'text-slate-400 line-through' : 'text-slate-700'">{{ item.text }}</span>
+              <div
+                v-for="item in issue.checklist"
+                :key="item.id"
+                class="flex items-center gap-2"
+              >
+                <input
+                  type="checkbox"
+                  :checked="item.done"
+                  disabled
+                  class="rounded border-slate-300"
+                />
+                <span
+                  class="text-sm"
+                  :class="
+                    item.done ? 'text-slate-400 line-through' : 'text-slate-700'
+                  "
+                  >{{ item.text }}</span
+                >
               </div>
             </div>
           </div>
 
+          <!-- Dates -->
+          <div class="flex items-center gap-4 text-xs text-slate-400">
+            <span>Created {{ formatDate(issue.created_at) }}</span>
+            <span v-if="issue.updated_at !== issue.created_at">
+              · Updated {{ formatDate(issue.updated_at) }}
+            </span>
+          </div>
+
           <!-- Comments -->
           <CommentSection :project-slug="slug" :issue-number="number" />
-
         </div>
       </div>
 
