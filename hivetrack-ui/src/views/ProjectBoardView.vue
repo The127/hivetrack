@@ -34,7 +34,7 @@ import {
 import MainLayout from "@/layouts/MainLayout.vue";
 import Badge from "@/components/ui/Badge.vue";
 import Spinner from "@/components/ui/Spinner.vue";
-import Avatar from "@/components/ui/Avatar.vue";
+import AssigneePopover from "@/components/issue/AssigneePopover.vue";
 import Alert from "@/components/ui/Alert.vue";
 import ProgressBar from "@/components/ui/ProgressBar.vue";
 import CreateIssueModal from "@/components/issue/CreateIssueModal.vue";
@@ -576,22 +576,7 @@ const defaultCreateStatus = computed(() => {
                       on hold
                     </span>
                     <span class="flex-1" />
-                    <div v-if="issue.assignees?.length" class="flex -space-x-1">
-                      <Avatar
-                        v-for="a in issue.assignees.slice(0, 2)"
-                        :key="a.id"
-                        :name="a.display_name"
-                        :src="a.avatar_url"
-                        size="xs"
-                        class="ring-1 ring-white"
-                      />
-                      <span
-                        v-if="issue.assignees.length > 2"
-                        class="size-5 rounded-full bg-slate-100 text-[10px] font-medium text-slate-500 flex items-center justify-center ring-1 ring-white"
-                      >
-                        +{{ issue.assignees.length - 2 }}
-                      </span>
-                    </div>
+                    <AssigneePopover :assignees="issue.assignees ?? []" />
                   </div>
 
                   <!-- Title -->

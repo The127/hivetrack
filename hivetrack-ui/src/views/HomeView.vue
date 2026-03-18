@@ -17,7 +17,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { useRouter } from 'vue-router'
 import { PlusIcon, InboxIcon, FolderKanbanIcon, CircleDotIcon } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
-import Avatar from '@/components/ui/Avatar.vue'
+import AssigneePopover from '@/components/issue/AssigneePopover.vue'
 import Badge from '@/components/ui/Badge.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Spinner from '@/components/ui/Spinner.vue'
@@ -171,16 +171,7 @@ function formatStatus(s) {
             </Badge>
 
             <!-- Assignees -->
-            <div v-if="issue.assignees?.length" class="flex -space-x-1">
-              <Avatar
-                v-for="a in issue.assignees.slice(0, 3)"
-                :key="a.id"
-                :name="a.display_name"
-                :src="a.avatar_url"
-                size="xs"
-                class="ring-1 ring-white"
-              />
-            </div>
+            <AssigneePopover :assignees="issue.assignees ?? []" />
           </div>
         </div>
 

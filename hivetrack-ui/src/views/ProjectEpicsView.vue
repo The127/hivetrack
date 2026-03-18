@@ -22,7 +22,7 @@ import {
 import MainLayout from '@/layouts/MainLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Spinner from '@/components/ui/Spinner.vue'
-import Avatar from '@/components/ui/Avatar.vue'
+import AssigneePopover from '@/components/issue/AssigneePopover.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import StatusSelect from '@/components/issue/StatusSelect.vue'
@@ -316,8 +316,8 @@ const defaultCreateStatus = computed(() => {
                 </div>
 
                 <!-- Assignee avatars -->
-                <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
-                  <Avatar v-for="a in (epic.assignees ?? []).slice(0, 2)" :key="a.id" :name="a.display_name" :src="a.avatar_url" size="xs" class="ring-1 ring-white" />
+                <div class="flex-shrink-0 flex justify-end w-10">
+                  <AssigneePopover :assignees="epic.assignees ?? []" />
                 </div>
               </div>
 
@@ -396,8 +396,8 @@ const defaultCreateStatus = computed(() => {
                   </div>
                   <span v-if="estimateLabel(task.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(task.estimate) }}</span>
                   <span v-else class="w-7 flex-shrink-0" />
-                  <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
-                    <Avatar v-for="a in (task.assignees ?? []).slice(0, 2)" :key="a" :name="`${a}`" size="xs" class="ring-1 ring-white" />
+                  <div class="flex-shrink-0 flex justify-end w-10">
+                    <AssigneePopover :assignees="task.assignees ?? []" />
                   </div>
                 </div>
               </VueDraggable>

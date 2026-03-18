@@ -37,7 +37,7 @@ import {
 import MainLayout from "@/layouts/MainLayout.vue";
 import Badge from "@/components/ui/Badge.vue";
 import Spinner from "@/components/ui/Spinner.vue";
-import Avatar from "@/components/ui/Avatar.vue";
+import AssigneePopover from "@/components/issue/AssigneePopover.vue";
 import EmptyState from "@/components/ui/EmptyState.vue";
 import CreateIssueModal from "@/components/issue/CreateIssueModal.vue";
 import CompleteSprintModal from "@/components/sprint/CompleteSprintModal.vue";
@@ -915,15 +915,8 @@ function formatDateRange(startDate, endDate) {
                   >{{ l.name }}</Badge
                 >
               </div>
-              <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
-                <Avatar
-                  v-for="a in (issue.assignees ?? []).slice(0, 2)"
-                  :key="a.id"
-                  :name="a.display_name"
-                  :src="a.avatar_url"
-                  size="xs"
-                  class="ring-1 ring-white"
-                />
+              <div class="flex-shrink-0 flex justify-end w-10">
+                <AssigneePopover :assignees="issue.assignees ?? []" />
               </div>
               <button
                 class="flex-shrink-0 opacity-0 group-hover:opacity-100 text-[11px] text-slate-400 hover:text-slate-600 transition-opacity cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-100"
@@ -1083,15 +1076,8 @@ function formatDateRange(startDate, endDate) {
                   >{{ l.name }}</Badge
                 >
               </div>
-              <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
-                <Avatar
-                  v-for="a in (issue.assignees ?? []).slice(0, 2)"
-                  :key="a.id"
-                  :name="a.display_name"
-                  :src="a.avatar_url"
-                  size="xs"
-                  class="ring-1 ring-white"
-                />
+              <div class="flex-shrink-0 flex justify-end w-10">
+                <AssigneePopover :assignees="issue.assignees ?? []" />
               </div>
               <button
                 class="flex-shrink-0 opacity-0 group-hover:opacity-100 text-[11px] text-slate-400 hover:text-slate-600 transition-opacity cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-100"
@@ -1295,15 +1281,8 @@ function formatDateRange(startDate, endDate) {
                 >{{ l.name }}</Badge
               >
             </div>
-            <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
-              <Avatar
-                v-for="a in (issue.assignees ?? []).slice(0, 2)"
-                :key="a.id"
-                :name="a.display_name"
-                :src="a.avatar_url"
-                size="xs"
-                class="ring-1 ring-white"
-              />
+            <div class="flex-shrink-0 flex justify-end w-10">
+              <AssigneePopover :assignees="issue.assignees ?? []" />
             </div>
 
             <!-- Move to sprint dropdown -->
