@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- Main hex — the bee body -->
+  <path d="M60 14 L99 36.5 L99 81.5 L60 104 L21 81.5 L21 36.5 Z" rx="4" fill="#F59E0B" />
+
+  <!-- Dark stripes -->
+  <path d="M30 54 L90 54 L95 63 L25 63 Z" fill="#78350F" opacity="0.25" />
+  <path d="M25 72 L95 72 L90 81 L30 81 Z" fill="#78350F" opacity="0.25" />
+
+  <!-- Wings — abstract, overlapping the hex top -->
+  <path d="M38 34 Q24 12 14 22 Q8 30 26 38" fill="#FCD34D" opacity="0.6" />
+  <path d="M82 34 Q96 12 106 22 Q112 30 94 38" fill="#FCD34D" opacity="0.6" />
+
+  <!-- Stinger — small triangle at bottom -->
+  <path d="M54 104 L60 116 L66 104" fill="#D97706" />
+</svg>
