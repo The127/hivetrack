@@ -120,6 +120,7 @@ func TestHandleCreateIssue_WithParent(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, issue.GetParentID())
 	assert.Equal(t, epicResult.ID, *issue.GetParentID())
+	assert.True(t, issue.GetTriaged(), "task with parent should be triaged")
 }
 
 func TestHandleCreateIssue_EpicCannotHaveParent(t *testing.T) {

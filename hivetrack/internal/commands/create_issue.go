@@ -60,8 +60,8 @@ func HandleCreateIssue(ctx context.Context, cmd CreateIssueCommand) (*CreateIssu
 		}
 	}
 
-	// Quick-capture: triaged=false only if no status, sprint, or milestone given
-	triaged := cmd.Status != nil || cmd.SprintID != nil || cmd.MilestoneID != nil
+	// Quick-capture: triaged=false only if no placement context given
+	triaged := cmd.Status != nil || cmd.SprintID != nil || cmd.MilestoneID != nil || cmd.ParentID != nil
 
 	priority := models.IssuePriorityNone
 	if cmd.Priority != nil {
