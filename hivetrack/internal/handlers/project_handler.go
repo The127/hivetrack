@@ -78,13 +78,24 @@ func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Name               *string `json:"name"`
-		Description        *string `json:"description"`
-		Archived           *bool   `json:"archived"`
-		WipLimitInProgress **int   `json:"wip_limit_in_progress"`
-		WipLimitInReview   **int   `json:"wip_limit_in_review"`
+		Name               *string         `json:"name"`
+		Description        *string         `json:"description"`
+		Archived           *bool           `json:"archived"`
+		WipLimitInProgress json.RawMessage `json:"wip_limit_in_progress"`
+		WipLimitInReview   json.RawMessage `json:"wip_limit_in_review"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	wipInProgress, err := parseNullableInt(body.WipLimitInProgress)
+	if err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+	wipInReview, err := parseNullableInt(body.WipLimitInReview)
+	if err != nil {
 		RespondError(w, models.ErrBadRequest)
 		return
 	}
@@ -94,8 +105,8 @@ func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 		Name:               body.Name,
 		Description:        body.Description,
 		Archived:           body.Archived,
-		WipLimitInProgress: body.WipLimitInProgress,
-		WipLimitInReview:   body.WipLimitInReview,
+		WipLimitInProgress: wipInProgress,
+		WipLimitInReview:   wipInReview,
 	})
 	if err != nil {
 		RespondError(w, err)
@@ -166,4 +177,25 @@ func (h *ProjectHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	RespondJSON(w, http.StatusNoContent, nil)
+}
+
+// parseNullableInt decodes a json.RawMessage as a nullable int using **int
+// patch semantics:
+//   - nil/empty raw → nil (field absent, no update)
+//   - "null"        → &(*int=nil) (explicitly clear)
+//   - number        → &(*int=&v) (set to value)
+func parseNullableInt(raw json.RawMessage) (**int, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	if string(raw) == "null" {
+		p := (*int)(nil)
+		return &p, nil
+	}
+	var v int
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return nil, err
+	}
+	ptr := &v
+	return &ptr, nil
 }
