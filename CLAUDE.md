@@ -293,3 +293,32 @@ Config is loaded from `config.yaml` with env var overrides using `HIVETRACK_` pr
 
 ### Testing
 New functionality is written TDD (test first). Command and query handlers use in-memory repository fakes — no database needed for unit tests. See `docs/engineering-principles.md` for the full approach.
+
+---
+
+## CI/CD
+
+### CI (`.github/workflows/ci.yml`)
+Runs on every push and PR to `main`. Four parallel jobs:
+- **Backend** — `golangci-lint` + arch tests + unit tests
+- **Frontend** — `npm run lint:check` + `npm run build`
+- **MCP** — `go build` + `go test`
+- **Integration** — integration tests against a Postgres 17 service container
+
+`main` has branch protection: all 4 jobs must pass and the branch must be up to date before merging. Direct push to `main` is blocked for everyone including admins.
+
+### Release (`.github/workflows/release.yml`)
+Triggered by pushing a semver tag (e.g. `git tag v0.1.0 && git push --tags`):
+1. Builds the Vue frontend (`npm run build` → outputs to `hivetrack/web/dist/`)
+2. Compiles the Go backend with the frontend embedded (`hivetrack/web/web.go`)
+3. Compiles the MCP binary
+4. Creates a GitHub release with both binaries attached
+5. Builds and pushes Docker images to GHCR:
+   - `ghcr.io/the127/hivetrack:<version>` — main app (API + embedded UI)
+   - `ghcr.io/the127/hivetrack-mcp:<version>` — MCP server
+
+### Docker
+- `Dockerfile` — 3-stage build: `node:22-alpine` (frontend) → `golang:1.25-alpine` (backend with embedded frontend) → `alpine:3.21` (runtime). Port 8086.
+- `Dockerfile.mcp` — 2-stage build: `golang:1.25-alpine` → `alpine:3.21`. Stdio transport.
+
+The frontend is embedded into the Go binary via `hivetrack/web/web.go` (`//go:embed all:dist`). `just release` builds both in the right order. The `dist/` directory is gitignored except for a `.gitkeep` placeholder so the embed compiles without a prior UI build.

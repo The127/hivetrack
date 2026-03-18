@@ -15,8 +15,8 @@
     C         Create a new issue (emits 'create-issue')
 -->
 <script setup>
-import { computed, onMounted, onBeforeUnmount } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { computed, onMounted, onBeforeUnmount } from "vue";
+import { RouterLink, useRoute } from "vue-router";
 import {
   LayoutDashboardIcon,
   FolderKanbanIcon,
@@ -29,44 +29,48 @@ import {
   SearchIcon,
   ChevronRightIcon,
   LogOutIcon,
-} from 'lucide-vue-next'
-import Avatar from '@/components/ui/Avatar.vue'
-import { useAuth } from '@/composables/useAuth'
+} from "lucide-vue-next";
+import Avatar from "@/components/ui/Avatar.vue";
+import { useAuth } from "@/composables/useAuth";
 
-const route = useRoute()
-const { user, signOut } = useAuth()
+const route = useRoute();
+const { user, signOut } = useAuth();
 
 // True when navigated inside a project (route has a :slug param).
-const projectSlug = computed(() => route.params.slug ?? null)
+const projectSlug = computed(() => route.params.slug ?? null);
 
 // Display name for the current user. Falls back to email, then "You".
 const userName = computed(
-  () => user.value?.profile?.name ?? user.value?.profile?.email ?? 'You',
-)
+  () => user.value?.profile?.name ?? user.value?.profile?.email ?? "You",
+);
 
 // ── Keyboard shortcuts ────────────────────────────────────────────────────────
 
-const emit = defineEmits(['create-issue'])
+const emit = defineEmits(["create-issue"]);
 
 function handleKeydown(e) {
   // Ignore shortcuts when focus is inside an input, textarea, or contenteditable.
-  const tag = document.activeElement?.tagName
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return
+  const tag = document.activeElement?.tagName;
+  if (
+    tag === "INPUT" ||
+    tag === "TEXTAREA" ||
+    document.activeElement?.isContentEditable
+  )
+    return;
 
-  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-    e.preventDefault()
+  if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+    e.preventDefault();
     // TODO: open command palette
-    console.debug('[Hivetrack] Command palette — Cmd+K (not yet implemented)')
-    return
+    return;
   }
 
-  if (e.key === 'c' && !e.metaKey && !e.ctrlKey) {
-    emit('create-issue')
+  if (e.key === "c" && !e.metaKey && !e.ctrlKey) {
+    emit("create-issue");
   }
 }
 
-onMounted(() => window.addEventListener('keydown', handleKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
+onMounted(() => window.addEventListener("keydown", handleKeydown));
+onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
 </script>
 
 <template>
@@ -78,7 +82,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
       <!-- App identity -->
       <div class="flex items-center gap-2 px-4 py-3 border-b border-slate-800">
         <img src="@/assets/logo.svg" alt="Hivetrack" class="size-6" />
-        <span class="font-semibold tracking-tight text-white text-sm">Hivetrack</span>
+        <span class="font-semibold tracking-tight text-white text-sm"
+          >Hivetrack</span
+        >
       </div>
 
       <!-- Global navigation -->
@@ -112,7 +118,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
               Projects
             </RouterLink>
             <ChevronRightIcon class="size-3 text-slate-600" />
-            <span class="text-[11px] font-medium uppercase tracking-wider text-slate-400 truncate max-w-24">
+            <span
+              class="text-[11px] font-medium uppercase tracking-wider text-slate-400 truncate max-w-24"
+            >
               {{ projectSlug }}
             </span>
           </div>
@@ -178,11 +186,18 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
         <button
           class="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 text-left cursor-pointer"
           title="Press / to search"
-          @click="() => {/* TODO: open search */}"
+          @click="
+            () => {
+              /* TODO: open search */
+            }
+          "
         >
           <SearchIcon class="size-4 flex-shrink-0" />
           <span class="flex-1">Search</span>
-          <kbd class="text-[10px] font-mono text-slate-600 bg-slate-800 px-1 rounded">/</kbd>
+          <kbd
+            class="text-[10px] font-mono text-slate-600 bg-slate-800 px-1 rounded"
+            >/</kbd
+          >
         </button>
 
         <RouterLink
@@ -196,9 +211,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
       </div>
 
       <!-- User profile -->
-      <div class="px-3 py-2.5 border-t border-slate-800 flex items-center gap-2.5 min-w-0">
+      <div
+        class="px-3 py-2.5 border-t border-slate-800 flex items-center gap-2.5 min-w-0"
+      >
         <Avatar :name="userName" size="sm" :src="user?.profile?.picture" />
-        <span class="text-sm text-slate-300 truncate flex-1 min-w-0">{{ userName }}</span>
+        <span class="text-sm text-slate-300 truncate flex-1 min-w-0">{{
+          userName
+        }}</span>
         <button
           class="flex-shrink-0 text-slate-500 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors duration-100 cursor-pointer"
           title="Sign out"
@@ -215,4 +234,3 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
     </main>
   </div>
 </template>
-

@@ -97,6 +97,9 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 	protected.HandleFunc("/projects/{slug}/labels/{label_id}", labelH.UpdateLabel).Methods("PATCH")
 	protected.HandleFunc("/projects/{slug}/labels/{label_id}", labelH.DeleteLabel).Methods("DELETE")
 
+	// Frontend SPA — catch-all, must be last
+	r.PathPrefix("/").Handler(spaHandler())
+
 	return r
 }
 
