@@ -5,6 +5,7 @@ export const fetchIssues = (slug, params = {}) => {
   if (params.status !== undefined) qs.set('status', params.status)
   if (params.priority !== undefined) qs.set('priority', params.priority)
   if (params.triaged !== undefined) qs.set('triaged', String(params.triaged))
+  if (params.refined !== undefined) qs.set('refined', String(params.refined))
   if (params.backlog !== undefined) qs.set('backlog', String(params.backlog))
   if (params.text !== undefined) qs.set('text', params.text)
   if (params.type !== undefined) qs.set('type', params.type)
@@ -38,6 +39,11 @@ export const triageIssue = (slug, number, data) =>
   apiFetch(`/api/v1/projects/${slug}/issues/${number}/triage`, {
     method: 'POST',
     body: JSON.stringify(data),
+  })
+
+export const refineIssue = (slug, number) =>
+  apiFetch(`/api/v1/projects/${slug}/issues/${number}/refine`, {
+    method: 'POST',
   })
 
 export const fetchMyIssues = () => apiFetch('/api/v1/me/issues')

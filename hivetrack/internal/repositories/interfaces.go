@@ -96,6 +96,7 @@ type IssueFilter struct {
 	InBacklog   *bool // true = sprint_id IS NULL
 	AssigneeID  *uuid.UUID
 	Triaged     *bool
+	Refined     *bool
 	Text        *string
 	Type        *models.IssueType
 	ParentID    *uuid.UUID
@@ -140,6 +141,11 @@ func (f *IssueFilter) ByAssigneeID(id uuid.UUID) *IssueFilter {
 
 func (f *IssueFilter) WithTriaged(v bool) *IssueFilter {
 	f.Triaged = &v
+	return f
+}
+
+func (f *IssueFilter) WithRefined(v bool) *IssueFilter {
+	f.Refined = &v
 	return f
 }
 

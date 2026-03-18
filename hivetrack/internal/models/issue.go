@@ -103,6 +103,7 @@ const (
 	IssueChangeSprintID          IssueChange = iota
 	IssueChangeSprintCarryCount  IssueChange = iota
 	IssueChangeTriaged           IssueChange = iota
+	IssueChangeRefined           IssueChange = iota
 	IssueChangeVisibility        IssueChange = iota
 	IssueChangeChecklist         IssueChange = iota
 	IssueChangeAssignees         IssueChange = iota
@@ -140,6 +141,7 @@ type Issue struct {
 	sprintCarryCount int
 
 	triaged bool
+	refined bool
 
 	visibility IssueVisibility
 
@@ -175,6 +177,7 @@ func NewIssue(projectID uuid.UUID, number int, issueType IssueType, title string
 		sprintID:    sprintID,
 		milestoneID: milestoneID,
 		triaged:     triaged,
+		refined:     false,
 		visibility:  visibility,
 		assignees:   assignees,
 		labels:      labels,
@@ -189,7 +192,7 @@ func NewIssueFromDB(
 	onHold bool, holdReason *HoldReason, holdSince *time.Time, holdNote *string,
 	priority IssuePriority, estimate IssueEstimate,
 	reporterID, parentID, milestoneID, sprintID *uuid.UUID,
-	sprintCarryCount int, triaged bool, visibility IssueVisibility,
+	sprintCarryCount int, triaged bool, refined bool, visibility IssueVisibility,
 	customerEmail, customerName *string, customerToken *uuid.UUID,
 	rank *string,
 	checklist []ChecklistItem, assignees, labels, restrictedViewers []uuid.UUID,
@@ -215,6 +218,7 @@ func NewIssueFromDB(
 		sprintID:          sprintID,
 		sprintCarryCount:  sprintCarryCount,
 		triaged:           triaged,
+		refined:           refined,
 		visibility:        visibility,
 		customerEmail:     customerEmail,
 		customerName:      customerName,
@@ -246,6 +250,7 @@ func (i *Issue) GetMilestoneID() *uuid.UUID        { return i.milestoneID }
 func (i *Issue) GetSprintID() *uuid.UUID           { return i.sprintID }
 func (i *Issue) GetSprintCarryCount() int          { return i.sprintCarryCount }
 func (i *Issue) GetTriaged() bool                  { return i.triaged }
+func (i *Issue) GetRefined() bool                  { return i.refined }
 func (i *Issue) GetVisibility() IssueVisibility    { return i.visibility }
 func (i *Issue) GetCustomerEmail() *string         { return i.customerEmail }
 func (i *Issue) GetCustomerName() *string          { return i.customerName }
@@ -324,6 +329,14 @@ func (i *Issue) SetTriaged(v bool) {
 	}
 	i.triaged = v
 	i.TrackChange(IssueChangeTriaged)
+}
+
+func (i *Issue) SetRefined(v bool) {
+	if i.refined == v {
+		return
+	}
+	i.refined = v
+	i.TrackChange(IssueChangeRefined)
 }
 
 func (i *Issue) SetVisibility(v IssueVisibility) {

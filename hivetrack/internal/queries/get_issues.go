@@ -19,6 +19,7 @@ type GetIssuesQuery struct {
 	InBacklog   *bool
 	AssigneeID  *uuid.UUID
 	Triaged     *bool
+	Refined     *bool
 	Text        *string
 	Type        *models.IssueType
 	ParentID    *uuid.UUID
@@ -36,6 +37,7 @@ type IssueSummary struct {
 	Priority    models.IssuePriority `json:"priority"`
 	Estimate    models.IssueEstimate `json:"estimate"`
 	Triaged     bool                 `json:"triaged"`
+	Refined     bool                 `json:"refined"`
 	Assignees   []UserInfo           `json:"assignees"`
 	Labels      []LabelInfo          `json:"labels"`
 	SprintID    *uuid.UUID           `json:"sprint_id,omitempty"`
@@ -85,6 +87,9 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 	if q.Triaged != nil {
 		filter = filter.WithTriaged(*q.Triaged)
 	}
+	if q.Refined != nil {
+		filter = filter.WithRefined(*q.Refined)
+	}
 	if q.Text != nil {
 		filter = filter.WithText(*q.Text)
 	}
@@ -125,6 +130,7 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 			Priority:    i.GetPriority(),
 			Estimate:    i.GetEstimate(),
 			Triaged:     i.GetTriaged(),
+			Refined:     i.GetRefined(),
 			Assignees:   assignees,
 			Labels:      labelInfos,
 			SprintID:    i.GetSprintID(),
