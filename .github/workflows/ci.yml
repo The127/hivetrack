@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hivetrack
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: hivetrack/go.sum
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          working-directory: hivetrack
+
+      - name: Architecture tests
+        run: go test ./internal/architecture/... -v -count=1
+
+      - name: Unit tests
+        run: go test ./... -tags unit -count=1
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hivetrack-ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: hivetrack-ui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint:check
+
+      - name: Build
+        run: npm run build
+
+  mcp:
+    name: MCP
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: mcp/go.sum
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test ./... -count=1
+
+  integration:
+    name: Integration
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hivetrack
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: hivetrack
+          POSTGRES_PASSWORD: hivetrack
+          POSTGRES_DB: hivetrack
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hivetrack"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: hivetrack/go.sum
+
+      - name: Integration tests
+        env:
+          HIVETRACK_DATABASE_URL: postgres://hivetrack:hivetrack@localhost:5432/hivetrack?sslmode=disable
+        run: go test ./... -tags integration -count=1
