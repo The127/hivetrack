@@ -29,6 +29,7 @@ import "md-editor-v3/lib/style.css";
 import MarkdownEditor from "@/components/ui/MarkdownEditor.vue";
 import RelativeTime from "@/components/ui/RelativeTime.vue";
 import SplitIssueModal from "@/components/issue/SplitIssueModal.vue";
+import Modal from "@/components/ui/Modal.vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { fetchIssue, updateIssue } from "@/api/issues";
 import { fetchProject } from "@/api/projects";
@@ -81,11 +82,17 @@ const ESTIMATE_LABEL = {
 // ── Status mutation ───────────────────────────────────────────────────────────
 
 const showCancelConfirm = ref(false);
+const cancelReasonDraft = ref("");
 
 const { mutate: doUpdateStatus, isPending: cancelPending } = useMutation({
-  mutationFn: (status) => updateIssue(slug.value, number.value, { status }),
+  mutationFn: ({ status, cancelReason }) =>
+    updateIssue(slug.value, number.value, {
+      status,
+      ...(cancelReason ? { cancel_reason: cancelReason } : {}),
+    }),
   onSuccess: () => {
     showCancelConfirm.value = false;
+    cancelReasonDraft.value = "";
     queryClient.invalidateQueries({
       queryKey: ["issue", slug.value, number.value],
     });
@@ -95,10 +102,15 @@ const { mutate: doUpdateStatus, isPending: cancelPending } = useMutation({
 
 function updateStatus(status) {
   if (status === "cancelled") {
+    cancelReasonDraft.value = "";
     showCancelConfirm.value = true;
   } else {
-    doUpdateStatus(status);
+    doUpdateStatus({ status });
   }
+}
+
+function confirmCancel() {
+  doUpdateStatus({ status: "cancelled", cancelReason: cancelReasonDraft.value.trim() || undefined });
 }
 
 // ── Priority mutation ─────────────────────────────────────────────────────────
@@ -472,6 +484,12 @@ const { mutate: updateMilestone } = useMutation({
                 >
               </div>
             </div>
+
+            <!-- Cancel reason -->
+            <div v-if="issue.status === 'cancelled' && issue.cancel_reason" class="space-y-1 col-span-2">
+              <span class="text-xs font-medium text-slate-500">Cancelled because</span>
+              <p class="text-sm text-slate-500 italic">{{ issue.cancel_reason }}</p>
+            </div>
           </div>
 
           <!-- Description -->
@@ -606,15 +624,29 @@ const { mutate: updateMilestone } = useMutation({
       @split="showSplitModal = false"
     />
 
-    <!-- Cancel issue confirmation -->
-    <ConfirmDialog
+    <!-- Cancel issue dialog (with optional reason) -->
+    <Modal
       :open="showCancelConfirm"
       title="Cancel this issue?"
-      message="This issue will be marked as cancelled and won't appear on the active board."
-      confirm-text="Cancel issue"
-      :loading="cancelPending"
-      @confirm="doUpdateStatus('cancelled')"
-      @cancel="showCancelConfirm = false"
-    />
+      description="This issue will be marked as cancelled and won't appear on the active board."
+      @close="showCancelConfirm = false"
+    >
+      <div class="flex flex-col gap-1.5">
+        <label class="text-sm font-medium text-slate-700" for="cancel-reason">
+          Reason <span class="font-normal text-slate-400">(optional)</span>
+        </label>
+        <textarea
+          id="cancel-reason"
+          v-model="cancelReasonDraft"
+          rows="2"
+          placeholder="Why is this being cancelled?"
+          class="w-full rounded-md border border-slate-200 px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        />
+      </div>
+      <template #footer>
+        <Button variant="secondary" :disabled="cancelPending" @click="showCancelConfirm = false">Keep it</Button>
+        <Button variant="destructive" :loading="cancelPending" @click="confirmCancel">Cancel issue</Button>
+      </template>
+    </Modal>
   </MainLayout>
 </template>

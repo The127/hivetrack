@@ -35,6 +35,7 @@ type UpdateIssueCommand struct {
 	Rank          *string
 	OwnerID       *uuid.UUID
 	ClearOwnerID  bool
+	CancelReason  *string
 }
 
 type UpdateIssueResult struct{}
@@ -120,6 +121,9 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 		issue.SetOwnerID(nil)
 	} else if cmd.OwnerID != nil {
 		issue.SetOwnerID(cmd.OwnerID)
+	}
+	if cmd.CancelReason != nil {
+		issue.SetCancelReason(cmd.CancelReason)
 	}
 
 	if cmd.Status != nil && oldStatus == models.IssueStatusTodo && *cmd.Status == models.IssueStatusInProgress {
