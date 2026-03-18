@@ -7,7 +7,7 @@
   For tasks: shows EpicSelector to assign/change/clear parent epic.
 -->
 <script setup>
-import { computed, ref, nextTick } from "vue";
+import { computed, ref, nextTick, useId } from "vue";
 import { useRoute, RouterLink } from "vue-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { ArrowLeftIcon, LayersIcon, ZapIcon, ScissorsIcon, LinkIcon } from "lucide-vue-next";
@@ -23,7 +23,9 @@ import PrioritySelect from "@/components/issue/PrioritySelect.vue";
 import AssigneeSelect from "@/components/issue/AssigneeSelect.vue";
 import LabelSelect from "@/components/issue/LabelSelect.vue";
 import MilestoneSelect from "@/components/issue/MilestoneSelect.vue";
-import MarkdownContent from "@/components/ui/MarkdownContent.vue";
+import { MdPreview } from "md-editor-v3";
+import "md-editor-v3/lib/style.css";
+import MarkdownEditor from "@/components/ui/MarkdownEditor.vue";
 import RelativeTime from "@/components/ui/RelativeTime.vue";
 import SplitIssueModal from "@/components/issue/SplitIssueModal.vue";
 import { fetchIssue, updateIssue } from "@/api/issues";
@@ -32,6 +34,7 @@ import { fetchSprints } from "@/api/sprints";
 
 const route = useRoute();
 const queryClient = useQueryClient();
+const previewId = useId();
 
 const slug = computed(() => route.params.slug);
 const number = computed(() => Number(route.params.number));
@@ -163,6 +166,47 @@ function saveTitle() {
     return;
   }
   updateTitle(trimmed);
+}
+
+// ── Description mutation ──────────────────────────────────────────────────────
+
+const editingDescription = ref(false);
+const descriptionDraft = ref("");
+const descriptionInputEl = ref(null);
+
+function startEditingDescription() {
+  descriptionDraft.value = issue.value.description ?? "";
+  editingDescription.value = true;
+  nextTick(() => {
+    descriptionInputEl.value?.focus?.();
+  });
+}
+
+function cancelEditingDescription() {
+  editingDescription.value = false;
+}
+
+const { mutate: updateDescription } = useMutation({
+  mutationFn: (description) =>
+    updateIssue(slug.value, number.value, { description }),
+  onSuccess: () => {
+    editingDescription.value = false;
+    queryClient.invalidateQueries({
+      queryKey: ["issue", slug.value, number.value],
+    });
+  },
+  onError: () => {
+    editingDescription.value = false;
+  },
+});
+
+function saveDescription() {
+  const trimmed = descriptionDraft.value.trim() || null;
+  if (trimmed === (issue.value.description ?? null)) {
+    editingDescription.value = false;
+    return;
+  }
+  updateDescription(trimmed);
 }
 
 // ── Split modal ───────────────────────────────────────────────────────────────
@@ -383,9 +427,41 @@ const { mutate: updateMilestone } = useMutation({
           </div>
 
           <!-- Description -->
-          <div v-if="issue.description" class="space-y-2">
+          <div class="space-y-2">
             <h2 class="text-sm font-medium text-slate-700">Description</h2>
-            <MarkdownContent :content="issue.description" />
+            <MarkdownEditor
+              v-if="editingDescription"
+              ref="descriptionInputEl"
+              v-model="descriptionDraft"
+              placeholder="Add a description…"
+              @save="saveDescription"
+              @cancel="cancelEditingDescription"
+            />
+            <div v-else-if="issue.description" @click="startEditingDescription" class="cursor-pointer">
+              <MdPreview :id="previewId" :model-value="issue.description" language="en-US" />
+            </div>
+            <button
+              v-else
+              class="text-sm text-slate-400 hover:text-slate-600 italic"
+              @click="startEditingDescription"
+            >
+              Add a description…
+            </button>
+            <div v-if="editingDescription" class="flex items-center gap-2">
+              <button
+                class="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded"
+                @click="saveDescription"
+              >
+                Save
+              </button>
+              <button
+                class="text-xs text-slate-500 hover:text-slate-700 px-2 py-1"
+                @click="cancelEditingDescription"
+              >
+                Cancel
+              </button>
+              <span class="text-xs text-slate-400 ml-1">Ctrl+Enter to save · Esc to cancel</span>
+            </div>
           </div>
 
           <!-- Epic selector (for tasks) -->
