@@ -1,0 +1,342 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import { Code } from 'astro:components'
+
+const sections = [
+  { id: 'prerequisites',  label: 'Prerequisites' },
+  { id: 'quick-start',    label: 'Quick start' },
+  { id: 'config',         label: 'Configuration reference' },
+]
+
+const composeYaml = `services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hivetrack
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: hivetrack
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hivetrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  hivetrack:
+    image: ghcr.io/the127/hivetrack:latest
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      HIVETRACK_DATABASE_URL: postgres://hivetrack:changeme@postgres:5432/hivetrack?sslmode=disable
+      HIVETRACK_SERVER_EXTERNAL_URL: https://hivetrack.example.com
+      HIVETRACK_OIDC_AUTHORITY: https://your-oidc-provider.example.com
+      HIVETRACK_OIDC_CLIENT_ID: hivetrack
+      HIVETRACK_INITIAL_ADMIN_EMAIL: admin@example.com
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:`
+
+const envTable = [
+  {
+    var: 'HIVETRACK_DATABASE_URL',
+    description: 'PostgreSQL connection string',
+    example: 'postgres://hivetrack:secret@localhost:5432/hivetrack?sslmode=disable',
+    required: true,
+  },
+  {
+    var: 'HIVETRACK_SERVER_EXTERNAL_URL',
+    description: 'Publicly reachable URL of this instance (used in email links)',
+    example: 'https://hivetrack.example.com',
+    required: true,
+  },
+  {
+    var: 'HIVETRACK_SERVER_PORT',
+    description: 'HTTP port to listen on',
+    example: '8086',
+    required: false,
+    default: '8086',
+  },
+  {
+    var: 'HIVETRACK_SERVER_HOST',
+    description: 'Interface to bind to',
+    example: '0.0.0.0',
+    required: false,
+    default: '0.0.0.0',
+  },
+  {
+    var: 'HIVETRACK_SERVER_ALLOWED_ORIGINS',
+    description: 'Comma-separated list of CORS allowed origins',
+    example: 'https://hivetrack.example.com',
+    required: false,
+    default: '(same as EXTERNAL_URL)',
+  },
+  {
+    var: 'HIVETRACK_OIDC_AUTHORITY',
+    description: 'OIDC provider authority URL (issuer)',
+    example: 'https://auth.example.com/realms/myrealm',
+    required: true,
+  },
+  {
+    var: 'HIVETRACK_OIDC_CLIENT_ID',
+    description: 'OIDC client ID registered for this Hivetrack instance',
+    example: 'hivetrack',
+    required: true,
+  },
+  {
+    var: 'HIVETRACK_INITIAL_ADMIN_EMAIL',
+    description: 'Email address of the first user to sign in — they receive instance_admin role',
+    example: 'admin@example.com',
+    required: true,
+  },
+  {
+    var: 'HIVETRACK_EMAIL_SMTP_HOST',
+    description: 'SMTP server hostname (leave empty to disable email)',
+    example: 'smtp.example.com',
+    required: false,
+  },
+  {
+    var: 'HIVETRACK_EMAIL_SMTP_PORT',
+    description: 'SMTP server port',
+    example: '587',
+    required: false,
+    default: '587',
+  },
+  {
+    var: 'HIVETRACK_EMAIL_SMTP_USER',
+    description: 'SMTP username',
+    example: 'noreply@example.com',
+    required: false,
+  },
+  {
+    var: 'HIVETRACK_EMAIL_SMTP_PASSWORD',
+    description: 'SMTP password',
+    example: 'smtp-password',
+    required: false,
+  },
+  {
+    var: 'HIVETRACK_EMAIL_FROM_ADDRESS',
+    description: 'Sender name and address for outgoing emails',
+    example: 'Hivetrack <noreply@example.com>',
+    required: false,
+  },
+  {
+    var: 'HIVETRACK_AI_ENABLED',
+    description: 'Enable AI features (MCP server, sprint planning)',
+    example: 'true',
+    required: false,
+    default: 'false',
+  },
+  {
+    var: 'HIVETRACK_AI_PROVIDER',
+    description: 'AI provider',
+    example: 'anthropic',
+    required: false,
+    default: 'anthropic',
+  },
+  {
+    var: 'HIVETRACK_AI_MODEL',
+    description: 'AI model to use',
+    example: 'claude-sonnet-4-6',
+    required: false,
+  },
+  {
+    var: 'HIVETRACK_AI_API_KEY',
+    description: 'API key for the AI provider',
+    example: 'sk-ant-...',
+    required: false,
+  },
+]
+---
+
+<Layout
+  title="Getting Started — Hivetrack Docs"
+  description="Deploy Hivetrack with Docker Compose in minutes. Configuration reference and quick start guide."
+>
+  <div class="flex-1 flex flex-col">
+    <!-- Mobile section nav -->
+    <div class="lg:hidden sticky top-14 z-40 bg-white border-b border-slate-200 px-6 py-2">
+      <select
+        class="w-full text-sm text-slate-700 border border-slate-200 rounded-md px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        onchange="document.getElementById(this.value)?.scrollIntoView({behavior:'smooth', block:'start'})"
+      >
+        <option value="">Jump to section…</option>
+        {sections.map(s => <option value={s.id}>{s.label}</option>)}
+      </select>
+    </div>
+
+    <div class="max-w-6xl mx-auto w-full px-6 py-10 flex gap-10 flex-1">
+      <!-- Sidebar -->
+      <aside class="hidden lg:block w-52 flex-shrink-0">
+        <div class="sticky top-24 space-y-1">
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 px-3">Getting started</p>
+          {sections.map(s => (
+            <a
+              href={`#${s.id}`}
+              class="block text-sm text-slate-500 hover:text-slate-900 hover:bg-slate-50 px-3 py-1.5 rounded-md transition-colors"
+            >
+              {s.label}
+            </a>
+          ))}
+        </div>
+      </aside>
+
+      <!-- Content -->
+      <article class="flex-1 min-w-0 prose prose-sm prose-slate max-w-none
+        prose-headings:font-semibold prose-headings:tracking-tight
+        prose-h1:text-3xl prose-h1:mb-6
+        prose-h2:text-xl prose-h2:mt-12 prose-h2:mb-4 prose-h2:scroll-mt-24
+        prose-h3:text-base prose-h3:mt-8 prose-h3:mb-3
+        prose-p:leading-relaxed prose-p:text-slate-600
+        prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+        prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-[13px] prose-code:font-normal prose-code:before:content-none prose-code:after:content-none
+        prose-pre:p-0 prose-pre:bg-transparent prose-pre:rounded-lg prose-pre:overflow-hidden prose-pre:my-4
+        prose-table:text-sm prose-th:text-left prose-th:font-semibold prose-th:text-slate-700 prose-td:align-top
+        prose-li:text-slate-600">
+
+        <h1>Getting started</h1>
+        <p class="lead text-base text-slate-500 -mt-3 mb-10">
+          Deploy Hivetrack with Docker Compose in under five minutes.
+        </p>
+
+        <!-- Prerequisites -->
+        <h2 id="prerequisites">Prerequisites</h2>
+        <ul>
+          <li><strong>Docker</strong> 24+ with the Compose plugin (or <code>docker-compose</code> v2)</li>
+          <li><strong>PostgreSQL 16+</strong> — or use the Compose file below which includes one</li>
+          <li>
+            <strong>An OIDC provider</strong> — Hivetrack uses OIDC for all authentication.
+            Any spec-compliant provider works:
+            <a href="https://www.keycloak.org" target="_blank" rel="noopener">Keycloak</a>,
+            <a href="https://zitadel.com" target="_blank" rel="noopener">Zitadel</a>,
+            <a href="https://auth0.com" target="_blank" rel="noopener">Auth0</a>,
+            <a href="https://github.com/The127/keyline" target="_blank" rel="noopener">Keyline</a>, or any other.
+            You will need to create a client with the Authorization Code + PKCE flow enabled and set the redirect URI to <code>https://your-hivetrack-url/callback</code>.
+          </li>
+        </ul>
+
+        <!-- Quick start -->
+        <h2 id="quick-start">Quick start</h2>
+
+        <h3>1. Create a <code>docker-compose.yml</code></h3>
+        <p>Copy the following file. Update the environment variables for your setup — at minimum the OIDC authority, client ID, and admin email.</p>
+
+        <div class="relative group not-prose my-4">
+          <div class="rounded-lg overflow-hidden border border-slate-200">
+            <div class="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
+              <span class="text-xs text-slate-400 font-mono">docker-compose.yml</span>
+              <button
+                class="copy-btn text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1.5"
+                data-code={composeYaml}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </button>
+            </div>
+            <Code code={composeYaml} lang="yaml" theme="github-dark" />
+          </div>
+        </div>
+
+        <h3>2. Set required environment variables</h3>
+        <p>See the <a href="#config">configuration reference</a> below for the full list. The minimum required variables are:</p>
+        <ul>
+          <li><code>HIVETRACK_DATABASE_URL</code></li>
+          <li><code>HIVETRACK_SERVER_EXTERNAL_URL</code></li>
+          <li><code>HIVETRACK_OIDC_AUTHORITY</code></li>
+          <li><code>HIVETRACK_OIDC_CLIENT_ID</code></li>
+          <li><code>HIVETRACK_INITIAL_ADMIN_EMAIL</code></li>
+        </ul>
+
+        <h3>3. Start the stack</h3>
+        <div class="relative group not-prose my-4">
+          <div class="rounded-lg overflow-hidden border border-slate-200">
+            <div class="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
+              <span class="text-xs text-slate-400 font-mono">shell</span>
+              <button class="copy-btn text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1.5" data-code="docker compose up -d">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </button>
+            </div>
+            <Code code="docker compose up -d" lang="bash" theme="github-dark" />
+          </div>
+        </div>
+
+        <h3>4. Open Hivetrack</h3>
+        <p>
+          Navigate to <code>http://localhost:8086</code> (or your configured external URL).
+          Sign in via your OIDC provider. The first user whose email matches <code>HIVETRACK_INITIAL_ADMIN_EMAIL</code> automatically receives the <code>instance_admin</code> role.
+        </p>
+
+        <h3>5. Create your first project</h3>
+        <p>
+          Once signed in, click <strong>New project</strong>. Choose an archetype:
+        </p>
+        <ul>
+          <li><strong>Software</strong> — for internal engineering teams. Includes sprints, backlog, milestones, and a kanban board.</li>
+          <li><strong>Support</strong> — for customer-facing issue tracking. Enables public email submission and token-based issue tracking for external users.</li>
+        </ul>
+
+        <!-- Config reference -->
+        <h2 id="config">Configuration reference</h2>
+        <p>
+          All configuration can be set via environment variables using the <code>HIVETRACK_</code> prefix with <code>_</code>-separated keys (e.g. <code>server.port</code> → <code>HIVETRACK_SERVER_PORT</code>).
+          You can also use a <code>config.yaml</code> file mounted at <code>/app/config.yaml</code> inside the container.
+        </p>
+
+        <div class="not-prose overflow-x-auto my-6">
+          <table class="w-full text-sm border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200">
+                <th class="text-left py-2.5 pr-4 font-semibold text-slate-700 whitespace-nowrap">Variable</th>
+                <th class="text-left py-2.5 pr-4 font-semibold text-slate-700">Description</th>
+                <th class="text-left py-2.5 pr-4 font-semibold text-slate-700 whitespace-nowrap">Default</th>
+                <th class="text-left py-2.5 font-semibold text-slate-700">Example</th>
+              </tr>
+            </thead>
+            <tbody>
+              {envTable.map(row => (
+                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                  <td class="py-2.5 pr-4 align-top">
+                    <code class="text-[12px] font-mono bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded whitespace-nowrap">
+                      {row.var}
+                    </code>
+                    {row.required && (
+                      <span class="ml-1.5 text-[10px] font-semibold text-red-600 bg-red-50 px-1 py-0.5 rounded uppercase tracking-wide">required</span>
+                    )}
+                  </td>
+                  <td class="py-2.5 pr-4 align-top text-slate-600">{row.description}</td>
+                  <td class="py-2.5 pr-4 align-top text-slate-400 font-mono text-[12px]">{row.default ?? '—'}</td>
+                  <td class="py-2.5 align-top">
+                    <code class="text-[12px] font-mono text-slate-500">{row.example}</code>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Copy button behaviour
+  document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const code = btn.dataset.code ?? ''
+      await navigator.clipboard.writeText(code)
+      const original = btn.innerHTML
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!`
+      btn.classList.add('text-emerald-400')
+      setTimeout(() => {
+        btn.innerHTML = original
+        btn.classList.remove('text-emerald-400')
+      }, 2000)
+    })
+  })
+</script>
