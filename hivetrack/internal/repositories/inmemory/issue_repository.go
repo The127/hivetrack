@@ -16,6 +16,7 @@ type IssueRepository struct {
 	tracker            *change.Tracker
 	byID               map[uuid.UUID]*models.Issue
 	byProjectAndNumber map[string]*models.Issue // "projectID:number" -> issue
+	links              []models.IssueLink
 }
 
 func NewIssueRepository(tracker *change.Tracker) *IssueRepository {
@@ -80,6 +81,21 @@ func (r *IssueRepository) List(_ context.Context, filter *repositories.IssueFilt
 	}
 
 	return result, total, nil
+}
+
+func (r *IssueRepository) InsertLink(_ context.Context, link models.IssueLink) error {
+	r.links = append(r.links, link)
+	return nil
+}
+
+func (r *IssueRepository) ListLinks(_ context.Context, issueID uuid.UUID) ([]models.IssueLink, error) {
+	var result []models.IssueLink
+	for _, l := range r.links {
+		if l.SourceIssueID == issueID || l.TargetIssueID == issueID {
+			result = append(result, l)
+		}
+	}
+	return result, nil
 }
 
 func matchesIssueFilter(issue *models.Issue, filter *repositories.IssueFilter) bool {

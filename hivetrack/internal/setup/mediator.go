@@ -33,6 +33,7 @@ func Mediator(dc *ioc.DependencyCollection) {
 	mediatr.RegisterHandler(m, commands.HandleAddChecklistItem)
 	mediatr.RegisterHandler(m, commands.HandleUpdateChecklistItem)
 	mediatr.RegisterHandler(m, commands.HandleRemoveChecklistItem)
+	mediatr.RegisterHandler(m, commands.HandleSplitIssue)
 	mediatr.RegisterHandler(m, commands.HandleCreateLabel)
 	mediatr.RegisterHandler(m, commands.HandleUpdateLabel)
 	mediatr.RegisterHandler(m, commands.HandleDeleteLabel)

@@ -10,9 +10,10 @@
 import { computed, ref, nextTick } from "vue";
 import { useRoute, RouterLink } from "vue-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
-import { ArrowLeftIcon, LayersIcon, ZapIcon } from "lucide-vue-next";
+import { ArrowLeftIcon, LayersIcon, ZapIcon, ScissorsIcon, LinkIcon } from "lucide-vue-next";
 import MainLayout from "@/layouts/MainLayout.vue";
 import Badge from "@/components/ui/Badge.vue";
+import Button from "@/components/ui/Button.vue";
 import Spinner from "@/components/ui/Spinner.vue";
 import EpicSelector from "@/components/issue/EpicSelector.vue";
 import EpicChildList from "@/components/issue/EpicChildList.vue";
@@ -22,6 +23,7 @@ import PrioritySelect from "@/components/issue/PrioritySelect.vue";
 import AssigneeSelect from "@/components/issue/AssigneeSelect.vue";
 import LabelSelect from "@/components/issue/LabelSelect.vue";
 import MarkdownContent from "@/components/ui/MarkdownContent.vue";
+import SplitIssueModal from "@/components/issue/SplitIssueModal.vue";
 import { fetchIssue, updateIssue } from "@/api/issues";
 import { fetchProject } from "@/api/projects";
 import { fetchSprints } from "@/api/sprints";
@@ -169,6 +171,15 @@ function saveTitle() {
   updateTitle(trimmed);
 }
 
+// ── Split modal ───────────────────────────────────────────────────────────────
+
+const showSplitModal = ref(false)
+
+const isTerminal = computed(() => {
+  const s = issue.value?.status
+  return s === 'done' || s === 'cancelled' || s === 'closed'
+})
+
 // ── Label mutation ───────────────────────────────────────────────────────────
 
 const { mutate: updateLabels } = useMutation({
@@ -206,6 +217,17 @@ const { mutate: updateLabels } = useMutation({
           <span class="text-sm font-medium text-slate-600">{{
             project.name
           }}</span>
+        </div>
+        <div class="ml-auto">
+          <Button
+            v-if="issue && issue.type === 'task' && !isTerminal"
+            variant="secondary"
+            size="sm"
+            @click="showSplitModal = true"
+          >
+            <ScissorsIcon class="size-3.5" />
+            Split
+          </Button>
         </div>
       </div>
 
@@ -397,6 +419,31 @@ const { mutate: updateLabels } = useMutation({
             </div>
           </div>
 
+          <!-- Links -->
+          <div v-if="issue.links?.length" class="space-y-2">
+            <h2 class="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+              <LinkIcon class="size-3.5" />
+              Linked issues
+            </h2>
+            <div class="space-y-1">
+              <div
+                v-for="link in issue.links"
+                :key="link.id"
+                class="flex items-center gap-2 text-sm"
+              >
+                <span class="text-xs text-slate-400 capitalize min-w-[5rem]">
+                  {{ link.link_type.replace(/_/g, ' ') }}
+                </span>
+                <RouterLink
+                  :to="`/projects/${slug}/issues/${link.linked_issue_number}`"
+                  class="text-blue-600 hover:text-blue-700 hover:underline font-mono text-xs"
+                >
+                  {{ slug.toUpperCase() }}-{{ link.linked_issue_number }}
+                </RouterLink>
+              </div>
+            </div>
+          </div>
+
           <!-- Dates -->
           <div class="flex items-center gap-4 text-xs text-slate-400">
             <span>Created {{ formatDate(issue.created_at) }}</span>
@@ -415,5 +462,15 @@ const { mutate: updateLabels } = useMutation({
         <p class="text-sm text-slate-400">Issue not found.</p>
       </div>
     </div>
+
+    <!-- Split modal -->
+    <SplitIssueModal
+      v-if="issue"
+      :open="showSplitModal"
+      :issue="issue"
+      :project-slug="slug"
+      @close="showSplitModal = false"
+      @split="showSplitModal = false"
+    />
   </MainLayout>
 </template>

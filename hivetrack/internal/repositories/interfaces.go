@@ -77,6 +77,7 @@ func (f *ProjectFilter) AsAdmin() *ProjectFilter {
 
 // IssueRepository handles issue persistence.
 // Insert/Update/Delete queue changes; reads are direct-execute.
+// InsertLink and ListLinks are direct-execute (run in their own mini-transactions).
 type IssueRepository interface {
 	Insert(issue *models.Issue)
 	Update(issue *models.Issue)
@@ -85,6 +86,10 @@ type IssueRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Issue, error)
 	GetByNumber(ctx context.Context, projectID uuid.UUID, number int) (*models.Issue, error)
 	List(ctx context.Context, filter *IssueFilter) ([]*models.Issue, int, error)
+
+	// Links — direct-execute
+	InsertLink(ctx context.Context, link models.IssueLink) error
+	ListLinks(ctx context.Context, issueID uuid.UUID) ([]models.IssueLink, error)
 }
 
 // IssueFilter supports composable issue queries.
