@@ -28,6 +28,11 @@ const router = createRouter({
       meta: { requiresAuth: true, layout: 'main' },
     },
     {
+      path: '/projects/:slug/epics',
+      component: () => import('@/views/ProjectEpicsView.vue'),
+      meta: { requiresAuth: true, layout: 'main' },
+    },
+    {
       path: '/projects/:slug/issues/:number',
       component: () => import('@/views/IssueDetailView.vue'),
       meta: { requiresAuth: true, layout: 'main' },

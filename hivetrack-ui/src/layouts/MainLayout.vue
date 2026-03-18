@@ -22,6 +22,7 @@ import {
   FolderKanbanIcon,
   KanbanIcon,
   ListIcon,
+  LayersIcon,
   InboxIcon,
   FlagIcon,
   SettingsIcon,
@@ -132,6 +133,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
           >
             <ListIcon class="size-4 flex-shrink-0" />
             <span>Backlog</span>
+          </RouterLink>
+
+          <RouterLink
+            :to="`/projects/${projectSlug}/epics`"
+            class="flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            active-class="bg-slate-800 text-slate-100"
+          >
+            <LayersIcon class="size-4 flex-shrink-0" />
+            <span>Epics</span>
           </RouterLink>
 
           <RouterLink

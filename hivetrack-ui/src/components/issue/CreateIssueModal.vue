@@ -38,6 +38,11 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  // When set, the type toggle defaults to this value (e.g. 'epic').
+  defaultType: {
+    type: String,
+    default: 'task',
+  },
 })
 
 const emit = defineEmits(['close', 'created'])
@@ -71,7 +76,7 @@ watch(
   (open) => {
     if (!open) {
       title.value = ''
-      type.value = 'task'
+      type.value = props.defaultType
       priority.value = 'none'
       selectedProject.value = ''
       errors.value = {}
