@@ -19,6 +19,7 @@ func NewServer(client *Client) *server.MCPServer {
 	registerCommentTools(s, client)
 	registerSprintTools(s, client)
 	registerMetadataTools(s, client)
+	registerMilestoneTools(s, client)
 
 	return s
 }

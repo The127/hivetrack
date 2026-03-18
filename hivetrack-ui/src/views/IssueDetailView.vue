@@ -22,6 +22,7 @@ import StatusSelect from "@/components/issue/StatusSelect.vue";
 import PrioritySelect from "@/components/issue/PrioritySelect.vue";
 import AssigneeSelect from "@/components/issue/AssigneeSelect.vue";
 import LabelSelect from "@/components/issue/LabelSelect.vue";
+import MilestoneSelect from "@/components/issue/MilestoneSelect.vue";
 import MarkdownContent from "@/components/ui/MarkdownContent.vue";
 import SplitIssueModal from "@/components/issue/SplitIssueModal.vue";
 import { fetchIssue, updateIssue } from "@/api/issues";
@@ -192,6 +193,19 @@ const { mutate: updateLabels } = useMutation({
     queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
   },
 });
+
+// ── Milestone mutation ────────────────────────────────────────────────────────
+
+const { mutate: updateMilestone } = useMutation({
+  mutationFn: (milestoneId) =>
+    updateIssue(slug.value, number.value, { milestone_id: milestoneId ?? "null" }),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["issue", slug.value, number.value],
+    });
+    queryClient.invalidateQueries({ queryKey: ["milestones", slug.value] });
+  },
+});
 </script>
 
 <template>
@@ -345,6 +359,17 @@ const { mutate: updateLabels } = useMutation({
                   {{ currentSprint.name }}
                 </RouterLink>
                 <span v-else class="text-sm text-slate-400">Backlog</span>
+              </div>
+            </div>
+
+            <!-- Milestone -->
+            <div class="space-y-1">
+              <div class="max-w-xs">
+                <MilestoneSelect
+                  :project-slug="slug"
+                  :model-value="issue.milestone_id ?? null"
+                  @update:model-value="updateMilestone"
+                />
               </div>
             </div>
 

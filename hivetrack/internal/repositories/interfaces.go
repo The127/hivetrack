@@ -191,6 +191,12 @@ type SprintRepository interface {
 	List(ctx context.Context, projectID uuid.UUID) ([]*models.Sprint, error)
 }
 
+// MilestoneProgress holds issue counts for a milestone.
+type MilestoneProgress struct {
+	IssueCount       int
+	ClosedIssueCount int
+}
+
 // MilestoneRepository handles milestone persistence.
 type MilestoneRepository interface {
 	Insert(milestone *models.Milestone)
@@ -199,6 +205,7 @@ type MilestoneRepository interface {
 
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Milestone, error)
 	List(ctx context.Context, projectID uuid.UUID) ([]*models.Milestone, error)
+	CountByMilestone(ctx context.Context, projectID uuid.UUID) (map[uuid.UUID]MilestoneProgress, error)
 }
 
 // LabelRepository handles label persistence.
