@@ -190,22 +190,23 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Title       *string                 `json:"title"`
-		Description *string                 `json:"description"`
-		Status      *models.IssueStatus     `json:"status"`
-		Priority    *models.IssuePriority   `json:"priority"`
-		Estimate    *models.IssueEstimate   `json:"estimate"`
-		AssigneeIDs []uuid.UUID             `json:"assignee_ids"`
-		LabelIDs    []uuid.UUID             `json:"label_ids"`
-		SprintID    *uuid.UUID              `json:"sprint_id"`
-		MilestoneID *uuid.UUID              `json:"milestone_id"`
-		ParentID    *uuid.UUID              `json:"parent_id"`
-		OnHold      *bool                   `json:"on_hold"`
-		HoldReason  *models.HoldReason      `json:"hold_reason"`
-		HoldNote    *string                 `json:"hold_note"`
-		Visibility  *models.IssueVisibility `json:"visibility"`
-		Rank        *string                 `json:"rank"`
-		OwnerID     *uuid.UUID              `json:"owner_id"`
+		Title        *string                 `json:"title"`
+		Description  *string                 `json:"description"`
+		Status       *models.IssueStatus     `json:"status"`
+		Priority     *models.IssuePriority   `json:"priority"`
+		Estimate     *models.IssueEstimate   `json:"estimate"`
+		AssigneeIDs  []uuid.UUID             `json:"assignee_ids"`
+		LabelIDs     []uuid.UUID             `json:"label_ids"`
+		SprintID     *uuid.UUID              `json:"sprint_id"`
+		MilestoneID  *uuid.UUID              `json:"milestone_id"`
+		ParentID     *uuid.UUID              `json:"parent_id"`
+		OnHold       *bool                   `json:"on_hold"`
+		HoldReason   *models.HoldReason      `json:"hold_reason"`
+		HoldNote     *string                 `json:"hold_note"`
+		Visibility   *models.IssueVisibility `json:"visibility"`
+		Rank         *string                 `json:"rank"`
+		OwnerID      *uuid.UUID              `json:"owner_id"`
+		CancelReason *string                 `json:"cancel_reason"`
 	}
 	if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&body); err != nil {
 		RespondError(w, models.ErrBadRequest)
@@ -252,6 +253,7 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		Rank:          body.Rank,
 		OwnerID:       body.OwnerID,
 		ClearOwnerID:  clearOwnerID,
+		CancelReason:  body.CancelReason,
 	})
 	if err != nil {
 		RespondError(w, err)

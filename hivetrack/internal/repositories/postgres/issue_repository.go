@@ -47,8 +47,8 @@ func (r *IssueRepository) ExecuteInsert(ctx context.Context, tx *sql.Tx, issue *
 		`INSERT INTO issues (id, project_id, number, type, title, description, status,
 		on_hold, hold_reason, hold_since, hold_note,
 		priority, estimate, reporter_id, owner_id, parent_id, milestone_id, sprint_id, sprint_carry_count,
-		triaged, refined, visibility, customer_email, customer_name, customer_token, "rank", checklist, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
+		triaged, refined, visibility, customer_email, customer_name, customer_token, "rank", cancel_reason, checklist, created_at, updated_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)
 		RETURNING version`,
 		issue.GetId(), issue.GetProjectID(), issue.GetNumber(), issue.GetType(),
 		issue.GetTitle(), issue.GetDescription(), issue.GetStatus(),
@@ -57,7 +57,7 @@ func (r *IssueRepository) ExecuteInsert(ctx context.Context, tx *sql.Tx, issue *
 		issue.GetMilestoneID(), issue.GetSprintID(), issue.GetSprintCarryCount(),
 		issue.GetTriaged(), issue.GetRefined(), issue.GetVisibility(),
 		issue.GetCustomerEmail(), issue.GetCustomerName(), issue.GetCustomerToken(),
-		issue.GetRank(), checklistJSON, issue.GetCreatedAt(), issue.GetUpdatedAt(),
+		issue.GetRank(), issue.GetCancelReason(), checklistJSON, issue.GetCreatedAt(), issue.GetUpdatedAt(),
 	).Scan(&version)
 	if err != nil {
 		return fmt.Errorf("inserting issue: %w", err)
@@ -184,6 +184,11 @@ func (r *IssueRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, issue *
 	if issue.HasChange(models.IssueChangeOwnerID) {
 		setClauses = append(setClauses, fmt.Sprintf("owner_id=$%d", argIdx))
 		args = append(args, issue.GetOwnerID())
+		argIdx++
+	}
+	if issue.HasChange(models.IssueChangeCancelReason) {
+		setClauses = append(setClauses, fmt.Sprintf("cancel_reason=$%d", argIdx))
+		args = append(args, issue.GetCancelReason())
 		argIdx++
 	}
 
@@ -402,7 +407,7 @@ const issueSelectQuery = `
 		i.on_hold, i.hold_reason, i.hold_since, i.hold_note,
 		i.priority, i.estimate, i.reporter_id, i.owner_id, i.parent_id, i.milestone_id, i.sprint_id, i.sprint_carry_count,
 		i.triaged, i.refined, i.visibility, i.customer_email, i.customer_name, i.customer_token,
-		i."rank", i.checklist, i.created_at, i.updated_at, i.version,
+		i."rank", i.cancel_reason, i.checklist, i.created_at, i.updated_at, i.version,
 		COALESCE((SELECT array_agg(user_id) FROM issue_assignees WHERE issue_id=i.id), '{}'),
 		COALESCE((SELECT array_agg(label_id) FROM issue_labels WHERE issue_id=i.id), '{}')
 	FROM issues i`
@@ -412,7 +417,7 @@ func scanIssue(row *sql.Row) (*models.Issue, error) {
 	var number int
 	var issueType models.IssueType
 	var title string
-	var desc, holdReason, holdNote, customerEmail, customerName, rankStr sql.NullString
+	var desc, holdReason, holdNote, customerEmail, customerName, rankStr, cancelReason sql.NullString
 	var status models.IssueStatus
 	var onHold bool
 	var holdSince sql.NullTime
@@ -433,7 +438,7 @@ func scanIssue(row *sql.Row) (*models.Issue, error) {
 		&onHold, &holdReason, &holdSince, &holdNote,
 		&priority, &estimate, &reporterID, &ownerID, &parentID, &milestoneID, &sprintID, &sprintCarryCount,
 		&triaged, &refined, &visibility, &customerEmail, &customerName, &customerToken,
-		&rankStr, &checklistJSON, &createdAt, &updatedAt, &version,
+		&rankStr, &cancelReason, &checklistJSON, &createdAt, &updatedAt, &version,
 		&assigneeArr, &labelArr,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -450,7 +455,7 @@ func scanIssue(row *sql.Row) (*models.Issue, error) {
 		priority, estimate,
 		reporterID, ownerID, parentID, milestoneID, sprintID,
 		sprintCarryCount, triaged, refined, visibility,
-		rankStr, checklistJSON, createdAt, updatedAt, version,
+		rankStr, cancelReason, checklistJSON, createdAt, updatedAt, version,
 		assigneeArr, labelArr,
 	), nil
 }
@@ -460,7 +465,7 @@ func scanIssueRow(rows *sql.Rows) (*models.Issue, error) {
 	var number int
 	var issueType models.IssueType
 	var title string
-	var desc, holdReason, holdNote, customerEmail, customerName, rankStr sql.NullString
+	var desc, holdReason, holdNote, customerEmail, customerName, rankStr, cancelReason sql.NullString
 	var status models.IssueStatus
 	var onHold bool
 	var holdSince sql.NullTime
@@ -481,7 +486,7 @@ func scanIssueRow(rows *sql.Rows) (*models.Issue, error) {
 		&onHold, &holdReason, &holdSince, &holdNote,
 		&priority, &estimate, &reporterID, &ownerID, &parentID, &milestoneID, &sprintID, &sprintCarryCount,
 		&triaged, &refined, &visibility, &customerEmail, &customerName, &customerToken,
-		&rankStr, &checklistJSON, &createdAt, &updatedAt, &version,
+		&rankStr, &cancelReason, &checklistJSON, &createdAt, &updatedAt, &version,
 		&assigneeArr, &labelArr,
 	)
 	if err != nil {
@@ -495,7 +500,7 @@ func scanIssueRow(rows *sql.Rows) (*models.Issue, error) {
 		priority, estimate,
 		reporterID, ownerID, parentID, milestoneID, sprintID,
 		sprintCarryCount, triaged, refined, visibility,
-		rankStr, checklistJSON, createdAt, updatedAt, version,
+		rankStr, cancelReason, checklistJSON, createdAt, updatedAt, version,
 		assigneeArr, labelArr,
 	), nil
 }
@@ -508,7 +513,7 @@ func buildIssue(
 	priority models.IssuePriority, estimate models.IssueEstimate,
 	reporterID, ownerID, parentID, milestoneID, sprintID uuid.NullUUID,
 	sprintCarryCount int, triaged bool, refined bool, visibility models.IssueVisibility,
-	rankStr sql.NullString,
+	rankStr, cancelReason sql.NullString,
 	checklistJSON []byte, createdAt, updatedAt time.Time, version int,
 	assigneeArr, labelArr []byte,
 ) *models.Issue {
@@ -565,6 +570,10 @@ func buildIssue(
 	if rankStr.Valid {
 		rankPtr = &rankStr.String
 	}
+	var cancelReasonPtr *string
+	if cancelReason.Valid {
+		cancelReasonPtr = &cancelReason.String
+	}
 
 	var checklist []models.ChecklistItem
 	if err := json.Unmarshal(checklistJSON, &checklist); err != nil {
@@ -582,7 +591,7 @@ func buildIssue(
 		reporterIDPtr, ownerIDPtr, parentIDPtr, milestoneIDPtr, sprintIDPtr,
 		sprintCarryCount, triaged, refined, visibility,
 		customerEmailPtr, customerNamePtr, customerTokenPtr,
-		rankPtr, checklist, assignees, labels, nil,
+		rankPtr, cancelReasonPtr, checklist, assignees, labels, nil,
 	)
 }
 

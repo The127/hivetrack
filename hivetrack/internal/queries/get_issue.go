@@ -49,6 +49,7 @@ type IssueDetail struct {
 	ParentID       *uuid.UUID             `json:"parent_id,omitempty"`
 	ReporterID     *uuid.UUID             `json:"reporter_id,omitempty"`
 	Owner          *UserInfo              `json:"owner,omitempty"`
+	CancelReason   *string                `json:"cancel_reason,omitempty"`
 	Checklist      []models.ChecklistItem `json:"checklist"`
 	Links          []IssueLinkInfo        `json:"links"`
 	ChildCount     int                    `json:"child_count"`
@@ -125,33 +126,34 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 	}
 
 	detail := &IssueDetail{
-		ID:          issue.GetId(),
-		ProjectID:   issue.GetProjectID(),
-		Number:      issue.GetNumber(),
-		Type:        issue.GetType(),
-		Title:       issue.GetTitle(),
-		Description: issue.GetDescription(),
-		Status:      issue.GetStatus(),
-		Priority:    issue.GetPriority(),
-		Estimate:    issue.GetEstimate(),
-		Triaged:     issue.GetTriaged(),
-		Refined:     issue.GetRefined(),
-		Visibility:  issue.GetVisibility(),
-		OnHold:      issue.GetOnHold(),
-		HoldReason:  issue.GetHoldReason(),
-		HoldNote:    issue.GetHoldNote(),
-		HoldSince:   issue.GetHoldSince(),
-		Assignees:   assignees,
-		Labels:      labels,
-		SprintID:    issue.GetSprintID(),
-		MilestoneID: issue.GetMilestoneID(),
-		ParentID:    issue.GetParentID(),
-		ReporterID:  issue.GetReporterID(),
-		Owner:       owner,
-		Checklist:   issue.GetChecklist(),
-		Links:       links,
-		CreatedAt:   issue.GetCreatedAt(),
-		UpdatedAt:   issue.GetUpdatedAt(),
+		ID:           issue.GetId(),
+		ProjectID:    issue.GetProjectID(),
+		Number:       issue.GetNumber(),
+		Type:         issue.GetType(),
+		Title:        issue.GetTitle(),
+		Description:  issue.GetDescription(),
+		Status:       issue.GetStatus(),
+		Priority:     issue.GetPriority(),
+		Estimate:     issue.GetEstimate(),
+		Triaged:      issue.GetTriaged(),
+		Refined:      issue.GetRefined(),
+		Visibility:   issue.GetVisibility(),
+		OnHold:       issue.GetOnHold(),
+		HoldReason:   issue.GetHoldReason(),
+		HoldNote:     issue.GetHoldNote(),
+		HoldSince:    issue.GetHoldSince(),
+		Assignees:    assignees,
+		Labels:       labels,
+		SprintID:     issue.GetSprintID(),
+		MilestoneID:  issue.GetMilestoneID(),
+		ParentID:     issue.GetParentID(),
+		ReporterID:   issue.GetReporterID(),
+		Owner:        owner,
+		CancelReason: issue.GetCancelReason(),
+		Checklist:    issue.GetChecklist(),
+		Links:        links,
+		CreatedAt:    issue.GetCreatedAt(),
+		UpdatedAt:    issue.GetUpdatedAt(),
 	}
 
 	if issue.GetType() == models.IssueTypeEpic {
