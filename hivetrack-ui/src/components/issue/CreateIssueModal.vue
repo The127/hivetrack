@@ -176,8 +176,8 @@ function submit() {
         required
       />
 
-      <!-- Type -->
-      <div class="flex flex-col gap-1.5">
+      <!-- Type (hidden when locked by caller via defaultType) -->
+      <div v-if="defaultType === 'task'" class="flex flex-col gap-1.5">
         <span class="text-sm font-medium text-slate-700">Type</span>
         <div class="flex gap-2">
           <button
