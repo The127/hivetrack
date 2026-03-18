@@ -37,6 +37,7 @@ import Avatar from '@/components/ui/Avatar.vue'
 import Alert from '@/components/ui/Alert.vue'
 import CreateIssueModal from '@/components/issue/CreateIssueModal.vue'
 import CompleteSprintModal from '@/components/sprint/CompleteSprintModal.vue'
+import PrioritySelect from '@/components/issue/PrioritySelect.vue'
 import { fetchProject } from '@/api/projects'
 import { fetchIssues, updateIssue } from '@/api/issues'
 import { fetchSprints, updateSprint } from '@/api/sprints'
@@ -480,8 +481,12 @@ const defaultCreateStatus = computed(() => {
                     </RouterLink>
                   </div>
 
-                  <!-- Footer: estimate + assignees -->
+                  <!-- Footer: priority + estimate + assignees -->
                   <div class="flex items-center gap-1.5">
+                    <PrioritySelect
+                      :priority="issue.priority ?? 'none'"
+                      @update:priority="reorderIssue({ issueNumber: issue.number, data: { priority: $event } })"
+                    />
                     <span
                       v-if="estimateLabel(issue.estimate)"
                       class="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded"

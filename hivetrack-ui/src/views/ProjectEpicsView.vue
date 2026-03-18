@@ -22,6 +22,7 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import StatusSelect from '@/components/issue/StatusSelect.vue'
 import EpicChildList from '@/components/issue/EpicChildList.vue'
+import PrioritySelect from '@/components/issue/PrioritySelect.vue'
 import CreateIssueModal from '@/components/issue/CreateIssueModal.vue'
 import Button from '@/components/ui/Button.vue'
 import { fetchProject } from '@/api/projects'
@@ -57,16 +58,8 @@ const PRIORITY_BORDER = {
   critical: 'border-l-red-500',
 }
 
-const PRIORITY_SCHEME = {
-  none: 'gray', low: 'sky', medium: 'amber', high: 'orange', critical: 'red',
-}
-
 function priorityBorder(priority) {
   return PRIORITY_BORDER[priority] ?? 'border-l-slate-200'
-}
-
-function priorityScheme(priority) {
-  return PRIORITY_SCHEME[priority] ?? 'gray'
 }
 
 // ── Expand / collapse ────────────────────────────────────────────────────────
@@ -94,6 +87,28 @@ const { mutate: updateEpicStatus } = useMutation({
     queryClient.setQueryData(key, old => {
       if (!old) return old
       return { ...old, items: old.items.map(i => i.number === number ? { ...i, status } : i) }
+    })
+    return { previous }
+  },
+  onError: (_err, _vars, context) => {
+    if (context?.previous) {
+      queryClient.setQueryData(['issues', slug.value, { type: 'epic', limit: 500 }], context.previous)
+    }
+  },
+  onSettled: () => {
+    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+  },
+})
+
+const { mutate: updateEpicPriority } = useMutation({
+  mutationFn: ({ number, priority }) => updateIssue(slug.value, number, { priority }),
+  onMutate: async ({ number, priority }) => {
+    const key = ['issues', slug.value, { type: 'epic', limit: 500 }]
+    await queryClient.cancelQueries({ queryKey: key })
+    const previous = queryClient.getQueryData(key)
+    queryClient.setQueryData(key, old => {
+      if (!old) return old
+      return { ...old, items: old.items.map(i => i.number === number ? { ...i, priority } : i) }
     })
     return { previous }
   },
@@ -233,11 +248,13 @@ const defaultCreateStatus = computed(() => {
                   />
                 </div>
 
-                <!-- Priority badge -->
-                <Badge v-if="epic.priority && epic.priority !== 'none'" :colorScheme="priorityScheme(epic.priority)" compact class="flex-shrink-0">
-                  {{ epic.priority }}
-                </Badge>
-                <span v-else class="w-14 flex-shrink-0" />
+                <!-- Priority -->
+                <div class="flex-shrink-0" @click.stop>
+                  <PrioritySelect
+                    :priority="epic.priority ?? 'none'"
+                    @update:priority="updateEpicPriority({ number: epic.number, priority: $event })"
+                  />
+                </div>
 
                 <!-- Assignee avatars -->
                 <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">

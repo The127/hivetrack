@@ -13,7 +13,7 @@
 -->
 <script setup>
 import { ref } from 'vue'
-import { useQuery } from '@tanstack/vue-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { useRouter } from 'vue-router'
 import { PlusIcon, InboxIcon, FolderKanbanIcon, CircleDotIcon } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
@@ -23,11 +23,14 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import Spinner from '@/components/ui/Spinner.vue'
 import CreateProjectModal from '@/components/project/CreateProjectModal.vue'
 import CreateIssueModal from '@/components/issue/CreateIssueModal.vue'
+import PrioritySelect from '@/components/issue/PrioritySelect.vue'
 import { apiFetch } from '@/composables/useApi'
+import { updateIssue } from '@/api/issues'
 import { useAuth } from '@/composables/useAuth'
 
 const { user } = useAuth()
 const router = useRouter()
+const queryClient = useQueryClient()
 
 const showCreateProject = ref(false)
 const showCreateIssue = ref(false)
@@ -68,21 +71,31 @@ const STATUS_SCHEME = {
   closed: 'gray',
 }
 
-const PRIORITY_SCHEME = {
-  none: 'gray',
-  low: 'sky',
-  medium: 'amber',
-  high: 'orange',
-  critical: 'red',
-}
-
 function statusScheme(status) {
   return STATUS_SCHEME[status] ?? 'gray'
 }
 
-function priorityScheme(priority) {
-  return PRIORITY_SCHEME[priority] ?? 'gray'
-}
+const { mutate: updateMyIssuePriority } = useMutation({
+  mutationFn: ({ projectSlug, number, priority }) => updateIssue(projectSlug, number, { priority }),
+  onMutate: async ({ number, priority }) => {
+    const key = ['me', 'issues']
+    await queryClient.cancelQueries({ queryKey: key })
+    const previous = queryClient.getQueryData(key)
+    queryClient.setQueryData(key, old => {
+      if (!old) return old
+      return { ...old, items: old.items.map(i => i.number === number ? { ...i, priority } : i) }
+    })
+    return { previous }
+  },
+  onError: (_err, _vars, context) => {
+    if (context?.previous) {
+      queryClient.setQueryData(['me', 'issues'], context.previous)
+    }
+  },
+  onSettled: () => {
+    queryClient.invalidateQueries({ queryKey: ['me', 'issues'] })
+  },
+})
 
 // Format status string for display: "in_progress" → "In progress"
 function formatStatus(s) {
@@ -147,13 +160,10 @@ function formatStatus(s) {
             </span>
 
             <!-- Priority -->
-            <Badge
-              v-if="issue.priority && issue.priority !== 'none'"
-              :colorScheme="priorityScheme(issue.priority)"
-              compact
-            >
-              {{ issue.priority }}
-            </Badge>
+            <PrioritySelect
+              :priority="issue.priority ?? 'none'"
+              @update:priority="updateMyIssuePriority({ projectSlug: issue.project_slug, number: issue.number, priority: $event })"
+            />
 
             <!-- Status -->
             <Badge :colorScheme="statusScheme(issue.status)" compact>
