@@ -4,6 +4,9 @@ import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
+  build: {
+    target: "es2022",
+  },
   plugins: [vue(), tailwindcss()],
   resolve: {
     alias: {
