@@ -123,6 +123,28 @@ func (h *SprintHandler) UpdateSprint(w http.ResponseWriter, r *http.Request) {
 	RespondJSON(w, http.StatusNoContent, nil)
 }
 
+func (h *SprintHandler) GetSprintBurndown(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	slug := vars["slug"]
+	idStr := vars["id"]
+
+	sprintID, err := uuid.Parse(idStr)
+	if err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	result, err := mediatr.Send[*queries.GetSprintBurndownResult](r.Context(), h.mediator, queries.GetSprintBurndownQuery{
+		ProjectSlug: slug,
+		SprintID:    sprintID,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	RespondJSON(w, http.StatusOK, result)
+}
+
 func (h *SprintHandler) DeleteSprint(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	slug := vars["slug"]

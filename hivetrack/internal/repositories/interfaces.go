@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -18,9 +19,27 @@ type DbContext interface {
 	Labels() LabelRepository
 	Comments() CommentRepository
 	Outbox() OutboxRepository
+	IssueStatusLog() IssueStatusLogRepository
 
 	// SaveChanges executes all queued Insert/Update/Delete in a single transaction.
 	SaveChanges(ctx context.Context) error
+}
+
+// BurndownPoint is one daily data point in a sprint burndown chart.
+type BurndownPoint struct {
+	Date      time.Time
+	Remaining int
+}
+
+// IssueStatusLogRepository records issue status transitions for burndown tracking.
+// All methods are direct-execute (no change tracking).
+type IssueStatusLogRepository interface {
+	// Insert records a status transition. Direct-execute.
+	Insert(ctx context.Context, issueID uuid.UUID, status string, changedAt time.Time) error
+
+	// GetBurndownPoints returns daily remaining-issue counts for a sprint.
+	// endDate is capped at today internally.
+	GetBurndownPoints(ctx context.Context, sprintID uuid.UUID, startDate, endDate time.Time, terminalStatuses []string) ([]BurndownPoint, error)
 }
 
 // UserRepository handles user persistence.
