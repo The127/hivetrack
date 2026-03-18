@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -60,6 +61,29 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("milestone_id", mcp.Description("Milestone ID (UUID)")),
 		mcp.WithString("parent_id", mcp.Description("Parent epic ID (UUID), or 'null' to remove parent")),
 	), makeUpdateIssue(client))
+
+	s.AddTool(mcp.NewTool("add_checklist_item",
+		mcp.WithDescription("Add a checklist item to a task"),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
+		mcp.WithNumber("number", mcp.Required(), mcp.Description("Issue number")),
+		mcp.WithString("text", mcp.Required(), mcp.Description("Checklist item text")),
+	), makeAddChecklistItem(client))
+
+	s.AddTool(mcp.NewTool("update_checklist_item",
+		mcp.WithDescription("Update a checklist item (toggle done or edit text)"),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
+		mcp.WithNumber("number", mcp.Required(), mcp.Description("Issue number")),
+		mcp.WithString("item_id", mcp.Required(), mcp.Description("Checklist item ID (UUID)")),
+		mcp.WithString("text", mcp.Description("New text for the item")),
+		mcp.WithBoolean("done", mcp.Description("Set completion status")),
+	), makeUpdateChecklistItem(client))
+
+	s.AddTool(mcp.NewTool("remove_checklist_item",
+		mcp.WithDescription("Remove a checklist item from a task"),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
+		mcp.WithNumber("number", mcp.Required(), mcp.Description("Issue number")),
+		mcp.WithString("item_id", mcp.Required(), mcp.Description("Checklist item ID (UUID)")),
+	), makeRemoveChecklistItem(client))
 
 	s.AddTool(mcp.NewTool("triage_issue",
 		mcp.WithDescription("Triage an untriaged issue — set its initial status and optionally assign to sprint/milestone"),
@@ -250,5 +274,91 @@ func makeTriageIssue(client *Client) server.ToolHandlerFunc {
 			return errResult(err), nil
 		}
 		return textResult(formatTriageIssue(number, status, args)), nil
+	}
+}
+
+func makeAddChecklistItem(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		slug, _ := args["slug"].(string)
+		number := intArg(args, "number")
+		text, _ := args["text"].(string)
+		if slug == "" || number == 0 || text == "" {
+			return errResult(errMissing("slug, number, text")), nil
+		}
+
+		data, err := client.post(fmt.Sprintf("/api/v1/projects/%s/issues/%d/checklist", slug, number), map[string]any{
+			"text": text,
+		})
+		if err != nil {
+			return errResult(err), nil
+		}
+
+		var resp struct {
+			ID string `json:"ID"`
+		}
+		if err := json.Unmarshal(data, &resp); err != nil {
+			return textResult(fmt.Sprintf("Added checklist item to #%d: %q", number, text)), nil
+		}
+		return textResult(fmt.Sprintf("Added checklist item to #%d: %q (id: %s)", number, text, resp.ID)), nil
+	}
+}
+
+func makeUpdateChecklistItem(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		slug, _ := args["slug"].(string)
+		number := intArg(args, "number")
+		itemID, _ := args["item_id"].(string)
+		if slug == "" || number == 0 || itemID == "" {
+			return errResult(errMissing("slug, number, item_id")), nil
+		}
+
+		body := map[string]any{}
+		if text, ok := args["text"].(string); ok && text != "" {
+			body["text"] = text
+		}
+		if done, ok := args["done"].(bool); ok {
+			body["done"] = done
+		}
+		if len(body) == 0 {
+			return errResult(fmt.Errorf("provide text and/or done to update")), nil
+		}
+
+		_, err := client.patch(fmt.Sprintf("/api/v1/projects/%s/issues/%d/checklist/%s", slug, number, itemID), body)
+		if err != nil {
+			return errResult(err), nil
+		}
+
+		var changes []string
+		if text, ok := body["text"].(string); ok {
+			changes = append(changes, fmt.Sprintf("text → %q", text))
+		}
+		if done, ok := body["done"].(bool); ok {
+			if done {
+				changes = append(changes, "☑ done")
+			} else {
+				changes = append(changes, "☐ not done")
+			}
+		}
+		return textResult(fmt.Sprintf("Updated checklist item on #%d: %s", number, strings.Join(changes, ", "))), nil
+	}
+}
+
+func makeRemoveChecklistItem(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		slug, _ := args["slug"].(string)
+		number := intArg(args, "number")
+		itemID, _ := args["item_id"].(string)
+		if slug == "" || number == 0 || itemID == "" {
+			return errResult(errMissing("slug, number, item_id")), nil
+		}
+
+		_, err := client.delete(fmt.Sprintf("/api/v1/projects/%s/issues/%d/checklist/%s", slug, number, itemID))
+		if err != nil {
+			return errResult(err), nil
+		}
+		return textResult(fmt.Sprintf("Removed checklist item from #%d", number)), nil
 	}
 }

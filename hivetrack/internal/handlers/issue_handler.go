@@ -315,6 +315,137 @@ func (h *IssueHandler) TriageIssue(w http.ResponseWriter, r *http.Request) {
 	RespondJSON(w, http.StatusNoContent, nil)
 }
 
+func (h *IssueHandler) AddChecklistItem(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	slug := vars["slug"]
+	numberStr := vars["number"]
+	number, err := strconv.Atoi(numberStr)
+	if err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	issueResult, err := mediatr.Send[*queries.IssueDetail](r.Context(), h.mediator, queries.GetIssueQuery{
+		ProjectSlug: slug,
+		Number:      number,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	if issueResult == nil {
+		RespondError(w, models.ErrNotFound)
+		return
+	}
+
+	var body struct {
+		Text string `json:"text"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Text == "" {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	result, err := mediatr.Send[*commands.AddChecklistItemResult](r.Context(), h.mediator, commands.AddChecklistItemCommand{
+		IssueID: issueResult.ID,
+		Text:    body.Text,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	RespondJSON(w, http.StatusCreated, result)
+}
+
+func (h *IssueHandler) UpdateChecklistItem(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	slug := vars["slug"]
+	numberStr := vars["number"]
+	number, err := strconv.Atoi(numberStr)
+	if err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+	itemID, err := uuid.Parse(vars["item_id"])
+	if err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	issueResult, err := mediatr.Send[*queries.IssueDetail](r.Context(), h.mediator, queries.GetIssueQuery{
+		ProjectSlug: slug,
+		Number:      number,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	if issueResult == nil {
+		RespondError(w, models.ErrNotFound)
+		return
+	}
+
+	var body struct {
+		Text *string `json:"text"`
+		Done *bool   `json:"done"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	_, err = mediatr.Send[*commands.UpdateChecklistItemResult](r.Context(), h.mediator, commands.UpdateChecklistItemCommand{
+		IssueID: issueResult.ID,
+		ItemID:  itemID,
+		Text:    body.Text,
+		Done:    body.Done,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	RespondJSON(w, http.StatusNoContent, nil)
+}
+
+func (h *IssueHandler) RemoveChecklistItem(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	slug := vars["slug"]
+	numberStr := vars["number"]
+	number, err := strconv.Atoi(numberStr)
+	if err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+	itemID, err := uuid.Parse(vars["item_id"])
+	if err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	issueResult, err := mediatr.Send[*queries.IssueDetail](r.Context(), h.mediator, queries.GetIssueQuery{
+		ProjectSlug: slug,
+		Number:      number,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	if issueResult == nil {
+		RespondError(w, models.ErrNotFound)
+		return
+	}
+
+	_, err = mediatr.Send[*commands.RemoveChecklistItemResult](r.Context(), h.mediator, commands.RemoveChecklistItemCommand{
+		IssueID: issueResult.ID,
+		ItemID:  itemID,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	RespondJSON(w, http.StatusNoContent, nil)
+}
+
 func (h *IssueHandler) GetMyIssues(w http.ResponseWriter, r *http.Request) {
 	result, err := mediatr.Send[*queries.GetMyIssuesResult](r.Context(), h.mediator, queries.GetMyIssuesQuery{})
 	if err != nil {

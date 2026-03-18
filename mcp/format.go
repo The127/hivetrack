@@ -217,6 +217,7 @@ func formatGetIssue(data json.RawMessage) string {
 			Email       string `json:"email"`
 		} `json:"assignees"`
 		Checklist []struct {
+			ID   string `json:"id"`
 			Text string `json:"text"`
 			Done bool   `json:"done"`
 		} `json:"checklist"`
@@ -271,7 +272,7 @@ func formatGetIssue(data json.RawMessage) string {
 			if item.Done {
 				check = "☑"
 			}
-			sb.WriteString(fmt.Sprintf("  %s %s\n", check, item.Text))
+			sb.WriteString(fmt.Sprintf("  %s %s  (id: %s)\n", check, item.Text, item.ID))
 		}
 	}
 

@@ -24,6 +24,9 @@ func Mediator(dc *ioc.DependencyCollection) {
 	mediatr.RegisterHandler(m, commands.HandleCreateSprint)
 	mediatr.RegisterHandler(m, commands.HandleUpdateSprint)
 	mediatr.RegisterHandler(m, commands.HandleDeleteSprint)
+	mediatr.RegisterHandler(m, commands.HandleAddChecklistItem)
+	mediatr.RegisterHandler(m, commands.HandleUpdateChecklistItem)
+	mediatr.RegisterHandler(m, commands.HandleRemoveChecklistItem)
 
 	// Queries
 	mediatr.RegisterHandler(m, queries.HandleGetUsers)
