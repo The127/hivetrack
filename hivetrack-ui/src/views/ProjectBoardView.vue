@@ -391,9 +391,13 @@ const defaultCreateStatus = computed(() => {
                 >
                   <!-- Issue number + type -->
                   <div class="flex items-center gap-1.5 mb-1.5">
-                    <span class="text-[11px] font-mono text-slate-400">
+                    <RouterLink
+                      :to="`/projects/${slug}/issues/${issue.number}`"
+                      class="text-[11px] font-mono text-slate-400 hover:text-blue-600 hover:underline"
+                      @click.stop
+                    >
                       {{ slug.toUpperCase() }}-{{ issue.number }}
-                    </span>
+                    </RouterLink>
                     <LayersIcon v-if="issue.type === 'epic'" class="size-3 text-violet-400 ml-auto" />
                     <span
                       v-if="issue.on_hold"

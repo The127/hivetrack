@@ -596,7 +596,7 @@ function formatDateRange(startDate, endDate) {
               :class="priorityBorder(issue.priority)"
             >
               <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
-                <span class="text-[11px] font-mono text-slate-400">{{ slug.toUpperCase() }}-{{ issue.number }}</span>
+                <router-link :to="`/projects/${slug}/issues/${issue.number}`" class="text-[11px] font-mono text-slate-400 hover:text-blue-600 hover:underline">{{ slug.toUpperCase() }}-{{ issue.number }}</router-link>
                 <LayersIcon v-if="issue.type === 'epic'" class="size-3 text-violet-400 flex-shrink-0" />
               </div>
               <router-link :to="`/projects/${slug}/issues/${issue.number}`" class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline">{{ issue.title }}</router-link>
@@ -699,7 +699,7 @@ function formatDateRange(startDate, endDate) {
               :class="priorityBorder(issue.priority)"
             >
               <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
-                <span class="text-[11px] font-mono text-slate-400">{{ slug.toUpperCase() }}-{{ issue.number }}</span>
+                <router-link :to="`/projects/${slug}/issues/${issue.number}`" class="text-[11px] font-mono text-slate-400 hover:text-blue-600 hover:underline">{{ slug.toUpperCase() }}-{{ issue.number }}</router-link>
                 <LayersIcon v-if="issue.type === 'epic'" class="size-3 text-violet-400 flex-shrink-0" />
               </div>
               <router-link :to="`/projects/${slug}/issues/${issue.number}`" class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline">{{ issue.title }}</router-link>
@@ -844,10 +844,10 @@ function formatDateRange(startDate, endDate) {
             :class="priorityBorder(issue.priority)"
           >
             <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
-              <span class="text-[11px] font-mono text-slate-400">{{ slug.toUpperCase() }}-{{ issue.number }}</span>
+              <router-link :to="`/projects/${slug}/issues/${issue.number}`" class="text-[11px] font-mono text-slate-400 hover:text-blue-600 hover:underline">{{ slug.toUpperCase() }}-{{ issue.number }}</router-link>
               <LayersIcon v-if="issue.type === 'epic'" class="size-3 text-violet-400 flex-shrink-0" />
             </div>
-            <span class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900">{{ issue.title }}</span>
+            <router-link :to="`/projects/${slug}/issues/${issue.number}`" class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline">{{ issue.title }}</router-link>
             <span v-if="issue.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
             <StatusSelect :status="issue.status" :archetype="project.archetype" @update:status="updateStatus(issue, $event)" />
             <Badge v-if="issue.priority && issue.priority !== 'none'" :colorScheme="priorityScheme(issue.priority)" compact class="flex-shrink-0">{{ issue.priority }}</Badge>
