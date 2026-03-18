@@ -220,7 +220,9 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err = mediatr.Send[*commands.UpdateIssueResult](r.Context(), h.mediator, commands.UpdateIssueCommand{
+	ctx := commands.ContextWithMediator(r.Context(), h.mediator)
+
+	_, err = mediatr.Send[*commands.UpdateIssueResult](ctx, h.mediator, commands.UpdateIssueCommand{
 		IssueID:       issueResult.ID,
 		Title:         body.Title,
 		Description:   body.Description,

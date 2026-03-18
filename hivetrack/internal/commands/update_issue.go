@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/The127/mediatr"
 	"github.com/google/uuid"
 
+	"github.com/the127/hivetrack/internal/authentication"
+	"github.com/the127/hivetrack/internal/events"
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
 )
@@ -44,6 +47,8 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	if issue == nil {
 		return nil, fmt.Errorf("issue %s: %w", cmd.IssueID, models.ErrNotFound)
 	}
+
+	oldStatus := issue.GetStatus()
 
 	if cmd.Title != nil {
 		issue.SetTitle(*cmd.Title)
@@ -108,6 +113,20 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	}
 	if cmd.Rank != nil {
 		issue.SetRank(cmd.Rank)
+	}
+
+	if cmd.Status != nil && oldStatus == models.IssueStatusTodo && *cmd.Status == models.IssueStatusInProgress {
+		if m, ok := getMediatorFromContext(ctx); ok {
+			actor, _ := authentication.GetCurrentUser(ctx)
+			if err := mediatr.SendEvent(ctx, m, events.IssueStatusChangedEvent{
+				Issue:     issue,
+				OldStatus: oldStatus,
+				NewStatus: *cmd.Status,
+				ActorID:   actor.ID,
+			}); err != nil {
+				return nil, fmt.Errorf("auto-assign on status change: %w", err)
+			}
+		}
 	}
 
 	issue.SetUpdatedAt(time.Now())

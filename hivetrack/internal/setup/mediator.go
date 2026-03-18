@@ -5,12 +5,16 @@ import (
 	"github.com/The127/mediatr"
 
 	"github.com/the127/hivetrack/internal/commands"
+	"github.com/the127/hivetrack/internal/events"
 	"github.com/the127/hivetrack/internal/queries"
 )
 
 // Mediator registers all command and query handlers and the mediator singleton.
 func Mediator(dc *ioc.DependencyCollection) {
 	m := mediatr.NewMediator()
+
+	// Event handlers
+	mediatr.RegisterEventHandler(m, events.HandleAutoAssignOnStatusChange)
 
 	// Commands
 	mediatr.RegisterHandler(m, commands.HandleCreateProject)
