@@ -15,6 +15,8 @@ func Mediator(dc *ioc.DependencyCollection) {
 	mediatr.RegisterHandler(m, commands.HandleCreateProject)
 	mediatr.RegisterHandler(m, commands.HandleUpdateProject)
 	mediatr.RegisterHandler(m, commands.HandleDeleteProject)
+	mediatr.RegisterHandler(m, commands.HandleAddProjectMember)
+	mediatr.RegisterHandler(m, commands.HandleRemoveProjectMember)
 	mediatr.RegisterHandler(m, commands.HandleCreateIssue)
 	mediatr.RegisterHandler(m, commands.HandleUpdateIssue)
 	mediatr.RegisterHandler(m, commands.HandleDeleteIssue)
@@ -24,6 +26,7 @@ func Mediator(dc *ioc.DependencyCollection) {
 	mediatr.RegisterHandler(m, commands.HandleDeleteSprint)
 
 	// Queries
+	mediatr.RegisterHandler(m, queries.HandleGetUsers)
 	mediatr.RegisterHandler(m, queries.HandleGetProjects)
 	mediatr.RegisterHandler(m, queries.HandleGetProject)
 	mediatr.RegisterHandler(m, queries.HandleGetIssues)

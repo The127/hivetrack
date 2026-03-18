@@ -13,6 +13,7 @@ func NewServer(client *Client) *server.MCPServer {
 		server.WithToolCapabilities(false),
 	)
 
+	registerUserTools(s, client)
 	registerProjectTools(s, client)
 	registerIssueTools(s, client)
 	registerSprintTools(s, client)

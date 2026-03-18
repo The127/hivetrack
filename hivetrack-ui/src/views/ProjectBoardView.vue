@@ -446,7 +446,7 @@ const defaultCreateStatus = computed(() => {
                   class="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-grab active:cursor-grabbing border-l-4"
                   :class="priorityBorder(issue.priority)"
                 >
-                  <!-- Issue number + type -->
+                  <!-- Issue number + type + assignees -->
                   <div class="flex items-center gap-1.5 mb-1.5">
                     <RouterLink
                       :to="`/projects/${slug}/issues/${issue.number}`"
@@ -455,13 +455,33 @@ const defaultCreateStatus = computed(() => {
                     >
                       {{ slug.toUpperCase() }}-{{ issue.number }}
                     </RouterLink>
-                    <LayersIcon v-if="issue.type === 'epic'" class="size-3 text-violet-400 ml-auto" />
+                    <LayersIcon v-if="issue.type === 'epic'" class="size-3 text-violet-400" />
                     <span
                       v-if="issue.on_hold"
-                      class="ml-auto text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded"
+                      class="text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded"
                     >
                       on hold
                     </span>
+                    <span class="flex-1" />
+                    <div
+                      v-if="issue.assignees?.length"
+                      class="flex -space-x-1"
+                    >
+                      <Avatar
+                        v-for="a in issue.assignees.slice(0, 2)"
+                        :key="a.id"
+                        :name="a.display_name"
+                        :src="a.avatar_url"
+                        size="xs"
+                        class="ring-1 ring-white"
+                      />
+                      <span
+                        v-if="issue.assignees.length > 2"
+                        class="size-5 rounded-full bg-slate-100 text-[10px] font-medium text-slate-500 flex items-center justify-center ring-1 ring-white"
+                      >
+                        +{{ issue.assignees.length - 2 }}
+                      </span>
+                    </div>
                   </div>
 
                   <!-- Title -->
@@ -487,24 +507,11 @@ const defaultCreateStatus = computed(() => {
                     />
                   </div>
 
-                  <!-- Footer: estimate + assignees -->
-                  <div class="flex items-center gap-1.5">
-                    <span
-                      v-if="estimateLabel(issue.estimate)"
-                      class="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded"
-                    >
+                  <!-- Footer: estimate -->
+                  <div v-if="estimateLabel(issue.estimate)" class="flex items-center gap-1.5">
+                    <span class="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
                       {{ estimateLabel(issue.estimate) }}
                     </span>
-                    <span class="flex-1" />
-                    <div
-                      v-if="issue.assignees?.length"
-                      class="flex items-center gap-1 text-xs text-slate-400"
-                    >
-                      <Avatar :name="`${issue.assignees.length}`" size="xs" />
-                      <span v-if="issue.assignees.length > 1" class="text-[11px]">
-                        +{{ issue.assignees.length - 1 }}
-                      </span>
-                    </div>
                   </div>
                 </div>
               </VueDraggable>

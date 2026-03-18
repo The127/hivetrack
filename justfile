@@ -146,6 +146,20 @@ uninstall-hooks:
     rm -f .git/hooks/pre-push
     @echo "✓ hooks removed"
 
+# ─── MCP Server ──────────────────────────────────────────────────────────────
+
+# Run the MCP server (stdio transport, for Claude Code integration)
+mcp:
+    cd mcp && go run ./cmd/hivetrack-mcp
+
+# Build the MCP server binary
+mcp-build:
+    cd mcp && go build -o ../bin/hivetrack-mcp ./cmd/hivetrack-mcp
+
+# Run MCP server tests
+mcp-test:
+    cd mcp && go test ./... -count=1
+
 # ─── Utilities ────────────────────────────────────────────────────────────────
 
 # Print the current version (from git tag or commit)

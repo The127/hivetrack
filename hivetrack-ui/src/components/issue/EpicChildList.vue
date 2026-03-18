@@ -2,10 +2,12 @@
   EpicChildList — shows child tasks of an epic with progress bar.
 
   Uses the same row layout as the backlog for visual consistency.
+  Supports drag-and-drop via VueDraggable with group "epic-tasks".
 
   Props:
     projectSlug    — project slug
     epicId         — the epic's UUID
+    archetype      — project archetype
     childCount     — total children (from epic detail)
     childDoneCount — completed children (from epic detail)
 
@@ -13,8 +15,9 @@
   "Attach existing" (search unparented tasks, set parent_id).
 -->
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { VueDraggable } from 'vue-draggable-plus'
 import {
   PlusIcon,
   LinkIcon,
@@ -40,6 +43,8 @@ const props = defineProps({
   childDoneCount: { type: Number, default: 0 },
 })
 
+const emit = defineEmits(['task-added', 'task-removed'])
+
 const queryClient = useQueryClient()
 
 // ── Child tasks query ──────────────────────────────────────────────────────
@@ -49,35 +54,17 @@ const { data: childrenResult, isLoading } = useQuery({
   queryFn: () => fetchIssues(props.projectSlug, { parent_id: props.epicId, limit: 500 }),
 })
 
-const children = computed(() => childrenResult.value?.items ?? [])
+// Mutable list for DnD — synced from query data when not dragging
+const childList = ref([])
+const isDragging = ref(false)
 
-// ── Status / priority / estimate display ─────────────────────────────────
-
-const STATUS_META = {
-  todo:        { label: 'To Do',       scheme: 'gray',   icon: CircleIcon },
-  in_progress: { label: 'In Progress', scheme: 'blue',   icon: CircleDotIcon },
-  in_review:   { label: 'In Review',   scheme: 'violet', icon: GitPullRequestIcon },
-  done:        { label: 'Done',        scheme: 'green',  icon: CheckCircle2Icon },
-  cancelled:   { label: 'Cancelled',   scheme: 'gray',   icon: XCircleIcon },
-  open:        { label: 'Open',        scheme: 'sky',    icon: CircleIcon },
-  resolved:    { label: 'Resolved',    scheme: 'teal',   icon: CheckCircle2Icon },
-  closed:      { label: 'Closed',      scheme: 'gray',   icon: XCircleIcon },
-}
-
-function statusMeta(status) {
-  return STATUS_META[status] ?? { label: status, scheme: 'gray', icon: CircleIcon }
-}
-
-function statusIconClass(scheme) {
-  return {
-    'text-slate-400':  scheme === 'gray',
-    'text-blue-500':   scheme === 'blue',
-    'text-violet-500': scheme === 'violet',
-    'text-green-500':  scheme === 'green',
-    'text-sky-500':    scheme === 'sky',
-    'text-teal-500':   scheme === 'teal',
+watch(() => childrenResult.value?.items, (items) => {
+  if (!isDragging.value) {
+    childList.value = items ? [...items] : []
   }
-}
+}, { immediate: true })
+
+// ── Priority styling ─────────────────────────────────────────────────────
 
 const PRIORITY_BORDER = {
   none:     'border-l-slate-200',
@@ -95,6 +82,36 @@ function priorityBorder(priority) {
 
 function estimateLabel(estimate) {
   return ESTIMATE_LABEL[estimate] ?? null
+}
+
+// ── Drag-and-drop ──────────────────────────────────────────────────────────
+
+const { mutate: assignToEpic } = useMutation({
+  mutationFn: ({ number, parentId }) => updateIssue(props.projectSlug, number, { parent_id: parentId }),
+  onSettled: () => {
+    isDragging.value = false
+    queryClient.invalidateQueries({ queryKey: ['issues', props.projectSlug] })
+    queryClient.invalidateQueries({ queryKey: ['issue', props.projectSlug] })
+  },
+})
+
+function onDragStart() {
+  isDragging.value = true
+}
+
+function onDragEnd() {
+  setTimeout(() => { isDragging.value = false }, 0)
+}
+
+function onTaskAdded(evt) {
+  const task = childList.value[evt.newDraggableIndex]
+  if (!task) return
+  assignToEpic({ number: task.number, parentId: props.epicId })
+  emit('task-added', task)
+}
+
+function onTaskRemoved() {
+  emit('task-removed')
 }
 
 // ── Inline create ──────────────────────────────────────────────────────────
@@ -205,30 +222,54 @@ const { mutate: updateChildPriority } = useMutation({
 
     <!-- Task list (backlog-style rows) -->
     <div v-if="isLoading" class="text-sm text-slate-400">Loading...</div>
-    <div v-else-if="!children.length && !showInlineCreate" class="text-sm text-slate-400">
-      No child tasks yet.
-    </div>
     <div v-else class="border border-slate-200 rounded-lg overflow-hidden">
-      <router-link
-        v-for="child in children"
-        :key="child.id"
-        :to="`/projects/${projectSlug}/issues/${child.number}`"
-        class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 transition-colors border-l-4 border-b border-slate-100"
-        :class="priorityBorder(child.priority)"
+      <VueDraggable
+        v-model="childList"
+        :group="{ name: 'epic-tasks' }"
+        :animation="150"
+        ghost-class="opacity-30"
+        class="min-h-8"
+        @start="onDragStart"
+        @end="onDragEnd"
+        @add="onTaskAdded"
+        @remove="onTaskRemoved"
       >
-        <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
-          <span class="text-[11px] font-mono text-slate-400">{{ projectSlug.toUpperCase() }}-{{ child.number }}</span>
+        <div
+          v-for="child in childList"
+          :key="child.id"
+          class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100"
+          :class="priorityBorder(child.priority)"
+        >
+          <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
+            <router-link
+              :to="`/projects/${projectSlug}/issues/${child.number}`"
+              class="text-[11px] font-mono text-slate-400 hover:text-blue-600"
+              @click.stop
+            >
+              {{ projectSlug.toUpperCase() }}-{{ child.number }}
+            </router-link>
+          </div>
+          <router-link
+            :to="`/projects/${projectSlug}/issues/${child.number}`"
+            class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline"
+            @click.stop
+          >
+            {{ child.title }}
+          </router-link>
+          <span v-if="child.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
+          <div @click.stop>
+            <StatusSelect :status="child.status" :archetype="archetype" @update:status="updateChildStatus({ number: child.number, status: $event })" />
+          </div>
+          <div @click.stop>
+            <PrioritySelect :priority="child.priority ?? 'none'" @update:priority="updateChildPriority({ number: child.number, priority: $event })" />
+          </div>
+          <span v-if="estimateLabel(child.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(child.estimate) }}</span>
+          <span v-else class="w-7 flex-shrink-0" />
+          <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
+            <Avatar v-for="a in (child.assignees ?? []).slice(0, 2)" :key="a.id" :name="a.display_name" :src="a.avatar_url" size="xs" class="ring-1 ring-white" />
+          </div>
         </div>
-        <span class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900">{{ child.title }}</span>
-        <span v-if="child.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
-        <StatusSelect :status="child.status" :archetype="archetype" @update:status="updateChildStatus({ number: child.number, status: $event })" />
-        <PrioritySelect :priority="child.priority ?? 'none'" @update:priority="updateChildPriority({ number: child.number, priority: $event })" />
-        <span v-if="estimateLabel(child.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(child.estimate) }}</span>
-        <span v-else class="w-7 flex-shrink-0" />
-        <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
-          <Avatar v-for="a in (child.assignees ?? []).slice(0, 2)" :key="a" :name="`${a}`" size="xs" class="ring-1 ring-white" />
-        </div>
-      </router-link>
+      </VueDraggable>
 
       <!-- Inline create row (matches backlog inline-create style) -->
       <div
@@ -278,8 +319,6 @@ const { mutate: updateChildPriority } = useMutation({
             <span class="text-[11px] font-mono text-slate-400">{{ projectSlug.toUpperCase() }}-{{ task.number }}</span>
           </div>
           <span class="flex-1 min-w-0 text-sm text-slate-700 truncate">{{ task.title }}</span>
-          <component :is="statusMeta(task.status).icon" class="size-3.5 flex-shrink-0" :class="statusIconClass(statusMeta(task.status).scheme)" />
-          <span class="flex-shrink-0 text-xs text-slate-500 w-20">{{ statusMeta(task.status).label }}</span>
         </button>
       </div>
       <div v-else-if="searchText.length >= 2" class="text-xs text-slate-400">No unparented tasks found.</div>

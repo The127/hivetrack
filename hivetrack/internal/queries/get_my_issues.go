@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/the127/hivetrack/internal/authentication"
 	"github.com/the127/hivetrack/internal/repositories"
 )
@@ -25,12 +26,32 @@ func HandleGetMyIssues(ctx context.Context, _ GetMyIssuesQuery) (*GetMyIssuesRes
 		return nil, fmt.Errorf("listing issues: %w", err)
 	}
 
+	// Build projectID → slug map
+	projectSlugs := map[uuid.UUID]string{}
+	for _, i := range issues {
+		projectSlugs[i.GetProjectID()] = ""
+	}
+	for pid := range projectSlugs {
+		p, err := db.Projects().GetByID(ctx, pid)
+		if err != nil {
+			return nil, fmt.Errorf("getting project %s: %w", pid, err)
+		}
+		if p != nil {
+			projectSlugs[pid] = p.GetSlug()
+		}
+	}
+
 	var items []IssueSummary
 	for _, i := range issues {
 		// Exclude terminal issues
 		if i.IsTerminal() {
 			continue
 		}
+		assignees, err := resolveUsers(ctx, db, i.GetAssignees())
+		if err != nil {
+			return nil, fmt.Errorf("resolving assignees: %w", err)
+		}
+		slug := projectSlugs[i.GetProjectID()]
 		items = append(items, IssueSummary{
 			ID:          i.GetId(),
 			Number:      i.GetNumber(),
@@ -40,11 +61,12 @@ func HandleGetMyIssues(ctx context.Context, _ GetMyIssuesQuery) (*GetMyIssuesRes
 			Priority:    i.GetPriority(),
 			Estimate:    i.GetEstimate(),
 			Triaged:     i.GetTriaged(),
-			Assignees:   i.GetAssignees(),
+			Assignees:   assignees,
 			Labels:      i.GetLabels(),
 			SprintID:    i.GetSprintID(),
 			MilestoneID: i.GetMilestoneID(),
 			OnHold:      i.GetOnHold(),
+			ProjectSlug: &slug,
 			CreatedAt:   i.GetCreatedAt(),
 			UpdatedAt:   i.GetUpdatedAt(),
 		})

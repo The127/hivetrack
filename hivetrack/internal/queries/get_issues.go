@@ -21,6 +21,7 @@ type GetIssuesQuery struct {
 	Text        *string
 	Type        *models.IssueType
 	ParentID    *uuid.UUID
+	HasNoParent *bool
 	Limit       int
 	Offset      int
 }
@@ -34,13 +35,14 @@ type IssueSummary struct {
 	Priority    models.IssuePriority `json:"priority"`
 	Estimate    models.IssueEstimate `json:"estimate"`
 	Triaged     bool                 `json:"triaged"`
-	Assignees   []uuid.UUID          `json:"assignees"`
+	Assignees   []UserInfo           `json:"assignees"`
 	Labels      []uuid.UUID          `json:"labels"`
 	SprintID    *uuid.UUID           `json:"sprint_id,omitempty"`
 	MilestoneID *uuid.UUID           `json:"milestone_id,omitempty"`
 	ParentID    *uuid.UUID           `json:"parent_id,omitempty"`
 	Rank        *string              `json:"rank,omitempty"`
 	OnHold      bool                 `json:"on_hold"`
+	ProjectSlug *string              `json:"project_slug,omitempty"`
 	CreatedAt   time.Time            `json:"created_at"`
 	UpdatedAt   time.Time            `json:"updated_at"`
 }
@@ -91,6 +93,9 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 	if q.ParentID != nil {
 		filter = filter.ByParentID(*q.ParentID)
 	}
+	if q.HasNoParent != nil && *q.HasNoParent {
+		filter = filter.WithNoParent()
+	}
 	if q.Limit > 0 || q.Offset > 0 {
 		filter = filter.WithPagination(q.Limit, q.Offset)
 	}
@@ -102,6 +107,10 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 
 	items := make([]IssueSummary, 0, len(issues))
 	for _, i := range issues {
+		assignees, err := resolveUsers(ctx, db, i.GetAssignees())
+		if err != nil {
+			return nil, fmt.Errorf("resolving assignees: %w", err)
+		}
 		items = append(items, IssueSummary{
 			ID:          i.GetId(),
 			Number:      i.GetNumber(),
@@ -111,7 +120,7 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 			Priority:    i.GetPriority(),
 			Estimate:    i.GetEstimate(),
 			Triaged:     i.GetTriaged(),
-			Assignees:   i.GetAssignees(),
+			Assignees:   assignees,
 			Labels:      i.GetLabels(),
 			SprintID:    i.GetSprintID(),
 			MilestoneID: i.GetMilestoneID(),

@@ -14,8 +14,10 @@ type GetProjectQuery struct {
 }
 
 type ProjectMemberInfo struct {
-	UserID uuid.UUID          `json:"user_id"`
-	Role   models.ProjectRole `json:"role"`
+	UserID      uuid.UUID          `json:"user_id"`
+	Role        models.ProjectRole `json:"role"`
+	DisplayName string             `json:"display_name"`
+	AvatarURL   *string            `json:"avatar_url,omitempty"`
 }
 
 type GetProjectResult struct {
@@ -47,10 +49,19 @@ func HandleGetProject(ctx context.Context, q GetProjectQuery) (*GetProjectResult
 
 	memberInfos := make([]ProjectMemberInfo, 0, len(members))
 	for _, m := range members {
-		memberInfos = append(memberInfos, ProjectMemberInfo{
+		info := ProjectMemberInfo{
 			UserID: m.UserID,
 			Role:   m.Role,
-		})
+		}
+		user, err := db.Users().GetByID(ctx, m.UserID)
+		if err != nil {
+			return nil, fmt.Errorf("getting user %s: %w", m.UserID, err)
+		}
+		if user != nil {
+			info.DisplayName = user.GetDisplayName()
+			info.AvatarURL = user.GetAvatarURL()
+		}
+		memberInfos = append(memberInfos, info)
 	}
 
 	return &GetProjectResult{

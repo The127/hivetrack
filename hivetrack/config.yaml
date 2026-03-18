@@ -28,3 +28,7 @@ ai:
 
 initial_admin:
   email: "admin@hivetrack.local"                # first login with this email gets instance_admin
+
+mcp:
+  api_token: "ht_mcp_local_dev_token_2026"
+  user_email: "admin@hivetrack.local"

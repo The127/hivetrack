@@ -44,8 +44,9 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 	protected.Use(middlewares.AuthMiddleware(verifier, logger, cfg))
 
 	// Users
-	userH := handlers.NewUserHandler()
+	userH := handlers.NewUserHandler(med)
 	protected.HandleFunc("/users/me", userH.GetMe).Methods("GET")
+	protected.HandleFunc("/users", userH.ListUsers).Methods("GET")
 
 	// Projects
 	projectH := handlers.NewProjectHandler(med)
@@ -54,6 +55,8 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 	protected.HandleFunc("/projects/{slug}", projectH.GetProject).Methods("GET")
 	protected.HandleFunc("/projects/{id}", projectH.UpdateProject).Methods("PATCH")
 	protected.HandleFunc("/projects/{id}", projectH.DeleteProject).Methods("DELETE")
+	protected.HandleFunc("/projects/{slug}/members", projectH.AddMember).Methods("POST")
+	protected.HandleFunc("/projects/{slug}/members/{user_id}", projectH.RemoveMember).Methods("DELETE")
 
 	// Issues
 	issueH := handlers.NewIssueHandler(med)

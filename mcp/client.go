@@ -41,6 +41,10 @@ func (c *Client) patch(path string, body any) (json.RawMessage, error) {
 	return c.do("PATCH", path, nil, body)
 }
 
+func (c *Client) delete(path string) (json.RawMessage, error) {
+	return c.do("DELETE", path, nil, nil)
+}
+
 func (c *Client) do(method, path string, query url.Values, body any) (json.RawMessage, error) {
 	u := c.baseURL + path
 	if query != nil && len(query) > 0 {

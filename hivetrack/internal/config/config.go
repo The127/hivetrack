@@ -17,6 +17,12 @@ type Config struct {
 	Email        EmailConfig        `koanf:"email"`
 	AI           AIConfig           `koanf:"ai"`
 	InitialAdmin InitialAdminConfig `koanf:"initial_admin"`
+	MCP          MCPConfig          `koanf:"mcp"`
+}
+
+type MCPConfig struct {
+	APIToken  string `koanf:"api_token"`
+	UserEmail string `koanf:"user_email"`
 }
 
 type ServerConfig struct {

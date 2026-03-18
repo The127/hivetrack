@@ -21,6 +21,7 @@ import EpicSelector from '@/components/issue/EpicSelector.vue'
 import EpicChildList from '@/components/issue/EpicChildList.vue'
 import StatusSelect from '@/components/issue/StatusSelect.vue'
 import PrioritySelect from '@/components/issue/PrioritySelect.vue'
+import AssigneeSelect from '@/components/issue/AssigneeSelect.vue'
 import { fetchIssue, updateIssue } from '@/api/issues'
 import { fetchProject } from '@/api/projects'
 
@@ -72,6 +73,17 @@ const { mutate: updateParent } = useMutation({
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ['issue', slug.value, number.value] })
     queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+  },
+})
+
+// ── Assignee mutation ─────────────────────────────────────────────────────────
+
+const { mutate: updateAssignees } = useMutation({
+  mutationFn: (assigneeIds) => updateIssue(slug.value, number.value, { assignee_ids: assigneeIds }),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['issue', slug.value, number.value] })
+    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
+    queryClient.invalidateQueries({ queryKey: ['me', 'issues'] })
   },
 })
 </script>
@@ -151,6 +163,17 @@ const { mutate: updateParent } = useMutation({
                   {{ ESTIMATE_LABEL[issue.estimate] }}
                 </span>
                 <span v-else class="text-sm text-slate-400">None</span>
+              </div>
+            </div>
+
+            <!-- Assignees -->
+            <div class="space-y-1">
+              <div class="max-w-xs">
+                <AssigneeSelect
+                  :project-slug="slug"
+                  :model-value="issue.assignees ?? []"
+                  @update:model-value="updateAssignees"
+                />
               </div>
             </div>
 

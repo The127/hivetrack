@@ -258,7 +258,7 @@ const defaultCreateStatus = computed(() => {
 
                 <!-- Assignee avatars -->
                 <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
-                  <Avatar v-for="a in (epic.assignees ?? []).slice(0, 2)" :key="a" :name="`${a}`" size="xs" class="ring-1 ring-white" />
+                  <Avatar v-for="a in (epic.assignees ?? []).slice(0, 2)" :key="a.id" :name="a.display_name" :src="a.avatar_url" size="xs" class="ring-1 ring-white" />
                 </div>
               </div>
 

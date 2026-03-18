@@ -56,6 +56,10 @@ func (h *IssueHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
 			q.ParentID = &parentID
 		}
 	}
+	if np := r.URL.Query().Get("no_parent"); np == "true" {
+		v := true
+		q.HasNoParent = &v
+	}
 	if l := r.URL.Query().Get("limit"); l != "" {
 		limit, _ := strconv.Atoi(l)
 		q.Limit = limit

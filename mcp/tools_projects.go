@@ -38,6 +38,34 @@ func registerProjectTools(s *server.MCPServer, client *Client) {
 			mcp.Description("Optional project description"),
 		),
 	), makeCreateProject(client))
+
+	s.AddTool(mcp.NewTool("add_project_member",
+		mcp.WithDescription("Add a user as a member of a project"),
+		mcp.WithString("slug",
+			mcp.Required(),
+			mcp.Description("Project slug"),
+		),
+		mcp.WithString("user_id",
+			mcp.Required(),
+			mcp.Description("User ID (UUID) to add"),
+		),
+		mcp.WithString("role",
+			mcp.Required(),
+			mcp.Description("Role: project_admin, project_member, or viewer"),
+		),
+	), makeAddProjectMember(client))
+
+	s.AddTool(mcp.NewTool("remove_project_member",
+		mcp.WithDescription("Remove a user from a project"),
+		mcp.WithString("slug",
+			mcp.Required(),
+			mcp.Description("Project slug"),
+		),
+		mcp.WithString("user_id",
+			mcp.Required(),
+			mcp.Description("User ID (UUID) to remove"),
+		),
+	), makeRemoveProjectMember(client))
 }
 
 func makeListProjects(client *Client) server.ToolHandlerFunc {
@@ -68,6 +96,46 @@ func makeCreateProject(client *Client) server.ToolHandlerFunc {
 		setOptionalString(body, args, "description")
 
 		data, err := client.post("/api/v1/projects", body)
+		if err != nil {
+			return errResult(err), nil
+		}
+		return jsonResult(data), nil
+	}
+}
+
+func makeAddProjectMember(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		slug, _ := args["slug"].(string)
+		userID, _ := args["user_id"].(string)
+		role, _ := args["role"].(string)
+		if slug == "" || userID == "" || role == "" {
+			return errResult(errMissing("slug, user_id, role")), nil
+		}
+
+		body := map[string]any{
+			"user_id": userID,
+			"role":    role,
+		}
+
+		data, err := client.post("/api/v1/projects/"+slug+"/members", body)
+		if err != nil {
+			return errResult(err), nil
+		}
+		return jsonResult(data), nil
+	}
+}
+
+func makeRemoveProjectMember(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		slug, _ := args["slug"].(string)
+		userID, _ := args["user_id"].(string)
+		if slug == "" || userID == "" {
+			return errResult(errMissing("slug, user_id")), nil
+		}
+
+		data, err := client.delete("/api/v1/projects/" + slug + "/members/" + userID)
 		if err != nil {
 			return errResult(err), nil
 		}

@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"context"
+	"crypto/subtle"
 	"net/http"
 	"strings"
 	"time"
@@ -24,6 +26,17 @@ func AuthMiddleware(verifier *authentication.OIDCVerifier, logger *zap.Logger, c
 			}
 
 			token := strings.TrimPrefix(authHeader, "Bearer ")
+
+			// Static MCP API token path — bypasses OIDC, looks up user by email.
+			if cfg.MCP.APIToken != "" && subtle.ConstantTimeCompare([]byte(token), []byte(cfg.MCP.APIToken)) == 1 {
+				ctx, ok := authenticateWithMCPToken(w, r, cfg, logger)
+				if !ok {
+					return
+				}
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+
 			claims, err := verifier.VerifyToken(r.Context(), token)
 			if err != nil {
 				logger.Warn("token verification failed", zap.Error(err))
@@ -75,4 +88,42 @@ func AuthMiddleware(verifier *authentication.OIDCVerifier, logger *zap.Logger, c
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// authenticateWithMCPToken handles the static API token auth path.
+// Looks up the configured user by email and injects CurrentUser into context.
+// Returns the enriched context and true on success; writes an error response and returns false on failure.
+func authenticateWithMCPToken(w http.ResponseWriter, r *http.Request, cfg *config.Config, logger *zap.Logger) (context.Context, bool) {
+	db := repositories.GetDbContext(r.Context())
+
+	user, err := db.Users().GetByEmail(r.Context(), cfg.MCP.UserEmail)
+	if err != nil {
+		logger.Error("mcp auth: failed to get user by email", zap.Error(err))
+		http.Error(w, `{"errors":[{"code":"internal","message":"internal server error"}]}`, http.StatusInternalServerError)
+		return nil, false
+	}
+	if user == nil {
+		// Auto-create the MCP user so the token works without a prior OIDC login.
+		user = models.NewUser("mcp:"+cfg.MCP.UserEmail, cfg.MCP.UserEmail, "MCP Service Account")
+		user.SetIsAdmin(true)
+		if err := db.Users().Upsert(r.Context(), user); err != nil {
+			logger.Error("mcp auth: failed to create user", zap.Error(err))
+			http.Error(w, `{"errors":[{"code":"internal","message":"internal server error"}]}`, http.StatusInternalServerError)
+			return nil, false
+		}
+		if err := db.SaveChanges(r.Context()); err != nil {
+			logger.Error("mcp auth: failed to commit user creation", zap.Error(err))
+			http.Error(w, `{"errors":[{"code":"internal","message":"internal server error"}]}`, http.StatusInternalServerError)
+			return nil, false
+		}
+		logger.Info("mcp auth: auto-created user", zap.String("email", cfg.MCP.UserEmail))
+	}
+
+	ctx := authentication.ContextWithCurrentUser(r.Context(), authentication.CurrentUser{
+		ID:      user.GetId(),
+		Sub:     user.GetSub(),
+		Email:   user.GetEmail(),
+		IsAdmin: user.GetIsAdmin(),
+	})
+	return ctx, true
 }

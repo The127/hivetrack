@@ -31,7 +31,7 @@ type IssueDetail struct {
 	HoldReason     *models.HoldReason     `json:"hold_reason,omitempty"`
 	HoldNote       *string                `json:"hold_note,omitempty"`
 	HoldSince      *time.Time             `json:"hold_since,omitempty"`
-	Assignees      []uuid.UUID            `json:"assignees"`
+	Assignees      []UserInfo             `json:"assignees"`
 	Labels         []uuid.UUID            `json:"labels"`
 	SprintID       *uuid.UUID             `json:"sprint_id,omitempty"`
 	MilestoneID    *uuid.UUID             `json:"milestone_id,omitempty"`
@@ -63,6 +63,11 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 		return nil, nil
 	}
 
+	assignees, err := resolveUsers(ctx, db, issue.GetAssignees())
+	if err != nil {
+		return nil, fmt.Errorf("resolving assignees: %w", err)
+	}
+
 	detail := &IssueDetail{
 		ID:          issue.GetId(),
 		ProjectID:   issue.GetProjectID(),
@@ -79,7 +84,7 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 		HoldReason:  issue.GetHoldReason(),
 		HoldNote:    issue.GetHoldNote(),
 		HoldSince:   issue.GetHoldSince(),
-		Assignees:   issue.GetAssignees(),
+		Assignees:   assignees,
 		Labels:      issue.GetLabels(),
 		SprintID:    issue.GetSprintID(),
 		MilestoneID: issue.GetMilestoneID(),

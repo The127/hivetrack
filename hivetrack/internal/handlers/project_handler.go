@@ -114,3 +114,51 @@ func (h *ProjectHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
 	}
 	RespondJSON(w, http.StatusNoContent, nil)
 }
+
+func (h *ProjectHandler) AddMember(w http.ResponseWriter, r *http.Request) {
+	slug := mux.Vars(r)["slug"]
+
+	var body struct {
+		UserID uuid.UUID          `json:"user_id"`
+		Role   models.ProjectRole `json:"role"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+	if body.UserID == uuid.Nil || body.Role == "" {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	result, err := mediatr.Send[*commands.AddProjectMemberResult](r.Context(), h.mediator, commands.AddProjectMemberCommand{
+		ProjectSlug: slug,
+		UserID:      body.UserID,
+		Role:        body.Role,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	RespondJSON(w, http.StatusCreated, result)
+}
+
+func (h *ProjectHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
+	slug := mux.Vars(r)["slug"]
+	userIDStr := mux.Vars(r)["user_id"]
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	_, err = mediatr.Send[*commands.RemoveProjectMemberResult](r.Context(), h.mediator, commands.RemoveProjectMemberCommand{
+		ProjectSlug: slug,
+		UserID:      userID,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	RespondJSON(w, http.StatusNoContent, nil)
+}
