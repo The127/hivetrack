@@ -30,7 +30,6 @@ import MarkdownEditor from "@/components/ui/MarkdownEditor.vue";
 import RelativeTime from "@/components/ui/RelativeTime.vue";
 import SplitIssueModal from "@/components/issue/SplitIssueModal.vue";
 import Modal from "@/components/ui/Modal.vue";
-import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { fetchIssue, updateIssue } from "@/api/issues";
 import { fetchProject } from "@/api/projects";
 import { fetchSprints } from "@/api/sprints";
