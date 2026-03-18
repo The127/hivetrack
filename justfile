@@ -5,8 +5,8 @@
 #   just          → list all available recipes
 #   just <recipe> → run a recipe
 
-# Go binary — override with: just go=/usr/bin/go <recipe>
-go := env("HIVETRACK_GO", "$HOME/repos/go/bin/go")
+# Go binary — override with: HIVETRACK_GO=/usr/bin/go just <recipe>
+go := env("HIVETRACK_GO", `command -v go 2>/dev/null || echo go`)
 
 # Show available recipes by default
 default:
@@ -115,7 +115,7 @@ dev-deps:
 
 # Start the full local development stack (deps + backend + frontend)
 # Opens backend on :8080, frontend dev server on :5173
-dev: dev-deps
+dev: dev-deps ui-install
     #!/usr/bin/env bash
     trap 'kill %1 %2 2>/dev/null' EXIT
     just run &
