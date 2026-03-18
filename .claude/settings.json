@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "hivetrack": {
+      "command": "./mcp/hivetrack-mcp",
+      "args": [],
+      "env": {
+        "HIVETRACK_URL": "http://localhost:8086",
+        "HIVETRACK_API_TOKEN": "ht_mcp_local_dev_token_2026"
+      }
+    }
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /var/home/karo/repos/hivetrack && just test-unit 2>&1 | tail -10"
+          }
+        ]
+      }
+    ]
+  }
+}
