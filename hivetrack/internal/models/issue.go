@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/change"
 )
 

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/The127/ioc"
+
 	"github.com/the127/hivetrack/internal/repositories"
 	"github.com/the127/hivetrack/internal/repositories/postgres"
 )

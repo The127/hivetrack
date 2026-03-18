@@ -6,17 +6,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
 )
 
 type UpdateSprintCommand struct {
-	SprintID                  uuid.UUID
-	Name                      *string
-	Goal                      *string
-	StartDate                 *time.Time
-	EndDate                   *time.Time
-	Status                    *models.SprintStatus
+	SprintID                 uuid.UUID
+	Name                     *string
+	Goal                     *string
+	StartDate                *time.Time
+	EndDate                  *time.Time
+	Status                   *models.SprintStatus
 	MoveOpenIssuesToSprintID *uuid.UUID // only used when completing; nil = backlog
 }
 

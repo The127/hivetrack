@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/the127/hivetrack/internal/commands"
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories/inmemory"

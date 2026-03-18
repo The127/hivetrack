@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
 )
@@ -18,14 +19,14 @@ type GetCommentsQuery struct {
 }
 
 type CommentItem struct {
-	ID          uuid.UUID `json:"id"`
+	ID          uuid.UUID  `json:"id"`
 	AuthorID    *uuid.UUID `json:"author_id,omitempty"`
-	AuthorName  string    `json:"author_name"`
-	AuthorEmail string    `json:"author_email,omitempty"`
-	AvatarURL   *string   `json:"avatar_url,omitempty"`
-	Body        string    `json:"body"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	AuthorName  string     `json:"author_name"`
+	AuthorEmail string     `json:"author_email,omitempty"`
+	AvatarURL   *string    `json:"avatar_url,omitempty"`
+	Body        string     `json:"body"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 type GetCommentsResult struct {

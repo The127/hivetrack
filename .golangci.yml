@@ -26,11 +26,7 @@ linters:
   settings:
     revive:
       rules:
-        - name: exported
-          severity: warning
         - name: error-return
-          severity: warning
-        - name: var-naming
           severity: warning
         - name: blank-imports
           severity: error

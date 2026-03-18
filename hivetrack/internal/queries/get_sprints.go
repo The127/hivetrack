@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
 )
@@ -15,12 +16,12 @@ type GetSprintsQuery struct {
 }
 
 type SprintSummary struct {
-	ID        uuid.UUID            `json:"id"`
-	Name      string               `json:"name"`
-	Goal      *string              `json:"goal,omitempty"`
-	StartDate *time.Time           `json:"start_date,omitempty"`
-	EndDate   *time.Time           `json:"end_date,omitempty"`
-	Status    models.SprintStatus  `json:"status"`
+	ID        uuid.UUID           `json:"id"`
+	Name      string              `json:"name"`
+	Goal      *string             `json:"goal,omitempty"`
+	StartDate *time.Time          `json:"start_date,omitempty"`
+	EndDate   *time.Time          `json:"end_date,omitempty"`
+	Status    models.SprintStatus `json:"status"`
 }
 
 type GetSprintsResult struct {

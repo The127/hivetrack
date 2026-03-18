@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/The127/mediatr"
+
 	"github.com/the127/hivetrack/internal/authentication"
 	"github.com/the127/hivetrack/internal/queries"
 )

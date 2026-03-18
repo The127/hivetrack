@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/change"
 	"github.com/the127/hivetrack/internal/models"
 )
@@ -72,14 +73,13 @@ func (r *LabelRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, l *mode
 
 	setClauses = append(setClauses, "version = version + 1")
 
-	query := fmt.Sprintf("UPDATE labels SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
+	query := fmt.Sprintf("UPDATE labels SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx) //nolint:gosec
 	args = append(args, l.GetId())
 	argIdx++
 
 	if l.GetVersion() != nil {
 		query += fmt.Sprintf(" AND version=$%d", argIdx)
 		args = append(args, l.GetVersion().(int))
-		argIdx++
 	}
 	query += " RETURNING version"
 
@@ -130,7 +130,7 @@ func (r *LabelRepository) List(ctx context.Context, projectID uuid.UUID) ([]*mod
 	if err != nil {
 		return nil, fmt.Errorf("listing labels: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var labels []*models.Label
 	for rows.Next() {

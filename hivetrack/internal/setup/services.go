@@ -2,9 +2,10 @@ package setup
 
 import (
 	"github.com/The127/ioc"
+	"go.uber.org/zap"
+
 	"github.com/the127/hivetrack/internal/authentication"
 	"github.com/the127/hivetrack/internal/config"
-	"go.uber.org/zap"
 )
 
 // Services registers config, logger, and OIDC verifier as singletons.

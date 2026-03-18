@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/change"
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
@@ -102,14 +103,13 @@ func (r *ProjectRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, proje
 
 	setClauses = append(setClauses, "version = version + 1")
 
-	query := fmt.Sprintf("UPDATE projects SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
+	query := fmt.Sprintf("UPDATE projects SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx) //nolint:gosec
 	args = append(args, project.GetId())
 	argIdx++
 
 	if project.GetVersion() != nil {
 		query += fmt.Sprintf(" AND version=$%d", argIdx)
 		args = append(args, project.GetVersion().(int))
-		argIdx++
 	}
 	query += " RETURNING version"
 
@@ -174,7 +174,7 @@ func (r *ProjectRepository) List(ctx context.Context, filter *repositories.Proje
 	if err != nil {
 		return nil, fmt.Errorf("listing projects: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var projects []*models.Project
 	for rows.Next() {
@@ -216,7 +216,7 @@ func (r *ProjectRepository) ListMembers(ctx context.Context, projectID uuid.UUID
 	if err != nil {
 		return nil, fmt.Errorf("listing members: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var members []*models.ProjectMember
 	for rows.Next() {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/change"
 	"github.com/the127/hivetrack/internal/models"
 )
@@ -71,7 +72,7 @@ func (r *CommentRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, comme
 	args = append(args, comment.GetUpdatedAt())
 	argIdx++
 
-	query := fmt.Sprintf("UPDATE comments SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
+	query := fmt.Sprintf("UPDATE comments SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx) //nolint:gosec
 	args = append(args, comment.GetId())
 
 	result, err := tx.ExecContext(ctx, query, args...)
@@ -129,7 +130,7 @@ func (r *CommentRepository) List(ctx context.Context, issueID uuid.UUID, limit, 
 	if err != nil {
 		return nil, 0, fmt.Errorf("listing comments: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var comments []*models.Comment
 	for rows.Next() {

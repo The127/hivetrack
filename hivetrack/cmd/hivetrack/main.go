@@ -8,11 +8,12 @@ import (
 	"syscall"
 
 	"github.com/The127/ioc"
+	"go.uber.org/zap"
+
 	"github.com/the127/hivetrack/internal/config"
 	"github.com/the127/hivetrack/internal/database"
 	"github.com/the127/hivetrack/internal/server"
 	"github.com/the127/hivetrack/internal/setup"
-	"go.uber.org/zap"
 )
 
 func main() {
@@ -40,7 +41,7 @@ func main() {
 	if err != nil {
 		logger.Fatal("connecting to database", zap.Error(err))
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Run migrations
 	logger.Info("running migrations")

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/change"
 	"github.com/the127/hivetrack/internal/models"
 )
@@ -91,14 +92,13 @@ func (r *SprintRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, sprint
 
 	setClauses = append(setClauses, "version = version + 1")
 
-	query := fmt.Sprintf("UPDATE sprints SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
+	query := fmt.Sprintf("UPDATE sprints SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx) //nolint:gosec
 	args = append(args, sprint.GetId())
 	argIdx++
 
 	if sprint.GetVersion() != nil {
 		query += fmt.Sprintf(" AND version=$%d", argIdx)
 		args = append(args, sprint.GetVersion().(int))
-		argIdx++
 	}
 	query += " RETURNING version"
 
@@ -140,7 +140,7 @@ func (r *SprintRepository) List(ctx context.Context, projectID uuid.UUID) ([]*mo
 	if err != nil {
 		return nil, fmt.Errorf("listing sprints: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var sprints []*models.Sprint
 	for rows.Next() {

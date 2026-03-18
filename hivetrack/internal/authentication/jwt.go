@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	oidc "github.com/coreos/go-oidc/v3/oidc"
+
 	"github.com/the127/hivetrack/internal/config"
 )
 

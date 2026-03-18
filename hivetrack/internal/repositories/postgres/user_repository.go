@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/models"
 )
 
@@ -66,7 +67,7 @@ func (r *UserRepository) List(ctx context.Context) ([]*models.User, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listing users: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var users []*models.User
 	for rows.Next() {

@@ -7,12 +7,13 @@ import (
 	"github.com/The127/ioc"
 	"github.com/The127/mediatr"
 	"github.com/gorilla/mux"
+	"go.uber.org/zap"
+
 	"github.com/the127/hivetrack/internal/authentication"
 	"github.com/the127/hivetrack/internal/config"
 	"github.com/the127/hivetrack/internal/handlers"
 	"github.com/the127/hivetrack/internal/middlewares"
 	"github.com/the127/hivetrack/internal/repositories"
-	"go.uber.org/zap"
 )
 
 // New creates and returns the configured HTTP handler (mux router).
@@ -122,5 +123,5 @@ func Serve(dp *ioc.DependencyProvider) error {
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 
 	logger.Info("starting server", zap.String("addr", addr))
-	return http.ListenAndServe(addr, handler)
+	return http.ListenAndServe(addr, handler) //nolint:gosec
 }

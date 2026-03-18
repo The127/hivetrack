@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // registers postgres driver
 	migrate "github.com/rubenv/sql-migrate"
 )
 

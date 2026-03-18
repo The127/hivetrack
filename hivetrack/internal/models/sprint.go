@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/change"
 )
 
@@ -65,12 +66,12 @@ func NewSprintFromDB(id uuid.UUID, createdAt time.Time, version any,
 	}
 }
 
-func (s *Sprint) GetProjectID() uuid.UUID  { return s.projectID }
-func (s *Sprint) GetName() string          { return s.name }
-func (s *Sprint) GetGoal() *string         { return s.goal }
-func (s *Sprint) GetStartDate() time.Time  { return s.startDate }
-func (s *Sprint) GetEndDate() time.Time    { return s.endDate }
-func (s *Sprint) GetStatus() SprintStatus  { return s.status }
+func (s *Sprint) GetProjectID() uuid.UUID { return s.projectID }
+func (s *Sprint) GetName() string         { return s.name }
+func (s *Sprint) GetGoal() *string        { return s.goal }
+func (s *Sprint) GetStartDate() time.Time { return s.startDate }
+func (s *Sprint) GetEndDate() time.Time   { return s.endDate }
+func (s *Sprint) GetStatus() SprintStatus { return s.status }
 
 func (s *Sprint) SetName(v string) {
 	if s.name == v {

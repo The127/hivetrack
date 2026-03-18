@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/change"
 )
 
@@ -32,10 +33,10 @@ type User struct {
 
 func NewUser(sub, email, displayName string) *User {
 	return &User{
-		BaseModel: NewBaseModel(),
-		List:      change.NewList[UserChange](),
-		sub:       sub,
-		email:     email,
+		BaseModel:   NewBaseModel(),
+		List:        change.NewList[UserChange](),
+		sub:         sub,
+		email:       email,
 		displayName: displayName,
 	}
 }

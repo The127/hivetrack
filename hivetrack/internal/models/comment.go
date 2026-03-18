@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/change"
 )
 
@@ -49,11 +50,11 @@ func NewCommentFromDB(id uuid.UUID, createdAt, updatedAt time.Time,
 	}
 }
 
-func (c *Comment) GetIssueID() uuid.UUID    { return c.issueID }
-func (c *Comment) GetAuthorID() *uuid.UUID   { return c.authorID }
-func (c *Comment) GetAuthorEmail() *string   { return c.authorEmail }
-func (c *Comment) GetAuthorName() *string    { return c.authorName }
-func (c *Comment) GetBody() string           { return c.body }
+func (c *Comment) GetIssueID() uuid.UUID   { return c.issueID }
+func (c *Comment) GetAuthorID() *uuid.UUID { return c.authorID }
+func (c *Comment) GetAuthorEmail() *string { return c.authorEmail }
+func (c *Comment) GetAuthorName() *string  { return c.authorName }
+func (c *Comment) GetBody() string         { return c.body }
 
 func (c *Comment) SetBody(v string) {
 	if c.body == v {

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/change"
 )
 
@@ -52,11 +53,11 @@ func NewMilestoneFromDB(id uuid.UUID, createdAt time.Time, version any,
 	}
 }
 
-func (m *Milestone) GetProjectID() uuid.UUID    { return m.projectID }
-func (m *Milestone) GetTitle() string           { return m.title }
-func (m *Milestone) GetDescription() *string    { return m.description }
-func (m *Milestone) GetTargetDate() *time.Time  { return m.targetDate }
-func (m *Milestone) GetClosedAt() *time.Time    { return m.closedAt }
+func (m *Milestone) GetProjectID() uuid.UUID   { return m.projectID }
+func (m *Milestone) GetTitle() string          { return m.title }
+func (m *Milestone) GetDescription() *string   { return m.description }
+func (m *Milestone) GetTargetDate() *time.Time { return m.targetDate }
+func (m *Milestone) GetClosedAt() *time.Time   { return m.closedAt }
 
 func (m *Milestone) SetTitle(v string) {
 	if m.title == v {

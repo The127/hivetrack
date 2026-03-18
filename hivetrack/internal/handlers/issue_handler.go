@@ -10,6 +10,7 @@ import (
 	"github.com/The127/mediatr"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+
 	"github.com/the127/hivetrack/internal/commands"
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/queries"

@@ -53,18 +53,18 @@ var rules = []rule{
 		},
 	},
 	{
-		name: "handlers must not import setup (setup wires handlers, not the other way)",
-		from: []string{pkg("handlers")},
+		name:          "handlers must not import setup (setup wires handlers, not the other way)",
+		from:          []string{pkg("handlers")},
 		mustNotImport: []string{pkg("setup")},
 	},
 	{
-		name: "commands must not import queries (CQRS separation)",
-		from: []string{pkg("commands")},
+		name:          "commands must not import queries (CQRS separation)",
+		from:          []string{pkg("commands")},
 		mustNotImport: []string{pkg("queries")},
 	},
 	{
-		name: "queries must not import commands (CQRS separation)",
-		from: []string{pkg("queries")},
+		name:          "queries must not import commands (CQRS separation)",
+		from:          []string{pkg("queries")},
 		mustNotImport: []string{pkg("commands")},
 	},
 	{

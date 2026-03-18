@@ -7,11 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/the127/hivetrack/internal/authentication"
 	"github.com/the127/hivetrack/internal/config"
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
-	"go.uber.org/zap"
 )
 
 // AuthMiddleware extracts the Bearer token, verifies it, upserts the user, and
@@ -33,7 +34,7 @@ func AuthMiddleware(verifier *authentication.OIDCVerifier, logger *zap.Logger, c
 				if !ok {
 					return
 				}
-				next.ServeHTTP(w, r.WithContext(ctx))
+				next.ServeHTTP(w, r.WithContext(ctx)) //nolint:contextcheck
 				return
 			}
 

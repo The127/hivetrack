@@ -8,6 +8,7 @@ import (
 	"github.com/The127/mediatr"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+
 	"github.com/the127/hivetrack/internal/authentication"
 	"github.com/the127/hivetrack/internal/commands"
 	"github.com/the127/hivetrack/internal/models"

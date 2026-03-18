@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/change"
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
@@ -178,14 +179,13 @@ func (r *IssueRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, issue *
 
 	setClauses = append(setClauses, "version = version + 1")
 
-	query := fmt.Sprintf("UPDATE issues SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
+	query := fmt.Sprintf("UPDATE issues SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx) //nolint:gosec
 	args = append(args, issue.GetId())
 	argIdx++
 
 	if issue.GetVersion() != nil {
 		query += fmt.Sprintf(" AND version=$%d", argIdx)
 		args = append(args, issue.GetVersion().(int))
-		argIdx++
 	}
 	query += " RETURNING version"
 
@@ -286,7 +286,6 @@ func (r *IssueRepository) List(ctx context.Context, filter *repositories.IssueFi
 	if filter.ParentID != nil {
 		baseQuery += fmt.Sprintf(` AND i.parent_id=$%d`, argIdx)
 		args = append(args, *filter.ParentID)
-		argIdx++
 	}
 	if filter.HasNoParent != nil && *filter.HasNoParent {
 		baseQuery += ` AND i.parent_id IS NULL`
@@ -312,7 +311,7 @@ func (r *IssueRepository) List(ctx context.Context, filter *repositories.IssueFi
 	if err != nil {
 		return nil, 0, fmt.Errorf("listing issues: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var issues []*models.Issue
 	for rows.Next() {

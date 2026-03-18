@@ -3,6 +3,7 @@ package setup
 import (
 	"github.com/The127/ioc"
 	"github.com/The127/mediatr"
+
 	"github.com/the127/hivetrack/internal/commands"
 	"github.com/the127/hivetrack/internal/queries"
 )

@@ -5,8 +5,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/the127/hivetrack/internal/models"
 	"go.uber.org/zap"
+
+	"github.com/the127/hivetrack/internal/models"
 )
 
 var logger *zap.Logger = zap.NewNop()

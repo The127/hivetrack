@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/change"
 )
 
@@ -72,13 +73,13 @@ func NewProjectFromDB(id uuid.UUID, createdAt time.Time, version any,
 	}
 }
 
-func (p *Project) GetSlug() string                     { return p.slug }
-func (p *Project) GetName() string                     { return p.name }
-func (p *Project) GetDescription() *string             { return p.description }
-func (p *Project) GetArchetype() ProjectArchetype      { return p.archetype }
-func (p *Project) GetArchived() bool                   { return p.archived }
-func (p *Project) GetCreatedBy() uuid.UUID             { return p.createdBy }
-func (p *Project) GetAutoArchiveDoneAfterDays() *int   { return p.autoArchiveDoneAfterDays }
+func (p *Project) GetSlug() string                   { return p.slug }
+func (p *Project) GetName() string                   { return p.name }
+func (p *Project) GetDescription() *string           { return p.description }
+func (p *Project) GetArchetype() ProjectArchetype    { return p.archetype }
+func (p *Project) GetArchived() bool                 { return p.archived }
+func (p *Project) GetCreatedBy() uuid.UUID           { return p.createdBy }
+func (p *Project) GetAutoArchiveDoneAfterDays() *int { return p.autoArchiveDoneAfterDays }
 
 func (p *Project) SetSlug(v string) {
 	if p.slug == v {

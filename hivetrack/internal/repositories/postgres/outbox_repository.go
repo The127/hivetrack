@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/models"
 )
 
@@ -35,7 +36,7 @@ func (r *OutboxRepository) ListPending(ctx context.Context) ([]*models.OutboxMes
 	if err != nil {
 		return nil, fmt.Errorf("listing pending outbox: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var messages []*models.OutboxMessage
 	for rows.Next() {
