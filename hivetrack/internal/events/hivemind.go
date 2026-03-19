@@ -42,30 +42,25 @@ func HandleIssueRefinedForHivemind(gen ScenarioGenerator) func(context.Context, 
 		}
 
 		desc := issue.GetDescription()
+
+		var body string
 		if desc == nil || *desc == "" {
 			if err := revertRefined(ctx, db, issue); err != nil {
 				return err
 			}
-			email := hivemindEmail
-			name := hivemindName
-			body := "Hivemind could not generate acceptance scenarios because no description or acceptance criteria were found. Please add a description with clear, testable criteria and re-refine the issue."
-			comment := models.NewComment(issue.GetId(), nil, &email, &name, body)
-			db.Comments().Insert(comment)
-			return db.SaveChanges(ctx)
-		}
-
-		scenarios, err := gen.GenerateScenarios(ctx, *desc)
-
-		var body string
-		if errors.Is(err, ErrVagueCriteria) {
-			if err := revertRefined(ctx, db, issue); err != nil {
-				return err
-			}
-			body = "Hivemind could not generate acceptance scenarios because the criteria are too vague or non-actionable. Please add specific, testable criteria and re-refine the issue."
-		} else if err != nil {
-			return err
+			body = "Hivemind could not generate acceptance scenarios because no description or acceptance criteria were found. Please add a description with clear, testable criteria and re-refine the issue."
 		} else {
-			body = scenarios
+			scenarios, err := gen.GenerateScenarios(ctx, *desc)
+			if errors.Is(err, ErrVagueCriteria) {
+				if err := revertRefined(ctx, db, issue); err != nil {
+					return err
+				}
+				body = "Hivemind could not generate acceptance scenarios because the criteria are too vague or non-actionable. Please add specific, testable criteria and re-refine the issue."
+			} else if err != nil {
+				return err
+			} else {
+				body = scenarios
+			}
 		}
 
 		email := hivemindEmail
