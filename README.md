@@ -6,6 +6,7 @@
     A Jira alternative that helps the people doing the work — not the people watching it.<br>
     Fast, opinionated, open source.
   </p>
+  <p><a href="https://hivetrack.vercel.app/">hivetrack.vercel.app</a></p>
   <img src="social-preview.png" width="640" alt="Hivetrack preview">
 </div>
 
