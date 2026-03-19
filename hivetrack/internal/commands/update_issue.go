@@ -128,7 +128,6 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	if cmd.CancelReason != nil {
 		issue.SetCancelReason(cmd.CancelReason)
 	}
-	wasRefined := issue.GetRefined()
 	if cmd.Refined != nil {
 		if issue.GetType() == models.IssueTypeEpic {
 			return nil, models.NewDomainError("refined_not_supported_for_epics", models.ErrBadRequest)
@@ -169,7 +168,7 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 		return nil, fmt.Errorf("saving issue: %w", err)
 	}
 
-	if cmd.Refined != nil && *cmd.Refined && !wasRefined {
+	if cmd.Refined != nil && *cmd.Refined {
 		payload, err := json.Marshal(events.IssueRefinedPayload{IssueID: issue.GetId(), ActorID: actor.ID})
 		if err != nil {
 			return nil, fmt.Errorf("marshaling issue.refined payload: %w", err)
