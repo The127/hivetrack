@@ -70,19 +70,14 @@ func HandleIssueRefinedForHivemind(gen ScenarioGenerator) func(context.Context, 
 			}
 			body = "Hivemind could not generate acceptance scenarios because no description or acceptance criteria were found. Please add a description with clear, testable criteria and re-refine the issue."
 		} else {
-			scenarios, err := gen.GenerateScenarios(ctx, *desc)
-			if errors.Is(err, ErrVagueCriteria) {
+			scenarios, genErr := gen.GenerateScenarios(ctx, *desc)
+			if errors.Is(genErr, ErrVagueCriteria) {
 				if err := revertRefined(ctx, db, issue); err != nil {
 					return err
 				}
-				var vce *VagueCriteriaError
-				if errors.As(err, &vce) && vce.Explanation != "" {
-					body = "Hivemind could not generate acceptance scenarios because the criteria are too vague or non-actionable.\n\n" + vce.Explanation + "\n\nPlease address the gaps above and re-refine the issue."
-				} else {
-					body = "Hivemind could not generate acceptance scenarios because the criteria are too vague or non-actionable. Please add specific, testable criteria and re-refine the issue."
-				}
-			} else if err != nil {
-				return err
+				body = vagueCriteriaGapBody(genErr)
+			} else if genErr != nil {
+				return genErr
 			} else {
 				body = scenarios
 			}
@@ -95,6 +90,19 @@ func HandleIssueRefinedForHivemind(gen ScenarioGenerator) func(context.Context, 
 
 		return db.SaveChanges(ctx)
 	}
+}
+
+// vagueCriteriaGapBody returns a gap comment body for an ErrVagueCriteria error.
+// If the error is a VagueCriteriaError with a non-empty Explanation, the explanation
+// is embedded in the body so the author knows which criteria are insufficient.
+func vagueCriteriaGapBody(err error) string {
+	var vce *VagueCriteriaError
+	if errors.As(err, &vce) && vce.Explanation != "" {
+		return "Hivemind could not generate acceptance scenarios because the criteria are too vague or non-actionable.\n\n" +
+			vce.Explanation +
+			"\n\nPlease address the gaps above and re-refine the issue."
+	}
+	return "Hivemind could not generate acceptance scenarios because the criteria are too vague or non-actionable. Please add specific, testable criteria and re-refine the issue."
 }
 
 // revertRefined marks the issue as not refined and enqueues an issue.unrefined outbox event.
