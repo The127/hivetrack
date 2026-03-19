@@ -10,9 +10,29 @@ import (
 	"github.com/the127/hivetrack/internal/repositories"
 )
 
-// ErrVagueCriteria is returned by ScenarioGenerator when the acceptance criteria
-// are too vague or non-actionable to generate meaningful scenarios.
+// ErrVagueCriteria is the sentinel error for vague or non-actionable acceptance criteria.
+// Use NewVagueCriteriaError to construct an error that carries a specific gap explanation.
 var ErrVagueCriteria = errors.New("acceptance criteria are too vague to generate scenarios")
+
+// VagueCriteriaError wraps ErrVagueCriteria and carries a structured explanation of
+// which acceptance criteria are insufficient and what information is missing.
+type VagueCriteriaError struct {
+	Explanation string
+}
+
+func (e *VagueCriteriaError) Error() string {
+	return ErrVagueCriteria.Error() + ": " + e.Explanation
+}
+
+func (e *VagueCriteriaError) Is(target error) bool {
+	return target == ErrVagueCriteria
+}
+
+// NewVagueCriteriaError constructs a VagueCriteriaError with the given explanation of
+// which criteria are insufficient and what information is missing.
+func NewVagueCriteriaError(explanation string) *VagueCriteriaError {
+	return &VagueCriteriaError{Explanation: explanation}
+}
 
 // ScenarioGenerator generates GIVEN/WHEN/THEN acceptance scenarios from a description.
 type ScenarioGenerator interface {
@@ -55,7 +75,12 @@ func HandleIssueRefinedForHivemind(gen ScenarioGenerator) func(context.Context, 
 				if err := revertRefined(ctx, db, issue); err != nil {
 					return err
 				}
-				body = "Hivemind could not generate acceptance scenarios because the criteria are too vague or non-actionable. Please add specific, testable criteria and re-refine the issue."
+				var vce *VagueCriteriaError
+				if errors.As(err, &vce) && vce.Explanation != "" {
+					body = "Hivemind could not generate acceptance scenarios because the criteria are too vague or non-actionable.\n\n" + vce.Explanation + "\n\nPlease address the gaps above and re-refine the issue."
+				} else {
+					body = "Hivemind could not generate acceptance scenarios because the criteria are too vague or non-actionable. Please add specific, testable criteria and re-refine the issue."
+				}
 			} else if err != nil {
 				return err
 			} else {
