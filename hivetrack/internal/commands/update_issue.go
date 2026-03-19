@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -36,12 +37,14 @@ type UpdateIssueCommand struct {
 	OwnerID       *uuid.UUID
 	ClearOwnerID  bool
 	CancelReason  *string
+	Refined       *bool
 }
 
 type UpdateIssueResult struct{}
 
 func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssueResult, error) {
 	db := repositories.GetDbContext(ctx)
+	actor, _ := authentication.GetCurrentUser(ctx)
 
 	issue, err := db.Issues().GetByID(ctx, cmd.IssueID)
 	if err != nil {
@@ -125,10 +128,27 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	if cmd.CancelReason != nil {
 		issue.SetCancelReason(cmd.CancelReason)
 	}
+	if cmd.Refined != nil {
+		if issue.GetType() == models.IssueTypeEpic {
+			return nil, models.NewDomainError("refined_not_supported_for_epics", models.ErrBadRequest)
+		}
+		if !actor.IsAdmin {
+			isViewer, err := actorIsViewerOnProject(ctx, db, issue.GetProjectID(), actor.ID)
+			if err != nil {
+				return nil, err
+			}
+			if isViewer {
+				return nil, fmt.Errorf("actor lacks write permission to mark issue as refined: %w", models.ErrForbidden)
+			}
+		}
+		if *cmd.Refined && issue.GetRefined() {
+			return nil, models.NewDomainError("already_refined", models.ErrConflict)
+		}
+		issue.SetRefined(*cmd.Refined)
+	}
 
 	if cmd.Status != nil && oldStatus == models.IssueStatusTodo && *cmd.Status == models.IssueStatusInProgress {
 		if m, ok := getMediatorFromContext(ctx); ok {
-			actor, _ := authentication.GetCurrentUser(ctx)
 			if err := mediatr.SendEvent(ctx, m, events.IssueStatusChangedEvent{
 				Issue:     issue,
 				OldStatus: oldStatus,
@@ -148,6 +168,16 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 		return nil, fmt.Errorf("saving issue: %w", err)
 	}
 
+	if cmd.Refined != nil && *cmd.Refined {
+		payload, err := json.Marshal(events.IssueRefinedPayload{IssueID: issue.GetId(), ActorID: actor.ID})
+		if err != nil {
+			return nil, fmt.Errorf("marshaling issue.refined payload: %w", err)
+		}
+		if err := db.Outbox().Enqueue(ctx, events.EventTypeIssueRefined, payload); err != nil {
+			return nil, fmt.Errorf("enqueueing issue.refined event: %w", err)
+		}
+	}
+
 	// Record status transition for burndown tracking
 	if cmd.Status != nil && *cmd.Status != oldStatus {
 		if err := db.IssueStatusLog().Insert(ctx, issue.GetId(), string(*cmd.Status), time.Now()); err != nil {
@@ -156,4 +186,12 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	}
 
 	return &UpdateIssueResult{}, nil
+}
+
+func actorIsViewerOnProject(ctx context.Context, db repositories.DbContext, projectID, actorID uuid.UUID) (bool, error) {
+	member, err := db.Projects().GetMember(ctx, projectID, actorID)
+	if err != nil {
+		return false, fmt.Errorf("getting project member: %w", err)
+	}
+	return member != nil && member.Role == models.ProjectRoleViewer, nil
 }

@@ -305,6 +305,62 @@ func TestHandleUpdateIssue_TodoToInProgress_AlreadyAssigned_NoChange(t *testing.
 	assert.Equal(t, []uuid.UUID{existingAssignee}, updated.GetAssignees())
 }
 
+func TestHandleUpdateIssue_MarkTaskAsRefined(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	issue := newTestIssue(project.GetId(), actor.GetId(), 1)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	require.False(t, issue.GetRefined(), "precondition: issue must start as unrefined")
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	refined := true
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID: issue.GetId(),
+		Refined: &refined,
+	})
+	require.NoError(t, err, "HandleUpdateIssue should succeed when marking a task as refined")
+
+	updated, err := db.Issues().GetByID(context.Background(), issue.GetId())
+	require.NoError(t, err, "should be able to retrieve the issue after update")
+	assert.True(t, updated.GetRefined(), "issue should be marked as refined after update")
+}
+
+func TestHandleUpdateIssue_IssueRefinedEventEnqueuedInOutboxWhenRefined(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	issue := newTestIssue(project.GetId(), actor.GetId(), 1)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	require.False(t, issue.GetRefined(), "precondition: issue must start as unrefined")
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	refined := true
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID: issue.GetId(),
+		Refined: &refined,
+	})
+	require.NoError(t, err)
+
+	pending, err := db.Outbox().ListPending(context.Background())
+	require.NoError(t, err)
+	require.Len(t, pending, 1, "expected exactly 1 outbox message after refining an issue")
+	assert.Equal(t, events.EventTypeIssueRefined, pending[0].Type, "outbox message type should be %q", events.EventTypeIssueRefined)
+	assert.Contains(t, string(pending[0].Payload), issue.GetId().String(), "outbox payload should reference the refined issue ID")
+}
+
 func TestHandleUpdateIssue_SetOnHold(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
@@ -334,4 +390,109 @@ func TestHandleUpdateIssue_SetOnHold(t *testing.T) {
 	assert.True(t, updated.GetOnHold())
 	require.NotNil(t, updated.GetHoldReason())
 	assert.Equal(t, models.HoldReasonWaitingOnCustomer, *updated.GetHoldReason())
+}
+
+func TestHandleUpdateIssue_RefinedRejectedForViewer(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	require.NoError(t, db.Projects().AddMember(context.Background(), &models.ProjectMember{
+		ProjectID: project.GetId(),
+		UserID:    actor.GetId(),
+		Role:      models.ProjectRoleViewer,
+	}))
+
+	issue := newTestIssue(project.GetId(), actor.GetId(), 1)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	require.False(t, issue.GetRefined(), "precondition: issue must start as unrefined")
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	refined := true
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID: issue.GetId(),
+		Refined: &refined,
+	})
+
+	require.Error(t, err, "viewer must not be allowed to mark an issue as refined")
+	assert.ErrorIs(t, err, models.ErrForbidden)
+
+	unchanged, err := db.Issues().GetByID(context.Background(), issue.GetId())
+	require.NoError(t, err)
+	assert.False(t, unchanged.GetRefined(), "issue must remain unrefined when update is rejected")
+}
+
+func TestHandleUpdateIssue_AlreadyRefinedIsRejected(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	issue := newTestIssue(project.GetId(), actor.GetId(), 1)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	// Set the issue as already refined.
+	issue.SetRefined(true)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	require.True(t, issue.GetRefined(), "precondition: issue must already be refined")
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	refined := true
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID: issue.GetId(),
+		Refined: &refined,
+	})
+
+	require.Error(t, err, "setting refined=true on an already-refined issue must be rejected")
+	assert.ErrorIs(t, err, models.ErrConflict)
+
+	var domainErr *models.DomainError
+	require.ErrorAs(t, err, &domainErr, "expected a DomainError with a specific code")
+	assert.Equal(t, "already_refined", domainErr.Code)
+
+	// Verify the issue was not mutated.
+	unchanged, err := db.Issues().GetByID(context.Background(), issue.GetId())
+	require.NoError(t, err)
+	assert.True(t, unchanged.GetRefined(), "issue must remain refined and unchanged")
+}
+
+func TestHandleUpdateIssue_RefinedRejectedForEpic(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	epic := newTestEpic(project.GetId(), actor.GetId(), 1)
+	db.Issues().Insert(epic)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	refined := true
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID: epic.GetId(),
+		Refined: &refined,
+	})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, models.ErrBadRequest)
+
+	var domainErr *models.DomainError
+	require.ErrorAs(t, err, &domainErr, "expected a DomainError with a specific code")
+	assert.Equal(t, "refined_not_supported_for_epics", domainErr.Code)
+
+	// Verify the issue was not mutated.
+	unchanged, err := db.Issues().GetByID(context.Background(), epic.GetId())
+	require.NoError(t, err)
+	assert.False(t, unchanged.GetRefined())
 }

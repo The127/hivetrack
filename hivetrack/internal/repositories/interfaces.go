@@ -20,6 +20,7 @@ type DbContext interface {
 	Comments() CommentRepository
 	Outbox() OutboxRepository
 	IssueStatusLog() IssueStatusLogRepository
+	AuditLog() AuditLogRepository
 
 	// SaveChanges executes all queued Insert/Update/Delete in a single transaction.
 	SaveChanges(ctx context.Context) error
@@ -265,4 +266,9 @@ type OutboxRepository interface {
 	ListPending(ctx context.Context) ([]*models.OutboxMessage, error)
 	MarkDelivered(ctx context.Context, id uuid.UUID) error
 	MarkFailed(ctx context.Context, id uuid.UUID, errMsg string) error
+}
+
+// AuditLogRepository records auditable actions. All methods are direct-execute.
+type AuditLogRepository interface {
+	Insert(ctx context.Context, entry *models.AuditLogEntry) error
 }

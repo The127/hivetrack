@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/the127/hivetrack/internal/authentication"
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
 )
@@ -19,6 +20,7 @@ type RefineIssueResult struct{}
 
 func HandleRefineIssue(ctx context.Context, cmd RefineIssueCommand) (*RefineIssueResult, error) {
 	db := repositories.GetDbContext(ctx)
+	actor := authentication.MustGetCurrentUser(ctx)
 
 	issue, err := db.Issues().GetByID(ctx, cmd.IssueID)
 	if err != nil {
@@ -35,6 +37,11 @@ func HandleRefineIssue(ctx context.Context, cmd RefineIssueCommand) (*RefineIssu
 
 	if err := db.SaveChanges(ctx); err != nil {
 		return nil, fmt.Errorf("saving issue: %w", err)
+	}
+
+	entry := models.NewAuditLogEntry(issue.GetId(), "refined", actor.ID)
+	if err := db.AuditLog().Insert(ctx, entry); err != nil {
+		return nil, fmt.Errorf("inserting audit log: %w", err)
 	}
 
 	return &RefineIssueResult{}, nil
