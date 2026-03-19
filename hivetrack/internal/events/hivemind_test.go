@@ -108,7 +108,16 @@ func TestHivemind_PostsScenariosComment_WhenRefinedTaskHasAcceptanceCriteria(t *
 	assert.True(t, strings.EqualFold("hivemind", *comment.GetAuthorName()), "author name should identify Hivemind")
 }
 
-func TestHivemind_SkipsEpicIssue_WhenRefinedEventReceived(t *testing.T) {
+type refinedEpicHandlerSetup struct {
+	db      *inmemory.DbContext
+	ctx     context.Context
+	issue   *models.Issue
+	spy     *spyScenarioGenerator
+	handler func(context.Context, events.IssueRefinedPayload) error
+}
+
+func setupRefinedEpicHandler(t *testing.T) refinedEpicHandlerSetup {
+	t.Helper()
 	db := inmemory.NewDbContext()
 	ctx := testutil.ContextWithDb(db)
 
@@ -120,15 +129,27 @@ func TestHivemind_SkipsEpicIssue_WhenRefinedEventReceived(t *testing.T) {
 	spy := &spyScenarioGenerator{}
 	handler := events.HandleIssueRefinedForHivemind(spy)
 
-	err := handler(ctx, events.IssueRefinedPayload{
-		IssueID: issue.GetId(),
+	return refinedEpicHandlerSetup{
+		db:      db,
+		ctx:     ctx,
+		issue:   issue,
+		spy:     spy,
+		handler: handler,
+	}
+}
+
+func TestHivemind_SkipsEpicIssue_WhenRefinedEventReceived(t *testing.T) {
+	s := setupRefinedEpicHandler(t)
+
+	err := s.handler(s.ctx, events.IssueRefinedPayload{
+		IssueID: s.issue.GetId(),
 		ActorID: uuid.New(),
 	})
 	require.NoError(t, err)
 
-	assert.False(t, spy.called, "GenerateScenarios must not be called for epic-type issues")
+	assert.False(t, s.spy.called, "GenerateScenarios must not be called for epic-type issues")
 
-	_, total, err := db.Comments().List(context.Background(), issue.GetId(), 0, 0)
+	_, total, err := s.db.Comments().List(context.Background(), s.issue.GetId(), 0, 0)
 	require.NoError(t, err)
 	assert.Equal(t, 0, total, "no comment must be posted for epic-type issues")
 }
@@ -172,19 +193,10 @@ func TestHivemind_RevertsRefinedFlag_WhenCriteriaAreInsufficient(t *testing.T) {
 }
 
 func TestHivemind_LeavesRefinedFlagUnchanged_WhenEpicEventReceived(t *testing.T) {
-	db := inmemory.NewDbContext()
-	ctx := testutil.ContextWithDb(db)
+	s := setupRefinedEpicHandler(t)
 
-	projectID := uuid.New()
-	issue := newRefinedEpicWithDescription(projectID, "This epic covers the entire authentication surface area.")
-	db.Issues().Insert(issue)
-	require.NoError(t, db.SaveChanges(context.Background()))
-
-	spy := &spyScenarioGenerator{}
-	handler := events.HandleIssueRefinedForHivemind(spy)
-
-	err := handler(ctx, events.IssueRefinedPayload{
-		IssueID: issue.GetId(),
+	err := s.handler(s.ctx, events.IssueRefinedPayload{
+		IssueID: s.issue.GetId(),
 		ActorID: uuid.New(),
 	})
 
@@ -192,13 +204,13 @@ func TestHivemind_LeavesRefinedFlagUnchanged_WhenEpicEventReceived(t *testing.T)
 	assert.NoError(t, err)
 
 	// The refined flag must remain true — the handler must not touch it.
-	updated, fetchErr := db.Issues().GetByID(context.Background(), issue.GetId())
+	updated, fetchErr := s.db.Issues().GetByID(context.Background(), s.issue.GetId())
 	require.NoError(t, fetchErr)
 	require.NotNil(t, updated)
 	assert.True(t, updated.GetRefined(), "refined flag must remain true for epic-type issues")
 
 	// No issue.unrefined outbox message must be enqueued.
-	pending, outboxErr := db.Outbox().ListPending(context.Background())
+	pending, outboxErr := s.db.Outbox().ListPending(context.Background())
 	require.NoError(t, outboxErr)
 	for _, msg := range pending {
 		assert.NotEqual(t, events.EventTypeIssueUnrefined, msg.Type, "no issue.unrefined event must be enqueued for epic-type issues")
