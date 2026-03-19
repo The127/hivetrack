@@ -43,14 +43,8 @@ func HandleIssueRefinedForHivemind(gen ScenarioGenerator) func(context.Context, 
 
 		desc := issue.GetDescription()
 		if desc == nil || *desc == "" {
-			issue.SetRefined(false)
-			db.Issues().Update(issue)
-			payload, err := json.Marshal(IssueUnrefinedPayload{IssueID: issue.GetId(), ProjectID: issue.GetProjectID()})
-			if err != nil {
-				return fmt.Errorf("marshaling issue.unrefined payload: %w", err)
-			}
-			if err := db.Outbox().Enqueue(ctx, EventTypeIssueUnrefined, payload); err != nil {
-				return fmt.Errorf("enqueueing issue.unrefined event: %w", err)
+			if err := revertRefined(ctx, db, issue); err != nil {
+				return err
 			}
 			return db.SaveChanges(ctx)
 		}
@@ -59,14 +53,8 @@ func HandleIssueRefinedForHivemind(gen ScenarioGenerator) func(context.Context, 
 
 		var body string
 		if errors.Is(err, ErrVagueCriteria) {
-			issue.SetRefined(false)
-			db.Issues().Update(issue)
-			payload, marshalErr := json.Marshal(IssueUnrefinedPayload{IssueID: issue.GetId(), ProjectID: issue.GetProjectID()})
-			if marshalErr != nil {
-				return fmt.Errorf("marshaling issue.unrefined payload: %w", marshalErr)
-			}
-			if enqueueErr := db.Outbox().Enqueue(ctx, EventTypeIssueUnrefined, payload); enqueueErr != nil {
-				return fmt.Errorf("enqueueing issue.unrefined event: %w", enqueueErr)
+			if err := revertRefined(ctx, db, issue); err != nil {
+				return err
 			}
 			body = "Hivemind could not generate acceptance scenarios because the criteria are too vague or non-actionable. Please add specific, testable criteria and re-refine the issue."
 		} else if err != nil {
@@ -82,4 +70,18 @@ func HandleIssueRefinedForHivemind(gen ScenarioGenerator) func(context.Context, 
 
 		return db.SaveChanges(ctx)
 	}
+}
+
+// revertRefined marks the issue as not refined and enqueues an issue.unrefined outbox event.
+func revertRefined(ctx context.Context, db repositories.DbContext, issue *models.Issue) error {
+	issue.SetRefined(false)
+	db.Issues().Update(issue)
+	payload, err := json.Marshal(IssueUnrefinedPayload{IssueID: issue.GetId(), ProjectID: issue.GetProjectID()})
+	if err != nil {
+		return fmt.Errorf("marshaling issue.unrefined payload: %w", err)
+	}
+	if err := db.Outbox().Enqueue(ctx, EventTypeIssueUnrefined, payload); err != nil {
+		return fmt.Errorf("enqueueing issue.unrefined event: %w", err)
+	}
+	return nil
 }
