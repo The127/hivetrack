@@ -11,6 +11,7 @@ func NewServer(client *Client) *server.MCPServer {
 		"Hivetrack",
 		"1.0.0",
 		server.WithToolCapabilities(false),
+		server.WithLogging(),
 	)
 
 	registerUserTools(s, client)

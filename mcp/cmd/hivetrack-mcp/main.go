@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
-	htmcp "github.com/the127/hivetrack/mcp"
-
 	"github.com/mark3labs/mcp-go/server"
+
+	htmcp "github.com/the127/hivetrack/mcp"
 )
 
 func main() {
@@ -15,15 +16,42 @@ func main() {
 		apiURL = "http://localhost:8086"
 	}
 
-	apiToken := os.Getenv("HIVETRACK_API_TOKEN")
-	if apiToken == "" {
-		fmt.Fprintln(os.Stderr, "HIVETRACK_API_TOKEN environment variable is required")
+	token, err := htmcp.TryToken(apiURL)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[mcp] auth error: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Fprintf(os.Stderr, "[mcp] starting: url=%s token=%s...\n", apiURL, apiToken[:min(len(apiToken), 10)])
+	var flow *htmcp.DeviceFlow
+	if token == "" {
+		flow, err = htmcp.InitDeviceFlow(apiURL)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[mcp] failed to start device flow: %v\n", err)
+			os.Exit(1)
+		}
+	}
 
-	client := htmcp.NewClient(apiURL, apiToken)
+	fmt.Fprintf(os.Stderr, "[mcp] starting: url=%s\n", apiURL)
+
+	client := htmcp.NewClient(apiURL, token)
+
+	if flow != nil {
+		authURL := flow.VerificationURIComplete
+		if authURL == "" {
+			authURL = flow.VerificationURI
+		}
+		client.SetAuthURL(authURL)
+		go func() {
+			tok, err := flow.WaitForToken(context.Background())
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "[mcp] device flow failed: %v\n", err)
+				return
+			}
+			client.SetToken(tok)
+			fmt.Fprintln(os.Stderr, "[mcp] authenticated")
+		}()
+	}
+
 	s := htmcp.NewServer(client)
 
 	fmt.Fprintln(os.Stderr, "[mcp] serving on stdio")
