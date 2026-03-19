@@ -171,6 +171,40 @@ func TestHivemind_RevertsRefinedFlag_WhenCriteriaAreInsufficient(t *testing.T) {
 	assert.True(t, found, "expected an issue.unrefined outbox message to be enqueued")
 }
 
+func TestHivemind_LeavesRefinedFlagUnchanged_WhenEpicEventReceived(t *testing.T) {
+	db := inmemory.NewDbContext()
+	ctx := testutil.ContextWithDb(db)
+
+	projectID := uuid.New()
+	issue := newRefinedEpicWithDescription(projectID, "This epic covers the entire authentication surface area.")
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	spy := &spyScenarioGenerator{}
+	handler := events.HandleIssueRefinedForHivemind(spy)
+
+	err := handler(ctx, events.IssueRefinedPayload{
+		IssueID: issue.GetId(),
+		ActorID: uuid.New(),
+	})
+
+	// No error must be produced.
+	assert.NoError(t, err)
+
+	// The refined flag must remain true — the handler must not touch it.
+	updated, fetchErr := db.Issues().GetByID(context.Background(), issue.GetId())
+	require.NoError(t, fetchErr)
+	require.NotNil(t, updated)
+	assert.True(t, updated.GetRefined(), "refined flag must remain true for epic-type issues")
+
+	// No issue.unrefined outbox message must be enqueued.
+	pending, outboxErr := db.Outbox().ListPending(context.Background())
+	require.NoError(t, outboxErr)
+	for _, msg := range pending {
+		assert.NotEqual(t, events.EventTypeIssueUnrefined, msg.Type, "no issue.unrefined event must be enqueued for epic-type issues")
+	}
+}
+
 func TestHivemind_PostsGapComment_WhenCriteriaAreVague(t *testing.T) {
 	db := inmemory.NewDbContext()
 	ctx := testutil.ContextWithDb(db)
