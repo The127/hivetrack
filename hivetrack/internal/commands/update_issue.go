@@ -36,6 +36,7 @@ type UpdateIssueCommand struct {
 	OwnerID       *uuid.UUID
 	ClearOwnerID  bool
 	CancelReason  *string
+	Refined       *bool
 }
 
 type UpdateIssueResult struct{}

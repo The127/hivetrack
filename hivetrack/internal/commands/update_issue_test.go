@@ -305,6 +305,33 @@ func TestHandleUpdateIssue_TodoToInProgress_AlreadyAssigned_NoChange(t *testing.
 	assert.Equal(t, []uuid.UUID{existingAssignee}, updated.GetAssignees())
 }
 
+func TestHandleUpdateIssue_MarkTaskAsRefined(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	issue := newTestIssue(project.GetId(), actor.GetId(), 1)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	require.False(t, issue.GetRefined(), "precondition: issue must start as unrefined")
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	refined := true
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID: issue.GetId(),
+		Refined: &refined,
+	})
+	require.NoError(t, err, "HandleUpdateIssue should succeed when marking a task as refined")
+
+	updated, err := db.Issues().GetByID(context.Background(), issue.GetId())
+	require.NoError(t, err, "should be able to retrieve the issue after update")
+	assert.True(t, updated.GetRefined(), "issue should be marked as refined after update")
+}
+
 func TestHandleUpdateIssue_SetOnHold(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
