@@ -24,9 +24,32 @@ func (s *stubScenarioGenerator) GenerateScenarios(_ context.Context, _ string) (
 	return s.scenarios, nil
 }
 
+// spyScenarioGenerator records whether GenerateScenarios was called.
+type spyScenarioGenerator struct {
+	called bool
+}
+
+func (s *spyScenarioGenerator) GenerateScenarios(_ context.Context, _ string) (string, error) {
+	s.called = true
+	return "", nil
+}
+
 const cannedScenarios = `GIVEN a user is logged in
 WHEN they click submit
 THEN the form is saved`
+
+func newRefinedEpicWithDescription(projectID uuid.UUID, description string) *models.Issue {
+	reporterID := uuid.New()
+	desc := description
+	issue := models.NewIssue(
+		projectID, 2, models.IssueTypeEpic, "Big epic feature",
+		models.IssueStatusTodo, models.IssuePriorityNone, models.IssueEstimateNone,
+		&reporterID, true, models.IssueVisibilityNormal,
+		&desc, nil, nil, nil, nil,
+	)
+	issue.SetRefined(true)
+	return issue
+}
 
 func newRefinedTaskWithDescription(projectID uuid.UUID, description string) *models.Issue {
 	reporterID := uuid.New()
@@ -76,4 +99,29 @@ func TestHivemind_PostsScenariosComment_WhenRefinedTaskHasAcceptanceCriteria(t *
 	assert.Equal(t, "hivemind@hivetrack.internal", *comment.GetAuthorEmail())
 	require.NotNil(t, comment.GetAuthorName())
 	assert.True(t, strings.EqualFold("hivemind", *comment.GetAuthorName()), "author name should identify Hivemind")
+}
+
+func TestHivemind_SkipsEpicIssue_WhenRefinedEventReceived(t *testing.T) {
+	db := inmemory.NewDbContext()
+	ctx := testutil.ContextWithDb(db)
+
+	projectID := uuid.New()
+	issue := newRefinedEpicWithDescription(projectID, "This epic covers the entire authentication surface area.")
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	spy := &spyScenarioGenerator{}
+	handler := events.HandleIssueRefinedForHivemind(spy)
+
+	err := handler(ctx, events.IssueRefinedPayload{
+		IssueID: issue.GetId(),
+		ActorID: uuid.New(),
+	})
+	require.NoError(t, err)
+
+	assert.False(t, spy.called, "GenerateScenarios must not be called for epic-type issues")
+
+	_, total, err := db.Comments().List(context.Background(), issue.GetId(), 0, 0)
+	require.NoError(t, err)
+	assert.Equal(t, 0, total, "no comment must be posted for epic-type issues")
 }
