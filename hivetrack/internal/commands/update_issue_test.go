@@ -391,3 +391,35 @@ func TestHandleUpdateIssue_SetOnHold(t *testing.T) {
 	require.NotNil(t, updated.GetHoldReason())
 	assert.Equal(t, models.HoldReasonWaitingOnCustomer, *updated.GetHoldReason())
 }
+
+func TestHandleUpdateIssue_RefinedRejectedForEpic(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	epic := newTestEpic(project.GetId(), actor.GetId(), 1)
+	db.Issues().Insert(epic)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	refined := true
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID: epic.GetId(),
+		Refined: &refined,
+	})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, models.ErrBadRequest)
+
+	var domainErr *models.DomainError
+	require.ErrorAs(t, err, &domainErr, "expected a DomainError with a specific code")
+	assert.Equal(t, "refined_not_supported_for_epics", domainErr.Code)
+
+	// Verify the issue was not mutated.
+	unchanged, err := db.Issues().GetByID(context.Background(), epic.GetId())
+	require.NoError(t, err)
+	assert.False(t, unchanged.GetRefined())
+}
