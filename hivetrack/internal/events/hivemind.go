@@ -30,6 +30,9 @@ func HandleIssueRefinedForHivemind(gen ScenarioGenerator) func(context.Context, 
 		if issue == nil {
 			return nil
 		}
+		if issue.GetType() != models.IssueTypeTask {
+			return nil
+		}
 
 		desc := issue.GetDescription()
 		if desc == nil || *desc == "" {
