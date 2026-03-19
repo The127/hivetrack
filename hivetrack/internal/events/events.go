@@ -23,3 +23,12 @@ type IssueRefinedPayload struct {
 	IssueID uuid.UUID `json:"issue_id"`
 	ActorID uuid.UUID `json:"actor_id"`
 }
+
+// EventTypeIssueUnrefined is the outbox message type for issue.unrefined events.
+const EventTypeIssueUnrefined = "issue.unrefined"
+
+// IssueUnrefinedPayload is the outbox payload for an issue.unrefined event.
+type IssueUnrefinedPayload struct {
+	IssueID   uuid.UUID `json:"issue_id"`
+	ProjectID uuid.UUID `json:"project_id"`
+}
