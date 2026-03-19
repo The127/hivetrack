@@ -12,8 +12,10 @@ type ScenarioGenerator interface {
 	GenerateScenarios(ctx context.Context, description string) (string, error)
 }
 
-const hivemindEmail = "hivemind@hivetrack.internal"
-const hivemindName = "Hivemind"
+const (
+	hivemindEmail = "hivemind@hivetrack.internal"
+	hivemindName  = "Hivemind"
+)
 
 // HandleIssueRefinedForHivemind returns an event handler that posts GIVEN/WHEN/THEN
 // scenarios as a Hivemind-attributed comment whenever a task issue is refined.
