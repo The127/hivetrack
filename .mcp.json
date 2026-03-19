@@ -5,8 +5,7 @@
       "command": "./mcp/hivetrack-mcp",
       "args": [],
       "env": {
-        "HIVETRACK_URL": "http://localhost:8086",
-        "HIVETRACK_API_TOKEN": "ht_mcp_local_dev_token_2026"
+        "HIVETRACK_URL": "https://hivetrack.karo.gay"
       }
     }
   }
