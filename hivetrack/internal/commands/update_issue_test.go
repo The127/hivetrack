@@ -392,6 +392,41 @@ func TestHandleUpdateIssue_SetOnHold(t *testing.T) {
 	assert.Equal(t, models.HoldReasonWaitingOnCustomer, *updated.GetHoldReason())
 }
 
+func TestHandleUpdateIssue_RefinedRejectedForViewer(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	require.NoError(t, db.Projects().AddMember(context.Background(), &models.ProjectMember{
+		ProjectID: project.GetId(),
+		UserID:    actor.GetId(),
+		Role:      models.ProjectRoleViewer,
+	}))
+
+	issue := newTestIssue(project.GetId(), actor.GetId(), 1)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	require.False(t, issue.GetRefined(), "precondition: issue must start as unrefined")
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	refined := true
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID: issue.GetId(),
+		Refined: &refined,
+	})
+
+	require.Error(t, err, "viewer must not be allowed to mark an issue as refined")
+	assert.ErrorIs(t, err, models.ErrForbidden)
+
+	unchanged, err := db.Issues().GetByID(context.Background(), issue.GetId())
+	require.NoError(t, err)
+	assert.False(t, unchanged.GetRefined(), "issue must remain unrefined when update is rejected")
+}
+
 func TestHandleUpdateIssue_RefinedRejectedForEpic(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
