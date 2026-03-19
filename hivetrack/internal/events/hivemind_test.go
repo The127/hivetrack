@@ -133,6 +133,44 @@ func TestHivemind_SkipsEpicIssue_WhenRefinedEventReceived(t *testing.T) {
 	assert.Equal(t, 0, total, "no comment must be posted for epic-type issues")
 }
 
+func TestHivemind_RevertsRefinedFlag_WhenCriteriaAreInsufficient(t *testing.T) {
+	db := inmemory.NewDbContext()
+	ctx := testutil.ContextWithDb(db)
+
+	projectID := uuid.New()
+	issue := newRefinedTaskWithDescription(projectID, "It should work better.")
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	gen := &vagueScenarioGenerator{}
+	handler := events.HandleIssueRefinedForHivemind(gen)
+
+	err := handler(ctx, events.IssueRefinedPayload{
+		IssueID: issue.GetId(),
+		ActorID: uuid.New(),
+	})
+	require.NoError(t, err)
+
+	// The refined flag must have been reverted to false.
+	updated, err := db.Issues().GetByID(context.Background(), issue.GetId())
+	require.NoError(t, err)
+	require.NotNil(t, updated)
+	assert.False(t, updated.GetRefined(), "refined flag must be reverted to false when criteria are insufficient")
+
+	// An issue.unrefined outbox message must have been enqueued.
+	pending, err := db.Outbox().ListPending(context.Background())
+	require.NoError(t, err)
+
+	var found bool
+	for _, msg := range pending {
+		if msg.Type == events.EventTypeIssueUnrefined {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "expected an issue.unrefined outbox message to be enqueued")
+}
+
 func TestHivemind_PostsGapComment_WhenCriteriaAreVague(t *testing.T) {
 	db := inmemory.NewDbContext()
 	ctx := testutil.ContextWithDb(db)
