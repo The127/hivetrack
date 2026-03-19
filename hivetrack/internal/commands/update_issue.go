@@ -133,6 +133,15 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 		if issue.GetType() == models.IssueTypeEpic {
 			return nil, models.NewDomainError("refined_not_supported_for_epics", models.ErrBadRequest)
 		}
+		if !actor.IsAdmin {
+			member, err := db.Projects().GetMember(ctx, issue.GetProjectID(), actor.ID)
+			if err != nil {
+				return nil, fmt.Errorf("getting project member: %w", err)
+			}
+			if member != nil && member.Role == models.ProjectRoleViewer {
+				return nil, fmt.Errorf("actor lacks write permission to mark issue as refined: %w", models.ErrForbidden)
+			}
+		}
 		issue.SetRefined(*cmd.Refined)
 	}
 
