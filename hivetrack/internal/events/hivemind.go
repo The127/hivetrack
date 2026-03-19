@@ -46,6 +46,11 @@ func HandleIssueRefinedForHivemind(gen ScenarioGenerator) func(context.Context, 
 			if err := revertRefined(ctx, db, issue); err != nil {
 				return err
 			}
+			email := hivemindEmail
+			name := hivemindName
+			body := "Hivemind could not generate acceptance scenarios because no description or acceptance criteria were found. Please add a description with clear, testable criteria and re-refine the issue."
+			comment := models.NewComment(issue.GetId(), nil, &email, &name, body)
+			db.Comments().Insert(comment)
 			return db.SaveChanges(ctx)
 		}
 
