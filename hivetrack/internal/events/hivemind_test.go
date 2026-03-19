@@ -217,6 +217,62 @@ func TestHivemind_LeavesRefinedFlagUnchanged_WhenEpicEventReceived(t *testing.T)
 	}
 }
 
+func TestHivemind_PostsGapComment_AndRevertsRefined_WhenDescriptionIsEmpty(t *testing.T) {
+	db := inmemory.NewDbContext()
+	ctx := testutil.ContextWithDb(db)
+
+	projectID := uuid.New()
+	reporterID := uuid.New()
+	emptyDesc := ""
+	issue := models.NewIssue(
+		projectID, 1, models.IssueTypeTask, "Add login feature",
+		models.IssueStatusTodo, models.IssuePriorityNone, models.IssueEstimateNone,
+		&reporterID, true, models.IssueVisibilityNormal,
+		&emptyDesc, nil, nil, nil, nil,
+	)
+	issue.SetRefined(true)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	gen := &spyScenarioGenerator{}
+	handler := events.HandleIssueRefinedForHivemind(gen)
+
+	err := handler(ctx, events.IssueRefinedPayload{
+		IssueID: issue.GetId(),
+		ActorID: uuid.New(),
+	})
+	require.NoError(t, err)
+
+	// The refined flag must have been reverted to false.
+	updated, err := db.Issues().GetByID(context.Background(), issue.GetId())
+	require.NoError(t, err)
+	require.NotNil(t, updated)
+	assert.False(t, updated.GetRefined(), "refined flag must be reverted to false when description is empty")
+
+	// Exactly one comment must have been posted.
+	comments, total, err := db.Comments().List(context.Background(), issue.GetId(), 0, 0)
+	require.NoError(t, err)
+	require.Equal(t, 1, total, "expected exactly one gap comment to be posted by Hivemind")
+	require.Len(t, comments, 1)
+
+	comment := comments[0]
+
+	// The gap comment must NOT contain scenario keywords.
+	assert.NotContains(t, comment.GetBody(), "GIVEN")
+	assert.NotContains(t, comment.GetBody(), "WHEN")
+	assert.NotContains(t, comment.GetBody(), "THEN")
+
+	// The gap comment must explain that no description was found.
+	assert.Contains(t, comment.GetBody(), "description", "gap comment must mention missing description")
+
+	// The comment must be attributed to Hivemind.
+	assert.Nil(t, comment.GetAuthorID(), "Hivemind comment must have no internal authorID")
+	require.NotNil(t, comment.GetAuthorEmail())
+	assert.Equal(t, "hivemind@hivetrack.internal", *comment.GetAuthorEmail())
+	require.NotNil(t, comment.GetAuthorName())
+	assert.True(t, strings.EqualFold("hivemind", *comment.GetAuthorName()), "author name should identify Hivemind")
+}
+
 func TestHivemind_PostsGapComment_WhenCriteriaAreVague(t *testing.T) {
 	db := inmemory.NewDbContext()
 	ctx := testutil.ContextWithDb(db)
