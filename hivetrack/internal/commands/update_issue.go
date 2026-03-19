@@ -44,6 +44,7 @@ type UpdateIssueResult struct{}
 
 func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssueResult, error) {
 	db := repositories.GetDbContext(ctx)
+	actor, _ := authentication.GetCurrentUser(ctx)
 
 	issue, err := db.Issues().GetByID(ctx, cmd.IssueID)
 	if err != nil {
@@ -134,7 +135,6 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 
 	if cmd.Status != nil && oldStatus == models.IssueStatusTodo && *cmd.Status == models.IssueStatusInProgress {
 		if m, ok := getMediatorFromContext(ctx); ok {
-			actor, _ := authentication.GetCurrentUser(ctx)
 			if err := mediatr.SendEvent(ctx, m, events.IssueStatusChangedEvent{
 				Issue:     issue,
 				OldStatus: oldStatus,
@@ -155,7 +155,6 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	}
 
 	if cmd.Refined != nil && *cmd.Refined && !wasRefined {
-		actor, _ := authentication.GetCurrentUser(ctx)
 		payload, err := json.Marshal(events.IssueRefinedPayload{IssueID: issue.GetId(), ActorID: actor.ID})
 		if err != nil {
 			return nil, fmt.Errorf("marshaling issue.refined payload: %w", err)
