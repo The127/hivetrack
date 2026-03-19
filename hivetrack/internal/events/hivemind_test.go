@@ -24,6 +24,13 @@ func (s *stubScenarioGenerator) GenerateScenarios(_ context.Context, _ string) (
 	return s.scenarios, nil
 }
 
+// vagueScenarioGenerator simulates a generator that rejects vague criteria.
+type vagueScenarioGenerator struct{}
+
+func (v *vagueScenarioGenerator) GenerateScenarios(_ context.Context, _ string) (string, error) {
+	return "", events.ErrVagueCriteria
+}
+
 // spyScenarioGenerator records whether GenerateScenarios was called.
 type spyScenarioGenerator struct {
 	called bool
@@ -124,4 +131,45 @@ func TestHivemind_SkipsEpicIssue_WhenRefinedEventReceived(t *testing.T) {
 	_, total, err := db.Comments().List(context.Background(), issue.GetId(), 0, 0)
 	require.NoError(t, err)
 	assert.Equal(t, 0, total, "no comment must be posted for epic-type issues")
+}
+
+func TestHivemind_PostsGapComment_WhenCriteriaAreVague(t *testing.T) {
+	db := inmemory.NewDbContext()
+	ctx := testutil.ContextWithDb(db)
+
+	projectID := uuid.New()
+	issue := newRefinedTaskWithDescription(projectID, "It should work better.")
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	gen := &vagueScenarioGenerator{}
+	handler := events.HandleIssueRefinedForHivemind(gen)
+
+	err := handler(ctx, events.IssueRefinedPayload{
+		IssueID: issue.GetId(),
+		ActorID: uuid.New(),
+	})
+	require.NoError(t, err)
+
+	comments, total, err := db.Comments().List(context.Background(), issue.GetId(), 0, 0)
+	require.NoError(t, err)
+	require.Equal(t, 1, total, "expected exactly one gap comment to be posted by Hivemind")
+	require.Len(t, comments, 1)
+
+	comment := comments[0]
+
+	// The gap comment must NOT contain scenario keywords.
+	assert.NotContains(t, comment.GetBody(), "GIVEN")
+	assert.NotContains(t, comment.GetBody(), "WHEN")
+	assert.NotContains(t, comment.GetBody(), "THEN")
+
+	// The gap comment must explain why scenarios could not be generated.
+	assert.NotEmpty(t, comment.GetBody(), "gap comment body must not be empty")
+
+	// The comment must be attributed to Hivemind.
+	assert.Nil(t, comment.GetAuthorID(), "Hivemind comment must have no internal authorID")
+	require.NotNil(t, comment.GetAuthorEmail())
+	assert.Equal(t, "hivemind@hivetrack.internal", *comment.GetAuthorEmail())
+	require.NotNil(t, comment.GetAuthorName())
+	assert.True(t, strings.EqualFold("hivemind", *comment.GetAuthorName()), "author name should identify Hivemind")
 }
