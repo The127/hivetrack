@@ -26,7 +26,7 @@ func NewDomainError(code string, wrapped error) *DomainError {
 }
 
 func (e *DomainError) Error() string {
-	return fmt.Sprintf("%s: %s", e.Code, e.wrapped.Error())
+	return fmt.Sprintf("%s: %s", e.Code, e.wrapped)
 }
 
 func (e *DomainError) Unwrap() error {
