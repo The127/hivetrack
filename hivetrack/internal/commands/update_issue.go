@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -126,6 +127,7 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	if cmd.CancelReason != nil {
 		issue.SetCancelReason(cmd.CancelReason)
 	}
+	wasRefined := issue.GetRefined()
 	if cmd.Refined != nil {
 		issue.SetRefined(*cmd.Refined)
 	}
@@ -150,6 +152,17 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 
 	if err := db.SaveChanges(ctx); err != nil {
 		return nil, fmt.Errorf("saving issue: %w", err)
+	}
+
+	if cmd.Refined != nil && *cmd.Refined && !wasRefined {
+		actor, _ := authentication.GetCurrentUser(ctx)
+		payload, err := json.Marshal(events.IssueRefinedPayload{IssueID: issue.GetId(), ActorID: actor.ID})
+		if err != nil {
+			return nil, fmt.Errorf("marshaling issue.refined payload: %w", err)
+		}
+		if err := db.Outbox().Enqueue(ctx, events.EventTypeIssueRefined, payload); err != nil {
+			return nil, fmt.Errorf("enqueueing issue.refined event: %w", err)
+		}
 	}
 
 	// Record status transition for burndown tracking
