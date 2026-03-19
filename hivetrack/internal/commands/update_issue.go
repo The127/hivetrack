@@ -134,11 +134,11 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 			return nil, models.NewDomainError("refined_not_supported_for_epics", models.ErrBadRequest)
 		}
 		if !actor.IsAdmin {
-			member, err := db.Projects().GetMember(ctx, issue.GetProjectID(), actor.ID)
+			isViewer, err := actorIsViewerOnProject(ctx, db, issue.GetProjectID(), actor.ID)
 			if err != nil {
-				return nil, fmt.Errorf("getting project member: %w", err)
+				return nil, err
 			}
-			if member != nil && member.Role == models.ProjectRoleViewer {
+			if isViewer {
 				return nil, fmt.Errorf("actor lacks write permission to mark issue as refined: %w", models.ErrForbidden)
 			}
 		}
@@ -184,4 +184,12 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	}
 
 	return &UpdateIssueResult{}, nil
+}
+
+func actorIsViewerOnProject(ctx context.Context, db repositories.DbContext, projectID, actorID uuid.UUID) (bool, error) {
+	member, err := db.Projects().GetMember(ctx, projectID, actorID)
+	if err != nil {
+		return false, fmt.Errorf("getting project member: %w", err)
+	}
+	return member != nil && member.Role == models.ProjectRoleViewer, nil
 }
