@@ -22,6 +22,7 @@ type DbContext struct {
 	comments       *CommentRepository
 	outbox         *OutboxRepository
 	issueStatusLog *IssueStatusLogRepository
+	auditLog       *AuditLogRepository
 }
 
 func NewDbContext() *DbContext {
@@ -38,6 +39,7 @@ func NewDbContext() *DbContext {
 		comments:       NewCommentRepository(tracker),
 		outbox:         NewOutboxRepository(),
 		issueStatusLog: NewIssueStatusLogRepository(issueRepo),
+		auditLog:       NewAuditLogRepository(),
 	}
 }
 
@@ -75,6 +77,10 @@ func (d *DbContext) Outbox() repositories.OutboxRepository {
 
 func (d *DbContext) IssueStatusLog() repositories.IssueStatusLogRepository {
 	return d.issueStatusLog
+}
+
+func (d *DbContext) AuditLog() repositories.AuditLogRepository {
+	return d.auditLog
 }
 
 // SaveChanges applies all queued Insert/Update/Delete operations to the in-memory stores.

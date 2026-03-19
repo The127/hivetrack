@@ -44,6 +44,39 @@ func TestHandleRefineIssue_Success(t *testing.T) {
 	assert.True(t, issue.GetRefined())
 }
 
+func TestHandleRefineIssue_AuditLogRecordsActorAndTimestamp(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	reporterID := actor.GetId()
+	issue := models.NewIssue(
+		project.GetId(), 1, models.IssueTypeTask, "Some task",
+		models.IssueStatusTodo, models.IssuePriorityNone, models.IssueEstimateNone,
+		&reporterID, true, models.IssueVisibilityNormal,
+		nil, nil, nil, nil, nil,
+	)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	_, err := commands.HandleRefineIssue(ctx, commands.RefineIssueCommand{
+		IssueID: issue.GetId(),
+	})
+	require.NoError(t, err)
+
+	entries := db.AuditLog().(*inmemory.AuditLogRepository).Entries()
+	require.Len(t, entries, 1)
+	entry := entries[0]
+	assert.Equal(t, actor.GetId(), entry.ActorID)
+	assert.False(t, entry.RecordedAt.IsZero())
+	assert.Equal(t, issue.GetId(), entry.EntityID)
+	assert.Equal(t, "refined", entry.Action)
+}
+
 func TestHandleRefineIssue_NotFound(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
