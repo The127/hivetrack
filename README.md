@@ -1,21 +1,24 @@
-# Hivetrack
+<div align="center">
+  <img src="hivetrack-ui/src/assets/logo.svg" width="96" height="96" alt="Hivetrack">
+  <h1>Hivetrack</h1>
+  <p>Lean, self-hosted task planning for high-performing software teams.</p>
+  <p>
+    A Jira alternative that helps the people doing the work — not the people watching it.<br>
+    Fast, opinionated, open source.
+  </p>
+  <img src="social-preview.png" width="640" alt="Hivetrack preview">
+</div>
 
-Lean, self-hosted task planning for high-performing software development teams.
-
-A Jira alternative that helps the people doing the work — not the people watching it. Fast, opinionated, open source.
+---
 
 ## Quick start
 
 ```bash
-# 1. Start postgres
-just dev-deps
-
-# 2. Start backend + frontend
-just dev
+just dev-deps   # start postgres
+just dev        # start backend + frontend
 ```
 
-Backend: `http://localhost:8080`
-Frontend: `http://localhost:5173`
+Backend runs at `http://localhost:8080`, frontend at `http://localhost:5173`.
 
 You'll need an OIDC provider for auth. [Keyline](https://github.com/the127/keyline) is the recommended companion — see [docs/architecture.md](docs/architecture.md) for setup.
 
@@ -25,13 +28,10 @@ You'll need an OIDC provider for auth. [Keyline](https://github.com/the127/keyli
 hivetrack/       Go backend (HTTP API)
 hivetrack-ui/    Vue 3 frontend
 docs/            Architecture and design documentation
-scripts/         Git hooks and tooling scripts
 justfile         Task runner — run `just` to see all recipes
 ```
 
 ## Development
-
-All tasks are in the `justfile`. Run `just` to list them.
 
 ```bash
 just dev              # start everything locally
@@ -44,15 +44,13 @@ just install-hooks    # install git pre-push hook
 
 | Doc | Contents |
 |---|---|
-| [docs/architecture.md](docs/architecture.md) | System architecture, auth, data model, API |
+| [docs/architecture.md](docs/architecture.md) | System architecture, auth, deployment |
 | [docs/domain-model.md](docs/domain-model.md) | Full entity definitions and relationships |
 | [docs/engineering-principles.md](docs/engineering-principles.md) | TDD, patterns, coding conventions |
-| [docs/api-and-ai.md](docs/api-and-ai.md) | API-first design, webhooks, AI integration |
-| [hivetrack/CLAUDE.md](hivetrack/CLAUDE.md) | Backend recipes for adding features |
-| [hivetrack-ui/CLAUDE.md](hivetrack-ui/CLAUDE.md) | Frontend recipes for adding views |
+| [docs/api-and-ai.md](docs/api-and-ai.md) | API design, webhooks, AI integration |
 
 ## Stack
 
-**Backend:** Go 1.24, PostgreSQL, CQRS + mediator, IoC DI
-**Frontend:** Vue 3, Vite, TanStack Query, Tailwind CSS v4
-**Auth:** OIDC (Keyline / Keycloak / Authentik)
+**Backend:** Go 1.24 · PostgreSQL · CQRS + mediator · IoC DI
+**Frontend:** Vue 3 · Vite · TanStack Query · Tailwind CSS v4
+**Auth:** OIDC — Keyline, Keycloak, Authentik, or any compliant provider
