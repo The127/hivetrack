@@ -14,3 +14,12 @@ type IssueStatusChangedEvent struct {
 	NewStatus models.IssueStatus
 	ActorID   uuid.UUID
 }
+
+// EventTypeIssueRefined is the outbox message type for issue.refined events.
+const EventTypeIssueRefined = "issue.refined"
+
+// IssueRefinedPayload is the outbox payload for an issue.refined event.
+type IssueRefinedPayload struct {
+	IssueID uuid.UUID `json:"issue_id"`
+	ActorID uuid.UUID `json:"actor_id"`
+}
