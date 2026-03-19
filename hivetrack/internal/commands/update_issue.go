@@ -126,6 +126,9 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	if cmd.CancelReason != nil {
 		issue.SetCancelReason(cmd.CancelReason)
 	}
+	if cmd.Refined != nil {
+		issue.SetRefined(*cmd.Refined)
+	}
 
 	if cmd.Status != nil && oldStatus == models.IssueStatusTodo && *cmd.Status == models.IssueStatusInProgress {
 		if m, ok := getMediatorFromContext(ctx); ok {
