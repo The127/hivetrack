@@ -2,10 +2,15 @@ package events
 
 import (
 	"context"
+	"errors"
 
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
 )
+
+// ErrVagueCriteria is returned by ScenarioGenerator when the acceptance criteria
+// are too vague or non-actionable to generate meaningful scenarios.
+var ErrVagueCriteria = errors.New("acceptance criteria are too vague to generate scenarios")
 
 // ScenarioGenerator generates GIVEN/WHEN/THEN acceptance scenarios from a description.
 type ScenarioGenerator interface {
@@ -40,13 +45,19 @@ func HandleIssueRefinedForHivemind(gen ScenarioGenerator) func(context.Context, 
 		}
 
 		scenarios, err := gen.GenerateScenarios(ctx, *desc)
-		if err != nil {
+
+		var body string
+		if errors.Is(err, ErrVagueCriteria) {
+			body = "Hivemind could not generate acceptance scenarios because the criteria are too vague or non-actionable. Please add specific, testable criteria and re-refine the issue."
+		} else if err != nil {
 			return err
+		} else {
+			body = scenarios
 		}
 
 		email := hivemindEmail
 		name := hivemindName
-		comment := models.NewComment(issue.GetId(), nil, &email, &name, scenarios)
+		comment := models.NewComment(issue.GetId(), nil, &email, &name, body)
 		db.Comments().Insert(comment)
 
 		return db.SaveChanges(ctx)
