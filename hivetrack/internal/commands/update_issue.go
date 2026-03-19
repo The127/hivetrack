@@ -142,6 +142,9 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 				return nil, fmt.Errorf("actor lacks write permission to mark issue as refined: %w", models.ErrForbidden)
 			}
 		}
+		if *cmd.Refined && issue.GetRefined() {
+			return nil, models.NewDomainError("already_refined", models.ErrConflict)
+		}
 		issue.SetRefined(*cmd.Refined)
 	}
 
