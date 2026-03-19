@@ -273,6 +273,65 @@ func TestHivemind_PostsGapComment_AndRevertsRefined_WhenDescriptionIsEmpty(t *te
 	assert.True(t, strings.EqualFold("hivemind", *comment.GetAuthorName()), "author name should identify Hivemind")
 }
 
+// detailedVagueScenarioGenerator simulates a generator that rejects vague criteria
+// and returns a structured explanation of which criteria are insufficient.
+type detailedVagueScenarioGenerator struct {
+	gapExplanation string
+}
+
+func (d *detailedVagueScenarioGenerator) GenerateScenarios(_ context.Context, _ string) (string, error) {
+	return "", events.NewVagueCriteriaError(d.gapExplanation)
+}
+
+func TestHivemind_PostsGapComment_AndRevertsRefined_WhenCriteriaAreVague(t *testing.T) {
+	db := inmemory.NewDbContext()
+	ctx := testutil.ContextWithDb(db)
+
+	projectID := uuid.New()
+	issue := newRefinedTaskWithDescription(projectID, "It should work better somehow.")
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	const gapDetail = "The criterion 'work better' is ambiguous: it does not specify which metric improves, by how much, or under which conditions."
+	gen := &detailedVagueScenarioGenerator{gapExplanation: gapDetail}
+	handler := events.HandleIssueRefinedForHivemind(gen)
+
+	err := handler(ctx, events.IssueRefinedPayload{
+		IssueID: issue.GetId(),
+		ActorID: uuid.New(),
+	})
+	require.NoError(t, err)
+
+	// The refined flag must have been reverted to false.
+	updated, err := db.Issues().GetByID(context.Background(), issue.GetId())
+	require.NoError(t, err)
+	require.NotNil(t, updated)
+	assert.False(t, updated.GetRefined(), "refined flag must be reverted to false when criteria are vague")
+
+	// Exactly one comment must have been posted.
+	comments, total, err := db.Comments().List(context.Background(), issue.GetId(), 0, 0)
+	require.NoError(t, err)
+	require.Equal(t, 1, total, "expected exactly one gap comment to be posted by Hivemind")
+	require.Len(t, comments, 1)
+
+	comment := comments[0]
+
+	// The gap comment must NOT contain GIVEN/WHEN/THEN scenario keywords.
+	assert.NotContains(t, comment.GetBody(), "GIVEN")
+	assert.NotContains(t, comment.GetBody(), "WHEN")
+	assert.NotContains(t, comment.GetBody(), "THEN")
+
+	// The gap comment must include the specific explanation of which criteria are insufficient.
+	assert.Contains(t, comment.GetBody(), gapDetail, "gap comment must relay the specific explanation of insufficient criteria")
+
+	// The comment must be attributed to Hivemind.
+	assert.Nil(t, comment.GetAuthorID(), "Hivemind comment must have no internal authorID")
+	require.NotNil(t, comment.GetAuthorEmail())
+	assert.Equal(t, "hivemind@hivetrack.internal", *comment.GetAuthorEmail())
+	require.NotNil(t, comment.GetAuthorName())
+	assert.True(t, strings.EqualFold("hivemind", *comment.GetAuthorName()), "author name should identify Hivemind")
+}
+
 func TestHivemind_PostsGapComment_WhenCriteriaAreVague(t *testing.T) {
 	db := inmemory.NewDbContext()
 	ctx := testutil.ContextWithDb(db)
