@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <defs>
+    <!-- Amber aura behind bee -->
+    <radialGradient id="beeAura" cx="980" cy="305" r="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#D97706" stop-opacity="0.18"/>
+      <stop offset="60%"  stop-color="#92400E" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#1C1917" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="beeShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="16" stdDeviation="28" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- ── Background ────────────────────────────────────────────────── -->
+  <rect width="1280" height="640" fill="#1C1917"/>
+  <rect width="1280" height="640" fill="url(#beeAura)"/>
+
+  <!-- ── Decorative hex outlines ────────────────────────────────────── -->
+  <!-- Large framing hex, point-up, r=220, center (975, 312) -->
+  <path d="M975,92 L1165.5,202 L1165.5,422 L975,532 L784.5,422 L784.5,202 Z"
+        fill="none" stroke="#2E2218" stroke-width="1.5" opacity="0.85"/>
+
+  <!-- Medium hex top-right, r=75, center (1120, 112) -->
+  <path d="M1120,37 L1184.95,74.5 L1184.95,149.5 L1120,187 L1055.05,149.5 L1055.05,74.5 Z"
+        fill="none" stroke="#2A2017" stroke-width="1" opacity="0.6"/>
+
+  <!-- Small hex bottom-right, r=52, center (1090, 508) -->
+  <path d="M1090,456 L1135.03,482 L1135.03,534 L1090,560 L1044.97,534 L1044.97,482 Z"
+        fill="none" stroke="#272017" stroke-width="1" opacity="0.55"/>
+
+  <!-- Tiny hex lower-left of bee area, r=36, center (752, 492) -->
+  <path d="M752,456 L783.18,474 L783.18,510 L752,528 L720.82,510 L720.82,474 Z"
+        fill="none" stroke="#252017" stroke-width="0.75" opacity="0.45"/>
+
+  <!-- Tiny hex top-left canvas corner, r=42, center (64, 72) -->
+  <path d="M64,30 L100.37,51 L100.37,93 L64,114 L27.63,93 L27.63,51 Z"
+        fill="none" stroke="#242017" stroke-width="0.75" opacity="0.4"/>
+
+  <!-- Small hex cluster, bottom-right corner -->
+  <path d="M1205,510 L1227.5,523 L1227.5,549 L1205,562 L1182.5,549 L1182.5,523 Z"
+        fill="none" stroke="#252017" stroke-width="0.75" opacity="0.3"/>
+  <path d="M1250,510 L1272.5,523 L1272.5,549 L1250,562 L1227.5,549 L1227.5,523 Z"
+        fill="none" stroke="#252017" stroke-width="0.75" opacity="0.3"/>
+  <path d="M1227,548 L1249.5,561 L1249.5,587 L1227,600 L1204.5,587 L1204.5,561 Z"
+        fill="none" stroke="#252017" stroke-width="0.75" opacity="0.3"/>
+
+  <!-- ── Left text content ──────────────────────────────────────────── -->
+
+  <!-- "hivetrack" wordmark -->
+  <text x="88" y="272"
+        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="118" font-weight="700" letter-spacing="-4"
+        fill="#F59E0B">hivetrack</text>
+
+  <!-- Amber accent line -->
+  <rect x="92" y="292" width="72" height="4" rx="2" fill="#F59E0B" opacity="0.5"/>
+
+  <!-- Tagline -->
+  <text x="92" y="352"
+        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="34" font-weight="300" letter-spacing="0.3"
+        fill="#D6D3D1">Lean task planning for</text>
+  <text x="92" y="398"
+        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="34" font-weight="300" letter-spacing="0.3"
+        fill="#D6D3D1">high-performing teams.</text>
+
+  <!-- Attributes -->
+  <text x="92" y="458"
+        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="20" font-weight="400" letter-spacing="0.4"
+        fill="#78716C">Open source  ·  Self-hosted  ·  Jira alternative</text>
+
+  <!-- GitHub URL -->
+  <text x="92" y="578"
+        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="18" font-weight="400"
+        fill="#57534E">github.com/The127/hivetrack</text>
+
+  <!-- ── Bee logo-mark ────────────────────────────────────────────── -->
+  <!-- Scale 2.9, centered at (975, 307) -->
+  <!-- translate_x = 975 - 60*2.9 = 975 - 174 = 801 -->
+  <!-- translate_y = 307 - 60*2.9 = 307 - 174 = 133 -->
+  <g transform="translate(801, 133) scale(2.9)" filter="url(#beeShadow)">
+    <!-- Hexagonal bee body -->
+    <path d="M60 10 L103.3 35 L103.3 85 L60 110 L16.7 85 L16.7 35 Z" fill="#F59E0B"/>
+    <!-- Stripes -->
+    <path d="M26.5 55 L93.5 55 L97.8 62 L22.2 62 Z" fill="#292524" opacity="0.2"/>
+    <path d="M22.2 70 L97.8 70 L93.5 77 L26.5 77 Z" fill="#292524" opacity="0.2"/>
+    <!-- Wings -->
+    <ellipse cx="30" cy="24" rx="16" ry="10" transform="rotate(-20 30 24)" fill="#FBBF24" opacity="0.7"/>
+    <ellipse cx="90" cy="24" rx="16" ry="10" transform="rotate(20 90 24)" fill="#FBBF24" opacity="0.7"/>
+    <!-- Eyes -->
+    <circle cx="45" cy="48" r="5" fill="#292524" opacity="0.85"/>
+    <circle cx="75" cy="48" r="5" fill="#292524" opacity="0.85"/>
+    <!-- Eye shine -->
+    <circle cx="47" cy="46" r="1.8" fill="white" opacity="0.95"/>
+    <circle cx="77" cy="46" r="1.8" fill="white" opacity="0.95"/>
+    <!-- Smile -->
+    <path d="M50 58 Q60 66 70 58" stroke="#292524" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.75"/>
+    <!-- Antennae -->
+    <line x1="48" y1="12" x2="40" y2="2" stroke="#D97706" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+    <line x1="72" y1="12" x2="80" y2="2" stroke="#D97706" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+    <circle cx="39" cy="1" r="2.5" fill="#D97706" opacity="0.9"/>
+    <circle cx="81" cy="1" r="2.5" fill="#D97706" opacity="0.9"/>
+  </g>
+</svg>
