@@ -130,6 +130,9 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	}
 	wasRefined := issue.GetRefined()
 	if cmd.Refined != nil {
+		if issue.GetType() == models.IssueTypeEpic {
+			return nil, models.NewDomainError("refined_not_supported_for_epics", models.ErrBadRequest)
+		}
 		issue.SetRefined(*cmd.Refined)
 	}
 
