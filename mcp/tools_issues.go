@@ -99,6 +99,33 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("sprint_id", mcp.Description("Sprint ID (UUID)")),
 		mcp.WithString("milestone_id", mcp.Description("Milestone ID (UUID)")),
 	), makeTriageIssue(client))
+
+	s.AddTool(mcp.NewTool("delete_issue",
+		mcp.WithDescription("Delete an issue permanently"),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
+		mcp.WithNumber("number", mcp.Required(), mcp.Description("Issue number")),
+	), makeDeleteIssue(client))
+
+	s.AddTool(mcp.NewTool("refine_issue",
+		mcp.WithDescription("Mark an issue as refined (ready for development)"),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
+		mcp.WithNumber("number", mcp.Required(), mcp.Description("Issue number")),
+	), makeRefineIssue(client))
+
+	s.AddTool(mcp.NewTool("split_issue",
+		mcp.WithDescription("Split an issue into multiple smaller issues"),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
+		mcp.WithNumber("number", mcp.Required(), mcp.Description("Issue number")),
+		mcp.WithString("titles", mcp.Required(), mcp.Description("Comma-separated titles for the new issues")),
+	), makeSplitIssue(client))
+
+	s.AddTool(mcp.NewTool("add_issue_link",
+		mcp.WithDescription("Add a link between two issues"),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
+		mcp.WithNumber("number", mcp.Required(), mcp.Description("Source issue number")),
+		mcp.WithString("link_type", mcp.Required(), mcp.Description("Link type: blocks, is_blocked_by, duplicates, relates_to")),
+		mcp.WithNumber("target_number", mcp.Required(), mcp.Description("Target issue number")),
+	), makeAddIssueLink(client))
 }
 
 func makeListIssues(client *Client) server.ToolHandlerFunc {
@@ -397,6 +424,90 @@ func makeUpdateChecklistItem(client *Client) server.ToolHandlerFunc {
 			}
 		}
 		return textResult(fmt.Sprintf("Updated checklist item on #%d: %s", number, strings.Join(changes, ", "))), nil
+	}
+}
+
+func makeDeleteIssue(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		slug, _ := args["slug"].(string)
+		number := intArg(args, "number")
+		if slug == "" || number == 0 {
+			return errResult(errMissing("slug, number")), nil
+		}
+
+		_, err := client.delete(fmt.Sprintf("/api/v1/projects/%s/issues/%d", slug, number))
+		if err != nil {
+			return errResult(err), nil
+		}
+		return textResult(fmt.Sprintf("Issue #%d deleted", number)), nil
+	}
+}
+
+func makeRefineIssue(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		slug, _ := args["slug"].(string)
+		number := intArg(args, "number")
+		if slug == "" || number == 0 {
+			return errResult(errMissing("slug, number")), nil
+		}
+
+		_, err := client.post(fmt.Sprintf("/api/v1/projects/%s/issues/%d/refine", slug, number), nil)
+		if err != nil {
+			return errResult(err), nil
+		}
+		return textResult(fmt.Sprintf("Issue #%d marked as refined", number)), nil
+	}
+}
+
+func makeSplitIssue(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		slug, _ := args["slug"].(string)
+		number := intArg(args, "number")
+		titlesStr, _ := args["titles"].(string)
+		if slug == "" || number == 0 || titlesStr == "" {
+			return errResult(errMissing("slug, number, titles")), nil
+		}
+
+		var titles []string
+		for _, t := range strings.Split(titlesStr, ",") {
+			t = strings.TrimSpace(t)
+			if t != "" {
+				titles = append(titles, t)
+			}
+		}
+
+		data, err := client.post(fmt.Sprintf("/api/v1/projects/%s/issues/%d/split", slug, number), map[string]any{
+			"titles": titles,
+		})
+		if err != nil {
+			return errResult(err), nil
+		}
+		return textResult(formatSplitIssue(data)), nil
+	}
+}
+
+func makeAddIssueLink(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		slug, _ := args["slug"].(string)
+		number := intArg(args, "number")
+		linkType, _ := args["link_type"].(string)
+		targetNumber := intArg(args, "target_number")
+		if slug == "" || number == 0 || linkType == "" || targetNumber == 0 {
+			return errResult(errMissing("slug, number, link_type, target_number")), nil
+		}
+
+		_, err := client.post(fmt.Sprintf("/api/v1/projects/%s/issues/%d/links", slug, number), map[string]any{
+			"link_type":     linkType,
+			"target_number": targetNumber,
+		})
+		if err != nil {
+			return errResult(err), nil
+		}
+		return textResult(fmt.Sprintf("Added link %s from #%d to #%d", linkType, number, targetNumber)), nil
 	}
 }
 

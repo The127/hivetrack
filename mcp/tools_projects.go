@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -66,6 +67,21 @@ func registerProjectTools(s *server.MCPServer, client *Client) {
 			mcp.Description("User ID (UUID) to remove"),
 		),
 	), makeRemoveProjectMember(client))
+
+	s.AddTool(mcp.NewTool("update_project",
+		mcp.WithDescription("Update project settings. Only provide fields you want to change."),
+		mcp.WithString("project_id", mcp.Required(), mcp.Description("Project ID (UUID)")),
+		mcp.WithString("name", mcp.Description("New project name")),
+		mcp.WithString("description", mcp.Description("New project description")),
+		mcp.WithBoolean("archived", mcp.Description("Archive or unarchive the project")),
+		mcp.WithNumber("wip_limit_in_progress", mcp.Description("WIP limit for in_progress column (-1 to clear)")),
+		mcp.WithNumber("wip_limit_in_review", mcp.Description("WIP limit for in_review column (-1 to clear)")),
+	), makeUpdateProject(client))
+
+	s.AddTool(mcp.NewTool("delete_project",
+		mcp.WithDescription("Delete a project permanently"),
+		mcp.WithString("project_id", mcp.Required(), mcp.Description("Project ID (UUID)")),
+	), makeDeleteProject(client))
 }
 
 func makeListProjects(client *Client) server.ToolHandlerFunc {
@@ -140,6 +156,58 @@ func makeRemoveProjectMember(client *Client) server.ToolHandlerFunc {
 			return errResult(err), nil
 		}
 		return jsonResult(data), nil
+	}
+}
+
+func makeUpdateProject(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		projectID, _ := args["project_id"].(string)
+		if projectID == "" {
+			return errResult(errMissing("project_id")), nil
+		}
+
+		body := map[string]any{}
+		setOptionalString(body, args, "name")
+		setOptionalString(body, args, "description")
+		if v, ok := args["archived"].(bool); ok {
+			body["archived"] = v
+		}
+		for _, key := range []string{"wip_limit_in_progress", "wip_limit_in_review"} {
+			if v, ok := args[key].(float64); ok {
+				if v == -1 {
+					body[key] = nil
+				} else {
+					body[key] = int(v)
+				}
+			}
+		}
+
+		if len(body) == 0 {
+			return errResult(fmt.Errorf("no fields to update")), nil
+		}
+
+		_, err := client.patch("/api/v1/projects/"+projectID, body)
+		if err != nil {
+			return errResult(err), nil
+		}
+		return textResult(fmt.Sprintf("Project %s updated", projectID)), nil
+	}
+}
+
+func makeDeleteProject(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		projectID, _ := args["project_id"].(string)
+		if projectID == "" {
+			return errResult(errMissing("project_id")), nil
+		}
+
+		_, err := client.delete("/api/v1/projects/" + projectID)
+		if err != nil {
+			return errResult(err), nil
+		}
+		return textResult(fmt.Sprintf("Project %s deleted", projectID)), nil
 	}
 }
 

@@ -33,6 +33,18 @@ func registerSprintTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("end_date", mcp.Description("New end date (RFC3339)")),
 		mcp.WithString("status", mcp.Description("New status: planning, active, completed")),
 	), makeUpdateSprint(client))
+
+	s.AddTool(mcp.NewTool("delete_sprint",
+		mcp.WithDescription("Delete a sprint permanently"),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
+		mcp.WithString("sprint_id", mcp.Required(), mcp.Description("Sprint ID (UUID)")),
+	), makeDeleteSprint(client))
+
+	s.AddTool(mcp.NewTool("get_sprint_burndown",
+		mcp.WithDescription("Get the burndown chart data for a sprint"),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
+		mcp.WithString("sprint_id", mcp.Required(), mcp.Description("Sprint ID (UUID)")),
+	), makeGetSprintBurndown(client))
 }
 
 func makeListSprints(client *Client) server.ToolHandlerFunc {
@@ -71,6 +83,40 @@ func makeCreateSprint(client *Client) server.ToolHandlerFunc {
 			return errResult(err), nil
 		}
 		return textResult(formatCreateSprint(data, name)), nil
+	}
+}
+
+func makeDeleteSprint(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		slug, _ := args["slug"].(string)
+		sprintID, _ := args["sprint_id"].(string)
+		if slug == "" || sprintID == "" {
+			return errResult(errMissing("slug, sprint_id")), nil
+		}
+
+		_, err := client.delete(fmt.Sprintf("/api/v1/projects/%s/sprints/%s", slug, sprintID))
+		if err != nil {
+			return errResult(err), nil
+		}
+		return textResult(fmt.Sprintf("Sprint %s deleted", sprintID)), nil
+	}
+}
+
+func makeGetSprintBurndown(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		slug, _ := args["slug"].(string)
+		sprintID, _ := args["sprint_id"].(string)
+		if slug == "" || sprintID == "" {
+			return errResult(errMissing("slug, sprint_id")), nil
+		}
+
+		data, err := client.get(fmt.Sprintf("/api/v1/projects/%s/sprints/%s/burndown", slug, sprintID), nil)
+		if err != nil {
+			return errResult(err), nil
+		}
+		return textResult(formatSprintBurndown(data)), nil
 	}
 }
 

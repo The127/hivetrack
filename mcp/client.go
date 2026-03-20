@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,43 +10,25 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"sync"
 	"time"
 )
 
 // Client is a thin HTTP client for the Hivetrack REST API.
 type Client struct {
-	baseURL     string
-	mu          sync.RWMutex
-	token       string
-	authURL     string
-	httpClient  *http.Client
+	baseURL    string
+	provider    TokenProvider
+	httpClient *http.Client
 }
 
 // NewClient creates a new Hivetrack API client.
-func NewClient(baseURL, token string) *Client {
+func NewClient(baseURL string, provider TokenProvider) *Client {
 	return &Client{
-		baseURL: strings.TrimRight(baseURL, "/"),
-		token:   token,
+		baseURL:  strings.TrimRight(baseURL, "/"),
+		provider: provider,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
 	}
-}
-
-// SetToken updates the bearer token used for API requests.
-func (c *Client) SetToken(token string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.token = token
-	c.authURL = ""
-}
-
-// SetAuthURL stores the device flow verification URL shown when unauthenticated.
-func (c *Client) SetAuthURL(u string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.authURL = u
 }
 
 func (c *Client) get(path string, query url.Values) (json.RawMessage, error) {
@@ -65,17 +48,9 @@ func (c *Client) delete(path string) (json.RawMessage, error) {
 }
 
 func (c *Client) do(method, path string, query url.Values, body any) (json.RawMessage, error) {
-	c.mu.RLock()
-	token := c.token
-	c.mu.RUnlock()
-	if token == "" {
-		c.mu.RLock()
-		authURL := c.authURL
-		c.mu.RUnlock()
-		if authURL != "" {
-			return nil, fmt.Errorf("not authenticated: open %s to authenticate with Hivetrack, then retry", authURL)
-		}
-		return nil, fmt.Errorf("not authenticated: please complete the device authorization flow and retry")
+	tc, err := c.provider.ProvideToken(context.Background())
+	if err != nil {
+		return nil, err
 	}
 
 	u := c.baseURL + path
@@ -96,7 +71,7 @@ func (c *Client) do(method, path string, query url.Values, body any) (json.RawMe
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Authorization", "Bearer "+tc.AccessToken)
 	req.Header.Set("Content-Type", "application/json")
 
 	fmt.Fprintf(os.Stderr, "[mcp] %s %s\n", method, u)

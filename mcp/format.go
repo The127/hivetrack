@@ -343,6 +343,66 @@ func formatListMilestones(data json.RawMessage) string {
 	return sb.String()
 }
 
+// formatCurrentUser formats a get_current_user response.
+func formatCurrentUser(data json.RawMessage) string {
+	var user struct {
+		ID      string `json:"id"`
+		Email   string `json:"email"`
+		IsAdmin bool   `json:"is_admin"`
+	}
+	if err := json.Unmarshal(data, &user); err != nil {
+		return string(data)
+	}
+	adminStr := ""
+	if user.IsAdmin {
+		adminStr = " [admin]"
+	}
+	return fmt.Sprintf("%s (%s)%s", user.Email, user.ID, adminStr)
+}
+
+// formatSplitIssue formats a split_issue response.
+func formatSplitIssue(data json.RawMessage) string {
+	var resp struct {
+		NewIssues []struct {
+			ID     string `json:"id"`
+			Number int    `json:"number"`
+		} `json:"new_issues"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return string(data)
+	}
+	nums := make([]string, 0, len(resp.NewIssues))
+	for _, issue := range resp.NewIssues {
+		nums = append(nums, fmt.Sprintf("#%d", issue.Number))
+	}
+	return fmt.Sprintf("Split into %d issues: %s", len(resp.NewIssues), strings.Join(nums, ", "))
+}
+
+// formatSprintBurndown formats a get_sprint_burndown response as a table.
+func formatSprintBurndown(data json.RawMessage) string {
+	var resp struct {
+		Total          int `json:"total"`
+		StartRemaining int `json:"start_remaining"`
+		EndRemaining   int `json:"end_remaining"`
+		Points         []struct {
+			Date      string `json:"date"`
+			Remaining int    `json:"remaining"`
+		} `json:"points"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return string(data)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Total: %d | Start: %d | End: %d\n\n", resp.Total, resp.StartRemaining, resp.EndRemaining))
+	sb.WriteString("Date        | Remaining\n")
+	sb.WriteString("------------|----------\n")
+	for _, p := range resp.Points {
+		sb.WriteString(fmt.Sprintf("%-12s| %d\n", p.Date, p.Remaining))
+	}
+	return sb.String()
+}
+
 // formatGetIssue formats a get_issue response with full details.
 func formatGetIssue(data json.RawMessage) string {
 	var issue struct {
