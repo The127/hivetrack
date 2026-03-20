@@ -33,6 +33,10 @@ import Modal from "@/components/ui/Modal.vue";
 import { fetchIssue, updateIssue } from "@/api/issues";
 import { fetchProject } from "@/api/projects";
 import { fetchSprints } from "@/api/sprints";
+import { useTheme } from "@/composables/useTheme";
+
+const { isDark } = useTheme();
+const editorTheme = computed(() => (isDark.value ? "dark" : "light"));
 
 const route = useRoute();
 const queryClient = useQueryClient();
@@ -287,22 +291,22 @@ const { mutate: updateMilestone } = useMutation({
     <div class="flex flex-col h-full">
       <!-- Header -->
       <div
-        class="flex-shrink-0 flex items-center gap-3 px-6 py-3 border-b border-slate-200 bg-white"
+        class="flex-shrink-0 flex items-center gap-3 px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
       >
         <RouterLink
           :to="`/projects/${slug}/backlog`"
-          class="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+          class="inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
         >
           <ArrowLeftIcon class="size-4" />
           Back
         </RouterLink>
         <div v-if="project" class="flex items-center gap-2 text-slate-400">
           <span
-            class="size-6 rounded flex items-center justify-center text-[10px] font-semibold bg-slate-100 text-slate-600"
+            class="size-6 rounded flex items-center justify-center text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
           >
             {{ project.slug.slice(0, 2).toUpperCase() }}
           </span>
-          <span class="text-sm font-medium text-slate-600">{{
+          <span class="text-sm font-medium text-slate-600 dark:text-slate-400">{{
             project.name
           }}</span>
         </div>
@@ -330,7 +334,7 @@ const { mutate: updateMilestone } = useMutation({
           <!-- Issue header -->
           <div class="space-y-3">
             <div class="flex items-center gap-2">
-              <span class="text-xs font-mono text-slate-400"
+              <span class="text-xs font-mono text-slate-400 dark:text-slate-500"
                 >{{ slug.toUpperCase() }}-{{ issue.number }}</span
               >
               <Badge v-if="issue.type === 'epic'" color-scheme="violet" compact>
@@ -341,7 +345,7 @@ const { mutate: updateMilestone } = useMutation({
             </div>
             <h1
               v-if="!editingTitle"
-              class="text-2xl font-semibold text-slate-900 cursor-pointer hover:text-slate-700 group"
+              class="text-2xl font-semibold text-slate-900 dark:text-slate-100 cursor-pointer hover:text-slate-700 dark:hover:text-slate-300 group"
               @click="startEditingTitle"
             >
               {{ issue.title }}
@@ -350,7 +354,7 @@ const { mutate: updateMilestone } = useMutation({
               v-else
               ref="titleInputEl"
               v-model="titleDraft"
-              class="text-2xl font-semibold text-slate-900 w-full border-b-2 border-blue-500 focus:outline-none bg-transparent"
+              class="text-2xl font-semibold text-slate-900 dark:text-slate-100 w-full border-b-2 border-blue-500 focus:outline-none bg-transparent"
               @keydown.enter="saveTitle"
               @keydown.escape="cancelEditingTitle"
               @blur="saveTitle"
@@ -361,7 +365,7 @@ const { mutate: updateMilestone } = useMutation({
           <div class="grid grid-cols-2 gap-x-8 gap-y-4">
             <!-- Status -->
             <div class="space-y-1">
-              <span class="text-xs font-medium text-slate-500">Status</span>
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Status</span>
               <div class="pt-1">
                 <StatusSelect
                   :status="issue.status"
@@ -373,7 +377,7 @@ const { mutate: updateMilestone } = useMutation({
 
             <!-- Priority -->
             <div class="space-y-1">
-              <span class="text-xs font-medium text-slate-500">Priority</span>
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Priority</span>
               <div class="pt-1">
                 <PrioritySelect
                   :priority="issue.priority ?? 'none'"
@@ -384,15 +388,15 @@ const { mutate: updateMilestone } = useMutation({
 
             <!-- Estimate -->
             <div class="space-y-1">
-              <span class="text-xs font-medium text-slate-500">Estimate</span>
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Estimate</span>
               <div>
                 <span
                   v-if="ESTIMATE_LABEL[issue.estimate]"
-                  class="text-sm font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded"
+                  class="text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded"
                 >
                   {{ ESTIMATE_LABEL[issue.estimate] }}
                 </span>
-                <span v-else class="text-sm text-slate-400">None</span>
+                <span v-else class="text-sm text-slate-400 dark:text-slate-500">None</span>
               </div>
             </div>
 
@@ -431,7 +435,7 @@ const { mutate: updateMilestone } = useMutation({
 
             <!-- Sprint -->
             <div class="space-y-1">
-              <span class="text-xs font-medium text-slate-500 flex items-center gap-1">
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
                 <ZapIcon class="size-3" />
                 Sprint
               </span>
@@ -443,7 +447,7 @@ const { mutate: updateMilestone } = useMutation({
                 >
                   {{ currentSprint.name }}
                 </RouterLink>
-                <span v-else class="text-sm text-slate-400">Backlog</span>
+                <span v-else class="text-sm text-slate-400 dark:text-slate-500">Backlog</span>
               </div>
             </div>
 
@@ -471,14 +475,14 @@ const { mutate: updateMilestone } = useMutation({
 
             <!-- On hold -->
             <div v-if="issue.on_hold" class="space-y-1">
-              <span class="text-xs font-medium text-slate-500">On Hold</span>
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">On Hold</span>
               <div class="flex items-center gap-2">
                 <Badge color-scheme="amber" compact>{{
                   issue.hold_reason ?? "on hold"
                 }}</Badge>
                 <span
                   v-if="issue.hold_note"
-                  class="text-xs text-slate-500 italic"
+                  class="text-xs text-slate-500 dark:text-slate-400 italic"
                   >{{ issue.hold_note }}</span
                 >
               </div>
@@ -486,14 +490,14 @@ const { mutate: updateMilestone } = useMutation({
 
             <!-- Cancel reason -->
             <div v-if="issue.status === 'cancelled' && issue.cancel_reason" class="space-y-1 col-span-2">
-              <span class="text-xs font-medium text-slate-500">Cancelled because</span>
-              <p class="text-sm text-slate-500 italic">{{ issue.cancel_reason }}</p>
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Cancelled because</span>
+              <p class="text-sm text-slate-500 dark:text-slate-400 italic">{{ issue.cancel_reason }}</p>
             </div>
           </div>
 
           <!-- Description -->
           <div class="space-y-2">
-            <h2 class="text-sm font-medium text-slate-700">Description</h2>
+            <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300">Description</h2>
             <MarkdownEditor
               v-if="editingDescription"
               ref="descriptionInputEl"
@@ -503,11 +507,11 @@ const { mutate: updateMilestone } = useMutation({
               @cancel="cancelEditingDescription"
             />
             <div v-else-if="issue.description" @click="startEditingDescription" class="cursor-pointer">
-              <MdPreview :id="previewId" :model-value="issue.description" language="en-US" />
+              <MdPreview :id="previewId" :model-value="issue.description" language="en-US" :theme="editorTheme" />
             </div>
             <button
               v-else
-              class="text-sm text-slate-400 hover:text-slate-600 italic"
+              class="text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400 italic"
               @click="startEditingDescription"
             >
               Add a description…
@@ -520,12 +524,12 @@ const { mutate: updateMilestone } = useMutation({
                 Save
               </button>
               <button
-                class="text-xs text-slate-500 hover:text-slate-700 px-2 py-1"
+                class="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-2 py-1"
                 @click="cancelEditingDescription"
               >
                 Cancel
               </button>
-              <span class="text-xs text-slate-400 ml-1">Ctrl+Enter to save · Esc to cancel</span>
+              <span class="text-xs text-slate-400 dark:text-slate-500 ml-1">Ctrl+Enter to save · Esc to cancel</span>
             </div>
           </div>
 
@@ -545,7 +549,7 @@ const { mutate: updateMilestone } = useMutation({
             v-if="issue.type === 'task' && issue.checklist?.length"
             class="space-y-2"
           >
-            <h2 class="text-sm font-medium text-slate-700">Checklist</h2>
+            <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300">Checklist</h2>
             <div class="space-y-1">
               <div
                 v-for="item in issue.checklist"
@@ -561,7 +565,7 @@ const { mutate: updateMilestone } = useMutation({
                 <span
                   class="text-sm"
                   :class="
-                    item.done ? 'text-slate-400 line-through' : 'text-slate-700'
+                    item.done ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-700 dark:text-slate-300'
                   "
                   >{{ item.text }}</span
                 >
@@ -571,7 +575,7 @@ const { mutate: updateMilestone } = useMutation({
 
           <!-- Links -->
           <div v-if="issue.links?.length" class="space-y-2">
-            <h2 class="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+            <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
               <LinkIcon class="size-3.5" />
               Linked issues
             </h2>
@@ -581,7 +585,7 @@ const { mutate: updateMilestone } = useMutation({
                 :key="link.id"
                 class="flex items-center gap-2 text-sm"
               >
-                <span class="text-xs text-slate-400 capitalize min-w-[5rem]">
+                <span class="text-xs text-slate-400 dark:text-slate-500 capitalize min-w-[5rem]">
                   {{ link.link_type.replace(/_/g, ' ') }}
                 </span>
                 <RouterLink
@@ -595,7 +599,7 @@ const { mutate: updateMilestone } = useMutation({
           </div>
 
           <!-- Dates -->
-          <div class="flex items-center gap-4 text-xs text-slate-400">
+          <div class="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500">
             <span>Created <RelativeTime :datetime="issue.created_at" /></span>
             <span v-if="issue.updated_at !== issue.created_at">
               · Updated <RelativeTime :datetime="issue.updated_at" />
@@ -609,7 +613,7 @@ const { mutate: updateMilestone } = useMutation({
 
       <!-- Not found -->
       <div v-else class="flex-1 flex items-center justify-center">
-        <p class="text-sm text-slate-400">Issue not found.</p>
+        <p class="text-sm text-slate-400 dark:text-slate-500">Issue not found.</p>
       </div>
     </div>
 
@@ -631,15 +635,15 @@ const { mutate: updateMilestone } = useMutation({
       @close="showCancelConfirm = false"
     >
       <div class="flex flex-col gap-1.5">
-        <label class="text-sm font-medium text-slate-700" for="cancel-reason">
-          Reason <span class="font-normal text-slate-400">(optional)</span>
+        <label class="text-sm font-medium text-slate-700 dark:text-slate-300" for="cancel-reason">
+          Reason <span class="font-normal text-slate-400 dark:text-slate-500">(optional)</span>
         </label>
         <textarea
           id="cancel-reason"
           v-model="cancelReasonDraft"
           rows="2"
           placeholder="Why is this being cancelled?"
-          class="w-full rounded-md border border-slate-200 px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          class="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         />
       </div>
       <template #footer>

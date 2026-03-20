@@ -102,11 +102,11 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
   <div ref="root" class="flex items-center flex-shrink-0">
     <button
       ref="triggerBtn"
-      class="flex items-center gap-1 cursor-pointer rounded px-2 py-1.5 -mx-2 -my-1.5 hover:bg-slate-100 transition-colors"
+      class="flex items-center gap-1 cursor-pointer rounded px-2 py-1.5 -mx-2 -my-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
       @click="toggle"
     >
       <component :is="meta.icon" class="size-3.5" :class="iconColor" />
-      <span class="text-xs text-slate-500 w-20">{{ meta.label }}</span>
+      <span class="text-xs text-slate-500 dark:text-slate-400 w-20">{{ meta.label }}</span>
     </button>
 
     <Teleport to="body">
@@ -120,13 +120,13 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
           v-if="open"
           ref="dropdownEl"
           :style="dropdownStyle"
-          class="bg-white border border-slate-200 rounded-md shadow-md py-1 min-w-36"
+          class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-md py-1 min-w-36"
         >
           <button
             v-for="p in options"
             :key="p.key"
             class="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left cursor-pointer transition-colors"
-            :class="p.key === priority ? 'bg-slate-50 font-medium text-slate-900' : 'text-slate-700 hover:bg-slate-50'"
+            :class="p.key === priority ? 'bg-slate-50 dark:bg-slate-700 font-medium text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'"
             @click="select(p.key, $event)"
           >
             <component :is="p.icon" class="size-3.5" :class="ICON_COLORS[p.scheme]" />

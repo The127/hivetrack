@@ -45,13 +45,14 @@ defineEmits([
 <template>
   <div class="flex flex-col items-center justify-center gap-3 py-16 text-center">
     <!-- Icon slot — pass a Lucide icon or similar -->
-    <div v-if="$slots.icon" class="text-slate-300">
+    <div v-if="$slots.icon" class="text-slate-300 dark:text-slate-600">
       <slot name="icon" />
     </div>
     <div class="space-y-1">
-      <p class="text-sm font-medium text-slate-700">{{ title }}</p>
-      <p v-if="description" class="text-sm text-slate-500 max-w-xs">{{ description }}</p>
+      <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ title }}</p>
+      <p v-if="description" class="text-sm text-slate-500 dark:text-slate-400 max-w-xs">{{ description }}</p>
     </div>
+    <slot />
     <button
       v-if="actionLabel"
       class="mt-1 inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3.5 h-8 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"

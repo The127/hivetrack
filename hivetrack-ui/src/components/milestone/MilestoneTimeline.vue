@@ -196,9 +196,9 @@ function isOverdue(m) {
 }
 
 function markerColorClass(m) {
-  if (m.closed_at) return 'bg-emerald-100 border-emerald-400 text-emerald-700'
-  if (isOverdue(m)) return 'bg-red-100 border-red-400 text-red-700'
-  return 'bg-blue-100 border-blue-400 text-blue-700'
+  if (m.closed_at) return 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-400 text-emerald-700 dark:text-emerald-400'
+  if (isOverdue(m)) return 'bg-red-100 dark:bg-red-900/40 border-red-400 text-red-700 dark:text-red-400'
+  return 'bg-blue-100 dark:bg-blue-900/40 border-blue-400 text-blue-700 dark:text-blue-400'
 }
 </script>
 
@@ -210,26 +210,26 @@ function markerColorClass(m) {
 
   <template v-else>
     <!-- Timeline -->
-    <div class="flex border border-slate-200 rounded-lg overflow-hidden">
+    <div class="flex border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
 
       <!-- Left: milestone labels (fixed) -->
-      <div class="flex-shrink-0 w-44 border-r border-slate-200 bg-white">
+      <div class="flex-shrink-0 w-44 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
         <!-- Header spacer -->
         <div
           :style="{ height: HEADER_HEIGHT + 'px' }"
-          class="border-b border-slate-200 bg-slate-50"
+          class="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
         />
         <!-- Rows -->
         <div
           v-for="m in scheduledMilestones"
           :key="m.id"
           :style="{ height: ROW_HEIGHT + 'px' }"
-          class="flex items-center px-3 border-b border-slate-100 last:border-b-0"
+          class="flex items-center px-3 border-b border-slate-100 dark:border-slate-800 last:border-b-0"
         >
           <div class="min-w-0">
             <p
               class="text-xs font-medium truncate"
-              :class="m.closed_at ? 'text-slate-400 line-through' : 'text-slate-700'"
+              :class="m.closed_at ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-700 dark:text-slate-300'"
             >{{ m.title }}</p>
             <p v-if="isOverdue(m)" class="text-xs text-red-500 mt-0.5">overdue</p>
             <p v-else-if="m.closed_at" class="text-xs text-emerald-500 mt-0.5">closed</p>
@@ -253,7 +253,7 @@ function markerColorClass(m) {
               v-for="header in monthHeaders"
               :key="header.label"
               :style="{ left: header.left + 'px' }"
-              class="absolute inset-y-0 flex items-center pl-2 text-xs text-slate-500 border-l border-slate-200"
+              class="absolute inset-y-0 flex items-center pl-2 text-xs text-slate-500 dark:text-slate-400 border-l border-slate-200 dark:border-slate-700"
             >
               {{ header.label }}
             </div>
@@ -271,14 +271,14 @@ function markerColorClass(m) {
             v-for="m in scheduledMilestones"
             :key="m.id"
             :style="{ height: ROW_HEIGHT + 'px' }"
-            class="relative border-b border-slate-100 last:border-b-0"
+            class="relative border-b border-slate-100 dark:border-slate-800 last:border-b-0"
           >
             <!-- Month separator lines -->
             <div
               v-for="header in monthHeaders"
               :key="header.label"
               :style="{ left: header.left + 'px' }"
-              class="absolute inset-y-0 w-px bg-slate-100"
+              class="absolute inset-y-0 w-px bg-slate-100 dark:bg-slate-800"
             />
 
             <!-- Horizontal guide line -->
@@ -319,15 +319,15 @@ function markerColorClass(m) {
     <!-- Progress legend -->
     <div class="mt-3 flex items-center gap-4 text-xs text-slate-400">
       <div class="flex items-center gap-1.5">
-        <div class="w-3 h-3 rotate-45 border-2 border-blue-400 bg-blue-100" />
+        <div class="w-3 h-3 rotate-45 border-2 border-blue-400 bg-blue-100 dark:bg-blue-900/40" />
         open
       </div>
       <div class="flex items-center gap-1.5">
-        <div class="w-3 h-3 rotate-45 border-2 border-red-400 bg-red-100" />
+        <div class="w-3 h-3 rotate-45 border-2 border-red-400 bg-red-100 dark:bg-red-900/40" />
         overdue
       </div>
       <div class="flex items-center gap-1.5">
-        <div class="w-3 h-3 rotate-45 border-2 border-emerald-400 bg-emerald-100" />
+        <div class="w-3 h-3 rotate-45 border-2 border-emerald-400 bg-emerald-100 dark:bg-emerald-900/40" />
         closed
       </div>
     </div>
@@ -335,12 +335,12 @@ function markerColorClass(m) {
 
   <!-- Unscheduled milestones -->
   <div v-if="unscheduledMilestones.length > 0" class="mt-6">
-    <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Unscheduled</p>
+    <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Unscheduled</p>
     <div class="flex flex-wrap gap-2">
       <button
         v-for="m in unscheduledMilestones"
         :key="m.id"
-        class="flex items-center gap-1.5 rounded-md border border-dashed border-slate-300 px-3 py-1.5 text-sm text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-colors cursor-pointer"
+        class="flex items-center gap-1.5 rounded-md border border-dashed border-slate-300 dark:border-slate-600 px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
         @click="emit('edit', m)"
       >
         <span class="w-2.5 h-2.5 rotate-45 border border-slate-300 inline-block flex-shrink-0" />

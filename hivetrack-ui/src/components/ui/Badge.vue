@@ -60,16 +60,16 @@ const props = defineProps({
 })
 
 const schemeClasses = {
-  gray: 'bg-slate-100 text-slate-600 ring-slate-200',
-  blue: 'bg-blue-50 text-blue-700 ring-blue-200',
-  green: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  red: 'bg-red-50 text-red-700 ring-red-200',
-  amber: 'bg-amber-50 text-amber-700 ring-amber-200',
-  orange: 'bg-orange-50 text-orange-700 ring-orange-200',
-  violet: 'bg-violet-50 text-violet-700 ring-violet-200',
-  teal: 'bg-teal-50 text-teal-700 ring-teal-200',
-  sky: 'bg-sky-50 text-sky-700 ring-sky-200',
-  pink: 'bg-pink-50 text-pink-700 ring-pink-200',
+  gray:   'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 ring-slate-200 dark:ring-slate-700',
+  blue:   'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 ring-blue-200 dark:ring-blue-700/50',
+  green:  'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-700/50',
+  red:    'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 ring-red-200 dark:ring-red-700/50',
+  amber:  'bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-700/50',
+  orange: 'bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 ring-orange-200 dark:ring-orange-700/50',
+  violet: 'bg-violet-50 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 ring-violet-200 dark:ring-violet-700/50',
+  teal:   'bg-teal-50 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 ring-teal-200 dark:ring-teal-700/50',
+  sky:    'bg-sky-50 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-700/50',
+  pink:   'bg-pink-50 dark:bg-pink-900/40 text-pink-700 dark:text-pink-300 ring-pink-200 dark:ring-pink-700/50',
 }
 
 const classes = computed(() => [

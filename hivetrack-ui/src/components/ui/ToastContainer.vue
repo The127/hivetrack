@@ -15,9 +15,9 @@ import { useToast } from '@/composables/useToast'
 const { toasts, remove } = useToast()
 
 const SCHEME = {
-  success: { wrapper: 'bg-green-50 border-green-200 text-green-900', icon: CheckCircleIcon, iconClass: 'text-green-500' },
-  error:   { wrapper: 'bg-red-50 border-red-200 text-red-900',       icon: XCircleIcon,     iconClass: 'text-red-500'   },
-  info:    { wrapper: 'bg-slate-50 border-slate-200 text-slate-900', icon: InfoIcon,        iconClass: 'text-slate-400' },
+  success: { wrapper: 'bg-green-50 dark:bg-green-900/40 border-green-200 dark:border-green-700/50 text-green-900 dark:text-green-200', icon: CheckCircleIcon, iconClass: 'text-green-500 dark:text-green-400' },
+  error:   { wrapper: 'bg-red-50 dark:bg-red-900/40 border-red-200 dark:border-red-700/50 text-red-900 dark:text-red-200',       icon: XCircleIcon,     iconClass: 'text-red-500 dark:text-red-400'   },
+  info:    { wrapper: 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100', icon: InfoIcon,        iconClass: 'text-slate-400 dark:text-slate-500' },
 }
 
 function scheme(variant) {

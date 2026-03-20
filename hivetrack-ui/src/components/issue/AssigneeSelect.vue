@@ -109,7 +109,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
     <!-- Trigger -->
     <button
       ref="triggerBtn"
-      class="w-full flex items-center gap-2 rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-left cursor-pointer bg-white hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+      class="w-full flex items-center gap-2 rounded-md border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 text-sm text-left cursor-pointer bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
       @click="toggle"
     >
       <template v-if="modelValue.length">
@@ -123,7 +123,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
             class="ring-1 ring-white"
           />
         </div>
-        <span class="flex-1 min-w-0 truncate text-slate-700">
+        <span class="flex-1 min-w-0 truncate text-slate-700 dark:text-slate-300">
           {{ modelValue.map(a => a.display_name).join(', ') }}
         </span>
       </template>
@@ -144,10 +144,10 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
           v-if="open"
           ref="dropdownEl"
           :style="dropdownStyle"
-          class="bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"
+          class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden"
         >
           <!-- Search -->
-          <div v-if="members.length > 5" class="p-2 border-b border-slate-100">
+          <div v-if="members.length > 5" class="p-2 border-b border-slate-100 dark:border-slate-700">
             <div class="relative">
               <SearchIcon class="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
               <input
@@ -155,7 +155,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
                 v-model="search"
                 type="text"
                 placeholder="Search members..."
-                class="w-full pl-7 pr-2 py-1 text-sm text-slate-800 placeholder:text-slate-400 bg-slate-50 rounded border-none focus:outline-none"
+                class="w-full pl-7 pr-2 py-1 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 bg-slate-50 dark:bg-slate-700 rounded border-none focus:outline-none"
                 @keydown.escape="open = false"
               />
             </div>
@@ -167,7 +167,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
               v-for="member in filteredMembers"
               :key="member.user_id"
               class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left cursor-pointer transition-colors"
-              :class="selectedIds.has(member.user_id) ? 'bg-slate-50 font-medium text-slate-900' : 'text-slate-700 hover:bg-slate-50'"
+              :class="selectedIds.has(member.user_id) ? 'bg-slate-50 dark:bg-slate-700 font-medium text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'"
               @click="toggleMember(member.user_id)"
             >
               <CheckIcon v-if="selectedIds.has(member.user_id)" class="size-3.5 text-blue-500 flex-shrink-0" />

@@ -250,8 +250,8 @@ function priorityBorder(priority) {
       <!-- Page header -->
       <div class="max-w-3xl mx-auto mb-8 flex items-start justify-between">
         <div>
-          <h1 class="text-xl font-semibold text-slate-900">My Work</h1>
-          <p class="text-sm text-slate-500 mt-0.5">
+          <h1 class="text-xl font-semibold text-slate-900 dark:text-slate-100">My Work</h1>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Welcome back, {{ userName }}
           </p>
         </div>
@@ -268,7 +268,7 @@ function priorityBorder(priority) {
       <section class="mb-8">
         <!-- Section header with view toggle -->
         <div class="max-w-3xl mx-auto flex items-center gap-3 mb-3">
-          <h2 class="text-sm font-medium text-slate-700 flex items-center gap-2">
+          <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
             <CircleDotIcon class="size-4 text-blue-500" />
             My open issues
             <span
@@ -280,22 +280,22 @@ function priorityBorder(priority) {
           </h2>
 
           <!-- List / Board toggle -->
-          <div class="ml-auto flex items-center rounded-md border border-slate-200 overflow-hidden">
+          <div class="ml-auto flex items-center rounded-md border border-slate-200 dark:border-slate-700 overflow-hidden">
             <button
               class="inline-flex items-center gap-1.5 px-2.5 h-7 text-xs font-medium transition-colors cursor-pointer"
               :class="viewMode === 'list'
-                ? 'bg-slate-100 text-slate-800'
-                : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700'"
+                ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
+                : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300'"
               @click="viewMode = 'list'"
             >
               <ListIcon class="size-3.5" />
               List
             </button>
             <button
-              class="inline-flex items-center gap-1.5 px-2.5 h-7 text-xs font-medium border-l border-slate-200 transition-colors cursor-pointer"
+              class="inline-flex items-center gap-1.5 px-2.5 h-7 text-xs font-medium border-l border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
               :class="viewMode === 'board'
-                ? 'bg-slate-100 text-slate-800'
-                : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700'"
+                ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
+                : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300'"
               @click="viewMode = 'board'"
             >
               <KanbanIcon class="size-3.5" />
@@ -312,20 +312,20 @@ function priorityBorder(priority) {
           <!-- ── List view ─────────────────────────────────────────────── -->
           <div
             v-if="viewMode === 'list'"
-            class="max-w-3xl mx-auto rounded-lg border border-slate-200 divide-y divide-slate-100 overflow-hidden"
+            class="max-w-3xl mx-auto rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden"
           >
             <div
               v-for="issue in myIssues.items"
               :key="issue.id"
-              class="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors cursor-pointer group"
+              class="flex items-center gap-3 px-4 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
             >
               <!-- Issue number -->
-              <span class="text-xs font-mono text-slate-400 flex-shrink-0 w-14 text-right">
+              <span class="text-xs font-mono text-slate-400 dark:text-slate-500 flex-shrink-0 w-14 text-right">
                 {{ issue.project_slug?.toUpperCase() }}-{{ issue.number }}
               </span>
 
               <!-- Title -->
-              <span class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900">
+              <span class="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-slate-900 dark:group-hover:text-slate-100">
                 {{ issue.title }}
               </span>
 
@@ -370,8 +370,8 @@ function priorityBorder(priority) {
                       'text-teal-500': col.scheme === 'teal',
                     }"
                   />
-                  <span class="text-sm font-medium text-slate-700">{{ col.label }}</span>
-                  <span class="ml-auto text-xs text-slate-400 tabular-nums">
+                  <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ col.label }}</span>
+                  <span class="ml-auto text-xs text-slate-400 dark:text-slate-500 tabular-nums">
                     {{ columnIssues[col.key]?.length ?? 0 }}
                   </span>
                 </div>
@@ -392,12 +392,12 @@ function priorityBorder(priority) {
                     <div
                       v-for="issue in columnIssues[col.key]"
                       :key="issue.id"
-                      class="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-grab active:cursor-grabbing border-l-4"
+                      class="group rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all cursor-grab active:cursor-grabbing border-l-4"
                       :class="priorityBorder(issue.priority)"
                     >
                       <!-- Project badge + assignees -->
                       <div class="flex items-center gap-1.5 mb-1.5">
-                        <span class="text-[11px] font-mono text-slate-400">
+                        <span class="text-[11px] font-mono text-slate-400 dark:text-slate-500">
                           {{ issue.project_slug?.toUpperCase() }}-{{ issue.number }}
                         </span>
                         <span
@@ -411,7 +411,7 @@ function priorityBorder(priority) {
                       </div>
 
                       <!-- Title -->
-                      <p class="text-sm text-slate-800 leading-snug line-clamp-2 group-hover:text-slate-900 mb-2">
+                      <p class="text-sm text-slate-800 dark:text-slate-200 leading-snug line-clamp-2 group-hover:text-slate-900 dark:group-hover:text-slate-100 mb-2">
                         {{ issue.title }}
                       </p>
 
@@ -429,7 +429,7 @@ function priorityBorder(priority) {
                   <!-- Empty column placeholder -->
                   <div
                     v-if="!columnIssues[col.key]?.length && !isDragging"
-                    class="absolute inset-0 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center min-h-16"
+                    class="absolute inset-0 rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center min-h-16"
                   >
                     <p class="text-xs text-slate-400">No issues</p>
                   </div>
@@ -454,8 +454,8 @@ function priorityBorder(priority) {
       <!-- ── Projects ──────────────────────────────────────────────────── -->
       <section class="max-w-3xl mx-auto">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="text-sm font-medium text-slate-700 flex items-center gap-2">
-            <FolderKanbanIcon class="size-4 text-slate-500" />
+          <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+            <FolderKanbanIcon class="size-4 text-slate-500 dark:text-slate-400" />
             Projects
             <span
               v-if="projects?.items?.length"
@@ -465,7 +465,7 @@ function priorityBorder(priority) {
             </span>
           </h2>
           <button
-            class="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"
+            class="inline-flex items-center gap-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 h-7 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"
             @click="showCreateProject = true"
           >
             <PlusIcon class="size-3.5" />
@@ -479,26 +479,26 @@ function priorityBorder(priority) {
 
         <div
           v-else-if="projects?.items?.length"
-          class="rounded-lg border border-slate-200 divide-y divide-slate-100 overflow-hidden"
+          class="rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden"
         >
           <RouterLink
             v-for="project in projects.items"
             :key="project.id"
             :to="`/projects/${project.slug}/board`"
-            class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors group"
+            class="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
           >
             <!-- Project initial -->
             <span
-              class="size-7 rounded flex items-center justify-center text-xs font-semibold bg-slate-100 text-slate-600 flex-shrink-0"
+              class="size-7 rounded flex items-center justify-center text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex-shrink-0"
             >
               {{ project.slug.slice(0, 2).toUpperCase() }}
             </span>
 
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-slate-800 group-hover:text-slate-900 truncate">
+              <p class="text-sm font-medium text-slate-800 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-slate-100 truncate">
                 {{ project.name }}
               </p>
-              <p class="text-xs text-slate-500">{{ project.slug }}</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">{{ project.slug }}</p>
             </div>
 
             <Badge :colorScheme="project.archetype === 'software' ? 'blue' : 'teal'" compact>
@@ -525,10 +525,10 @@ function priorityBorder(priority) {
       <!-- ── Triage inbox hint ──────────────────────────────────────────── -->
       <div
         v-if="projects?.items?.length"
-        class="mt-6 max-w-3xl mx-auto rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-center gap-3"
+        class="mt-6 max-w-3xl mx-auto rounded-lg border border-amber-200 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 flex items-center gap-3"
       >
         <InboxIcon class="size-4 text-amber-600 flex-shrink-0" />
-        <p class="text-sm text-amber-800">
+        <p class="text-sm text-amber-800 dark:text-amber-300">
           Open a project and go to
           <strong>Triage</strong> to review incoming issues.
         </p>

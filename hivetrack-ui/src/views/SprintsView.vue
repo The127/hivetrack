@@ -56,8 +56,8 @@ function dateRange(sprint) {
 
       <!-- Header -->
       <div class="mb-6">
-        <h1 class="text-lg font-semibold text-slate-900">Completed Sprints</h1>
-        <p class="text-sm text-slate-500 mt-1">Readonly history of past sprints.</p>
+        <h1 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Completed Sprints</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Readonly history of past sprints.</p>
       </div>
 
       <!-- Loading -->
@@ -78,16 +78,16 @@ function dateRange(sprint) {
           v-for="sprint in completedSprints"
           :key="sprint.id"
           :to="`/projects/${slug}/sprints/${sprint.id}`"
-          class="block rounded-lg border border-slate-200 bg-white px-4 py-4 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+          class="block rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-4 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
         >
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1 space-y-1">
               <div class="flex items-center gap-2">
                 <span class="text-xs font-mono text-slate-400">#{{ sprint.number }}</span>
-                <span class="text-sm font-medium text-slate-900">{{ sprint.name }}</span>
+                <span class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ sprint.name }}</span>
                 <span v-if="dateRange(sprint)" class="text-xs text-slate-400">{{ dateRange(sprint) }}</span>
               </div>
-              <p v-if="sprint.goal" class="text-xs text-slate-500 truncate">{{ sprint.goal }}</p>
+              <p v-if="sprint.goal" class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ sprint.goal }}</p>
               <div class="pt-1">
                 <ProgressBar :done="sprint.done_count" :total="sprint.issue_count" />
               </div>

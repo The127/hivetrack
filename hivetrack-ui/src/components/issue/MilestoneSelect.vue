@@ -90,7 +90,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
 
 <template>
   <div ref="root" class="flex flex-col gap-1.5">
-    <label class="text-xs font-medium text-slate-500 flex items-center gap-1">
+    <label class="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
       <FlagIcon class="size-3" />
       Milestone
     </label>
@@ -98,11 +98,11 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
     <!-- Trigger -->
     <button
       ref="triggerBtn"
-      class="w-full flex items-center gap-2 rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-left cursor-pointer bg-white hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+      class="w-full flex items-center gap-2 rounded-md border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 text-sm text-left cursor-pointer bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
       @click="toggle"
     >
-      <span v-if="currentMilestone" class="flex-1 text-slate-700 truncate">{{ currentMilestone.title }}</span>
-      <span v-else class="flex-1 text-slate-400">No milestone</span>
+      <span v-if="currentMilestone" class="flex-1 text-slate-700 dark:text-slate-300 truncate">{{ currentMilestone.title }}</span>
+      <span v-else class="flex-1 text-slate-400 dark:text-slate-500">No milestone</span>
     </button>
 
     <!-- Dropdown -->
@@ -117,13 +117,13 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
           v-if="open"
           ref="dropdownEl"
           :style="dropdownStyle"
-          class="bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"
+          class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden"
         >
           <div class="max-h-52 overflow-y-auto py-1">
             <!-- Clear option -->
             <button
               v-if="modelValue"
-              class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-50 cursor-pointer transition-colors"
+              class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
               @click="clear"
             >
               <XIcon class="size-3.5 text-slate-400 flex-shrink-0" />
@@ -135,7 +135,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
               v-for="m in milestones"
               :key="m.id"
               class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left cursor-pointer transition-colors"
-              :class="modelValue === m.id ? 'bg-slate-50 font-medium text-slate-900' : 'text-slate-700 hover:bg-slate-50'"
+              :class="modelValue === m.id ? 'bg-slate-50 dark:bg-slate-700 font-medium text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'"
               @click="select(m.id)"
             >
               <CheckIcon v-if="modelValue === m.id" class="size-3.5 text-blue-500 flex-shrink-0" />

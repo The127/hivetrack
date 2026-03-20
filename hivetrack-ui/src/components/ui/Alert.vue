@@ -33,10 +33,10 @@ const props = defineProps({
 })
 
 const SCHEME = {
-  info:    { wrapper: 'bg-slate-50 border-slate-200 text-slate-600',  icon: InfoIcon,             iconClass: 'text-slate-400'  },
-  warning: { wrapper: 'bg-amber-50 border-amber-200 text-amber-800',  icon: AlertTriangleIcon,    iconClass: 'text-amber-500'  },
-  success: { wrapper: 'bg-green-50 border-green-200 text-green-800',  icon: CheckCircleIcon,      iconClass: 'text-green-500'  },
-  error:   { wrapper: 'bg-red-50   border-red-200   text-red-800',    icon: XCircleIcon,          iconClass: 'text-red-500'    },
+  info:    { wrapper: 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400',  icon: InfoIcon,             iconClass: 'text-slate-400 dark:text-slate-500'  },
+  warning: { wrapper: 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700/50 text-amber-800 dark:text-amber-300',  icon: AlertTriangleIcon,    iconClass: 'text-amber-500 dark:text-amber-400'  },
+  success: { wrapper: 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700/50 text-green-800 dark:text-green-300',  icon: CheckCircleIcon,      iconClass: 'text-green-500 dark:text-green-400'  },
+  error:   { wrapper: 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700/50 text-red-800 dark:text-red-300',    icon: XCircleIcon,          iconClass: 'text-red-500 dark:text-red-400'    },
 }
 
 const scheme = computed(() => SCHEME[props.variant])

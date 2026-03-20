@@ -92,10 +92,10 @@ const { mutate: removeComment } = useMutation({
 
 <template>
   <div class="space-y-4">
-    <h2 class="text-sm font-medium text-slate-700">Comments</h2>
+    <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300">Comments</h2>
 
     <!-- Loading -->
-    <div v-if="isLoading" class="text-sm text-slate-400">Loading comments...</div>
+    <div v-if="isLoading" class="text-sm text-slate-400 dark:text-slate-500">Loading comments...</div>
 
     <!-- Comment list -->
     <div v-else-if="commentsData?.items?.length" class="space-y-4">
@@ -112,11 +112,11 @@ const { mutate: removeComment } = useMutation({
         />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-slate-700">
+            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
               {{ comment.author_name || comment.author_email || 'User' }}
             </span>
-            <RelativeTime :datetime="comment.created_at" class="text-xs text-slate-400" />
-            <span v-if="comment.updated_at !== comment.created_at" class="text-xs text-slate-400 italic">(edited)</span>
+            <RelativeTime :datetime="comment.created_at" class="text-xs text-slate-400 dark:text-slate-500" />
+            <span v-if="comment.updated_at !== comment.created_at" class="text-xs text-slate-400 dark:text-slate-500 italic">(edited)</span>
           </div>
 
           <!-- Editing mode -->
@@ -124,7 +124,7 @@ const { mutate: removeComment } = useMutation({
             <textarea
               v-model="editBody"
               rows="3"
-              class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none resize-none"
+              class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none resize-none"
             />
             <div class="flex gap-2">
               <Button size="sm" @click="handleSaveEdit(comment.id)">Save</Button>
@@ -137,13 +137,13 @@ const { mutate: removeComment } = useMutation({
             <MarkdownContent :content="comment.body" class="mt-0.5" />
             <div class="flex gap-2 mt-1">
               <button
-                class="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                class="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 @click="startEdit(comment)"
               >
                 Edit
               </button>
               <button
-                class="text-xs text-slate-400 hover:text-red-500 transition-colors"
+                class="text-xs text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                 @click="removeComment(comment.id)"
               >
                 Delete
@@ -155,20 +155,20 @@ const { mutate: removeComment } = useMutation({
     </div>
 
     <!-- Empty state -->
-    <p v-else class="text-sm text-slate-400">No comments yet.</p>
+    <p v-else class="text-sm text-slate-400 dark:text-slate-500">No comments yet.</p>
 
     <!-- New comment form -->
-    <div class="space-y-2 pt-2 border-t border-slate-100">
+    <div class="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
       <textarea
         v-model="newBody"
         rows="3"
         placeholder="Add a comment..."
-        class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none resize-none"
+        class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none resize-none"
         @keydown.meta.enter="handleSubmit"
         @keydown.ctrl.enter="handleSubmit"
       />
       <div class="flex items-center justify-between">
-        <span class="text-xs text-slate-400">Ctrl+Enter to submit</span>
+        <span class="text-xs text-slate-400 dark:text-slate-500">Ctrl+Enter to submit</span>
         <Button size="sm" :loading="isSubmitting" :disabled="!newBody.trim()" @click="handleSubmit">
           Comment
         </Button>

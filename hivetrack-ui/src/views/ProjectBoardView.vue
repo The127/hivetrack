@@ -378,16 +378,16 @@ const defaultCreateStatus = computed(() => {
     <div class="flex flex-col h-full">
       <!-- ── Board header ───────────────────────────────────────────────── -->
       <div
-        class="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white"
+        class="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
       >
         <div class="flex items-center gap-3 min-w-0">
           <div v-if="project" class="flex items-center gap-2 min-w-0">
             <span
-              class="size-7 rounded flex items-center justify-center text-xs font-semibold bg-slate-100 text-slate-600 flex-shrink-0"
+              class="size-7 rounded flex items-center justify-center text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex-shrink-0"
             >
               {{ project.slug.slice(0, 2).toUpperCase() }}
             </span>
-            <span class="font-semibold text-slate-900 truncate">{{
+            <span class="font-semibold text-slate-900 dark:text-slate-100 truncate">{{
               project.name
             }}</span>
             <Badge
@@ -399,7 +399,7 @@ const defaultCreateStatus = computed(() => {
           </div>
           <div
             v-else-if="loadingProject"
-            class="h-5 w-40 rounded bg-slate-100 animate-pulse"
+            class="h-5 w-40 rounded bg-slate-100 dark:bg-slate-800 animate-pulse"
           />
         </div>
 
@@ -414,7 +414,7 @@ const defaultCreateStatus = computed(() => {
               v-model="searchQuery"
               type="text"
               placeholder="Filter issues..."
-              class="w-56 rounded-md border border-slate-200 pl-8 pr-8 h-8 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              class="w-56 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-8 pr-8 h-8 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               @keydown.escape="toggleSearch"
             />
             <button
@@ -426,7 +426,7 @@ const defaultCreateStatus = computed(() => {
           </div>
           <button
             v-else
-            class="inline-flex items-center justify-center rounded-md border border-slate-200 size-8 text-slate-500 hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
+            class="inline-flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 size-8 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
             @click="toggleSearch"
           >
             <SearchIcon class="size-4" />
@@ -447,20 +447,20 @@ const defaultCreateStatus = computed(() => {
         <!-- Active sprint -->
         <div
           v-if="activeSprint"
-          class="flex-shrink-0 px-6 py-2 bg-blue-50 border-b border-blue-100"
+          class="flex-shrink-0 px-6 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/40"
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2.5 min-w-0">
               <span
-                class="text-xs font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0"
+                class="text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-800/50 px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0"
                 >Sprint</span
               >
-              <span class="text-sm font-semibold text-slate-900 truncate">{{
+              <span class="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{{
                 activeSprint.name
               }}</span>
               <span
                 v-if="activeSprint.start_date"
-                class="text-xs text-slate-500 flex-shrink-0"
+                class="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0"
               >
                 {{
                   formatDateRange(
@@ -477,21 +477,21 @@ const defaultCreateStatus = computed(() => {
               </div>
             </div>
             <button
-              class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer flex-shrink-0"
+              class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2.5 h-7 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer flex-shrink-0"
               @click="requestCompleteSprint()"
             >
               <CheckIcon class="size-3.5" />
               Complete sprint
             </button>
           </div>
-          <p v-if="activeSprint.goal" class="text-xs text-slate-600 mt-1.5">
+          <p v-if="activeSprint.goal" class="text-xs text-slate-600 dark:text-slate-400 mt-1.5">
             <span class="text-slate-400 font-medium">Goal:</span>
             {{ activeSprint.goal }}
           </p>
         </div>
 
         <!-- No active sprint — showing backlog -->
-        <div v-else class="flex-shrink-0 px-6 py-2 border-b border-slate-100">
+        <div v-else class="flex-shrink-0 px-6 py-2 border-b border-slate-100 dark:border-slate-800">
           <Alert>
             Showing backlog — no active sprint.
             <RouterLink
@@ -534,7 +534,7 @@ const defaultCreateStatus = computed(() => {
                   'text-teal-500': col.scheme === 'teal',
                 }"
               />
-              <span class="text-sm font-medium text-slate-700">{{
+              <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{
                 col.label
               }}</span>
               <span
@@ -543,7 +543,7 @@ const defaultCreateStatus = computed(() => {
                   wipLimits[col.key] != null &&
                   (columnIssues[col.key]?.length ?? 0) > wipLimits[col.key]
                     ? 'text-amber-500 font-medium'
-                    : 'text-slate-400'
+                    : 'text-slate-400 dark:text-slate-500'
                 "
               >
                 <template v-if="wipLimits[col.key] != null">
@@ -571,14 +571,14 @@ const defaultCreateStatus = computed(() => {
                 <div
                   v-for="issue in columnIssues[col.key]"
                   :key="issue.id"
-                  class="group rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-grab active:cursor-grabbing border-l-4"
+                  class="group rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all cursor-grab active:cursor-grabbing border-l-4"
                   :class="priorityBorder(issue.priority)"
                 >
                   <!-- Issue number + type + assignees -->
                   <div class="flex items-center gap-1.5 mb-1.5">
                     <RouterLink
                       :to="`/projects/${slug}/issues/${issue.number}`"
-                      class="text-[11px] font-mono text-slate-400 hover:text-blue-600 hover:underline"
+                      class="text-[11px] font-mono text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
                       @click.stop
                     >
                       {{ slug.toUpperCase() }}-{{ issue.number }}
@@ -589,7 +589,7 @@ const defaultCreateStatus = computed(() => {
                     />
                     <span
                       v-if="issue.on_hold"
-                      class="text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded"
+                      class="text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded"
                     >
                       on hold
                     </span>
@@ -599,7 +599,7 @@ const defaultCreateStatus = computed(() => {
 
                   <!-- Title -->
                   <p
-                    class="text-sm text-slate-800 leading-snug line-clamp-2 group-hover:text-slate-900 mb-2"
+                    class="text-sm text-slate-800 dark:text-slate-200 leading-snug line-clamp-2 group-hover:text-slate-900 dark:group-hover:text-slate-100 mb-2"
                   >
                     {{ issue.title }}
                   </p>
@@ -609,7 +609,7 @@ const defaultCreateStatus = computed(() => {
                     <RouterLink
                       v-if="issue.parent_id && epicMap[issue.parent_id]"
                       :to="`/projects/${slug}/issues/${epicMap[issue.parent_id].number}`"
-                      class="inline-flex items-center gap-1 text-[11px] font-medium text-violet-600 bg-violet-50 hover:bg-violet-100 px-1.5 py-0.5 rounded min-w-0 max-w-[10rem] transition-colors"
+                      class="inline-flex items-center gap-1 text-[11px] font-medium text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/40 hover:bg-violet-100 dark:hover:bg-violet-900/60 px-1.5 py-0.5 rounded min-w-0 max-w-[10rem] transition-colors"
                       @click.stop
                     >
                       <LayersIcon class="size-3 flex-shrink-0" />
@@ -633,7 +633,7 @@ const defaultCreateStatus = computed(() => {
                   <div class="flex items-center gap-1.5 flex-wrap">
                     <span
                       v-if="estimateLabel(issue.estimate)"
-                      class="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded"
+                      class="text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded"
                     >
                       {{ estimateLabel(issue.estimate) }}
                     </span>
@@ -658,16 +658,16 @@ const defaultCreateStatus = computed(() => {
               <!-- Empty column placeholder (positioned over the draggable area) -->
               <div
                 v-if="!columnIssues[col.key]?.length && !isDragging"
-                class="absolute inset-0 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center"
+                class="absolute inset-0 rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center"
               >
-                <p class="text-xs text-slate-400">No issues</p>
+                <p class="text-xs text-slate-400 dark:text-slate-500">No issues</p>
               </div>
             </div>
 
             <!-- Cancelled issues (Done column only) -->
             <div v-if="col.key === 'done' && cancelledBoardIssues.length > 0" class="mt-2">
               <button
-                class="flex items-center gap-1.5 w-full px-1 py-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                class="flex items-center gap-1.5 w-full px-1 py-1.5 text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400 transition-colors cursor-pointer"
                 @click="showCancelled = !showCancelled"
               >
                 <ChevronDownIcon
@@ -681,17 +681,17 @@ const defaultCreateStatus = computed(() => {
                 <div
                   v-for="issue in cancelledBoardIssues"
                   :key="issue.id"
-                  class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 opacity-60 border-l-4 border-l-slate-200"
+                  class="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2.5 opacity-60 border-l-4 border-l-slate-200 dark:border-l-slate-600"
                 >
                   <div class="flex items-center gap-1.5 mb-1">
                     <RouterLink
                       :to="`/projects/${slug}/issues/${issue.number}`"
-                      class="text-[11px] font-mono text-slate-400 hover:text-blue-600 hover:underline"
+                      class="text-[11px] font-mono text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
                     >
                       {{ slug.toUpperCase() }}-{{ issue.number }}
                     </RouterLink>
                   </div>
-                  <p class="text-sm text-slate-500 leading-snug line-clamp-2 line-through">
+                  <p class="text-sm text-slate-500 dark:text-slate-400 leading-snug line-clamp-2 line-through">
                     {{ issue.title }}
                   </p>
                 </div>
@@ -708,11 +708,11 @@ const defaultCreateStatus = computed(() => {
         class="flex-1 flex items-center justify-center"
       >
         <div class="text-center">
-          <InboxIcon class="size-10 text-slate-300 mx-auto mb-3" />
-          <p class="text-sm font-medium text-slate-600">
+          <InboxIcon class="size-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+          <p class="text-sm font-medium text-slate-600 dark:text-slate-400">
             {{ activeSprint ? "Sprint is empty" : "Backlog is empty" }}
           </p>
-          <p class="text-sm text-slate-400 mt-1">
+          <p class="text-sm text-slate-400 dark:text-slate-500 mt-1">
             {{
               activeSprint
                 ? "Add issues to this sprint from the Backlog."

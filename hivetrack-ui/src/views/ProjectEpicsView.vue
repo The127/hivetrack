@@ -214,22 +214,22 @@ const defaultCreateStatus = computed(() => {
     <div class="flex flex-col h-full">
 
       <!-- ── Header ─────────────────────────────────────────────────────── -->
-      <div class="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white">
+      <div class="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
         <div class="flex items-center gap-3 min-w-0">
           <div v-if="project" class="flex items-center gap-2 min-w-0">
-            <span class="size-7 rounded flex items-center justify-center text-xs font-semibold bg-slate-100 text-slate-600 flex-shrink-0">
+            <span class="size-7 rounded flex items-center justify-center text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex-shrink-0">
               {{ project.slug.slice(0, 2).toUpperCase() }}
             </span>
-            <span class="font-semibold text-slate-900 truncate">{{ project.name }}</span>
+            <span class="font-semibold text-slate-900 dark:text-slate-100 truncate">{{ project.name }}</span>
             <Badge :colorScheme="project.archetype === 'software' ? 'blue' : 'teal'" compact>
               {{ project.archetype }}
             </Badge>
           </div>
-          <div v-else-if="loadingProject" class="h-5 w-40 rounded bg-slate-100 animate-pulse" />
+          <div v-else-if="loadingProject" class="h-5 w-40 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
 
-          <div class="flex items-center gap-1.5 text-slate-400">
+          <div class="flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
             <LayersIcon class="size-4" />
-            <span class="text-sm font-medium text-slate-600">Epics</span>
+            <span class="text-sm font-medium text-slate-600 dark:text-slate-300">Epics</span>
           </div>
         </div>
 
@@ -262,15 +262,15 @@ const defaultCreateStatus = computed(() => {
         <div class="max-w-5xl mx-auto px-6 py-4 space-y-6">
 
           <!-- Epics -->
-          <div v-if="epics.length" class="border border-slate-200 rounded-lg overflow-hidden">
+          <div v-if="epics.length" class="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
             <div v-for="epic in epics" :key="epic.id">
               <!-- Epic row -->
               <div
-                class="group flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-l-4 cursor-pointer select-none"
+                class="group flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-l-4 cursor-pointer select-none"
                 :class="[
                   priorityBorder(epic.priority),
-                  expandedEpics.has(epic.id) ? 'bg-slate-50' : 'bg-white',
-                  epic.id !== epics[epics.length - 1]?.id || expandedEpics.has(epic.id) ? 'border-b border-slate-100' : '',
+                  expandedEpics.has(epic.id) ? 'bg-slate-50 dark:bg-slate-800/50' : 'bg-white dark:bg-slate-900',
+                  epic.id !== epics[epics.length - 1]?.id || expandedEpics.has(epic.id) ? 'border-b border-slate-100 dark:border-slate-800' : '',
                 ]"
                 @click="toggleEpic(epic.id)"
               >
@@ -283,17 +283,17 @@ const defaultCreateStatus = computed(() => {
                 <!-- Issue number -->
                 <router-link
                   :to="`/projects/${slug}/issues/${epic.number}`"
-                  class="text-[11px] font-mono text-slate-400 hover:text-blue-600 flex-shrink-0"
+                  class="text-[11px] font-mono text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 flex-shrink-0"
                   @click.stop
                 >
                   {{ slug.toUpperCase() }}-{{ epic.number }}
                 </router-link>
 
                 <!-- Title -->
-                <span class="flex-1 min-w-0 text-sm font-medium text-slate-800 truncate">{{ epic.title }}</span>
+                <span class="flex-1 min-w-0 text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{{ epic.title }}</span>
 
                 <!-- On hold -->
-                <span v-if="epic.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
+                <span v-if="epic.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">on hold</span>
 
                 <!-- Progress -->
                 <div class="flex-shrink-0 w-28" @click.stop>
@@ -323,7 +323,7 @@ const defaultCreateStatus = computed(() => {
               <!-- Expanded: child tasks -->
               <div
                 v-if="expandedEpics.has(epic.id) && project"
-                class="px-8 py-4 bg-slate-50/50 border-b border-slate-100"
+                class="px-8 py-4 bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800"
               >
                 <EpicChildList
                   :projectSlug="slug"
@@ -339,13 +339,13 @@ const defaultCreateStatus = computed(() => {
           <!-- Unassigned tasks -->
           <div v-if="unassignedList.length || loadingUnassigned">
             <div class="flex items-center gap-2 mb-3">
-              <InboxIcon class="size-4 text-slate-400" />
-              <h2 class="text-sm font-semibold text-slate-700">Unassigned tasks</h2>
-              <span class="text-xs text-slate-400">({{ unassignedCount }})</span>
+              <InboxIcon class="size-4 text-slate-400 dark:text-slate-500" />
+              <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Unassigned tasks</h2>
+              <span class="text-xs text-slate-400 dark:text-slate-500">({{ unassignedCount }})</span>
             </div>
-            <p class="text-xs text-slate-400 mb-3">Drag tasks into an expanded epic to assign them.</p>
-            <div v-if="loadingUnassigned" class="text-sm text-slate-400">Loading...</div>
-            <div v-else class="border border-slate-200 rounded-lg overflow-hidden">
+            <p class="text-xs text-slate-400 dark:text-slate-500 mb-3">Drag tasks into an expanded epic to assign them.</p>
+            <div v-if="loadingUnassigned" class="text-sm text-slate-400 dark:text-slate-500">Loading...</div>
+            <div v-else class="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
               <VueDraggable
                 v-model="unassignedList"
                 :group="{ name: 'epic-tasks' }"
@@ -359,13 +359,13 @@ const defaultCreateStatus = computed(() => {
                 <div
                   v-for="task in unassignedList"
                   :key="task.id"
-                  class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100 last:border-b-0"
+                  class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100 dark:border-slate-800 last:border-b-0 bg-white dark:bg-slate-900"
                   :class="priorityBorder(task.priority)"
                 >
                   <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
                     <router-link
                       :to="`/projects/${slug}/issues/${task.number}`"
-                      class="text-[11px] font-mono text-slate-400 hover:text-blue-600"
+                      class="text-[11px] font-mono text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400"
                       @click.stop
                     >
                       {{ slug.toUpperCase() }}-{{ task.number }}
@@ -373,12 +373,12 @@ const defaultCreateStatus = computed(() => {
                   </div>
                   <router-link
                     :to="`/projects/${slug}/issues/${task.number}`"
-                    class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline"
+                    class="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-slate-900 dark:group-hover:text-slate-100 hover:underline"
                     @click.stop
                   >
                     {{ task.title }}
                   </router-link>
-                  <span v-if="task.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
+                  <span v-if="task.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">on hold</span>
                   <div @click.stop>
                     <StatusSelect
                       v-if="project"
@@ -393,7 +393,7 @@ const defaultCreateStatus = computed(() => {
                       @update:priority="updateTaskPriority({ number: task.number, priority: $event })"
                     />
                   </div>
-                  <span v-if="estimateLabel(task.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(task.estimate) }}</span>
+                  <span v-if="estimateLabel(task.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(task.estimate) }}</span>
                   <span v-else class="w-7 flex-shrink-0" />
                   <div class="flex-shrink-0 flex justify-end w-10">
                     <AssigneePopover :assignees="task.assignees ?? []" />

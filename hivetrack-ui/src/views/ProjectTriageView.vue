@@ -230,25 +230,25 @@ const showCreate = ref(false)
     <div class="flex flex-col h-full">
 
       <!-- ── Header ─────────────────────────────────────────────────────── -->
-      <div class="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white">
+      <div class="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
         <div class="flex items-center gap-3 min-w-0">
           <div v-if="project" class="flex items-center gap-2 min-w-0">
-            <span class="size-7 rounded flex items-center justify-center text-xs font-semibold bg-slate-100 text-slate-600 flex-shrink-0">
+            <span class="size-7 rounded flex items-center justify-center text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex-shrink-0">
               {{ project.slug.slice(0, 2).toUpperCase() }}
             </span>
-            <span class="font-semibold text-slate-900 truncate">{{ project.name }}</span>
+            <span class="font-semibold text-slate-900 dark:text-slate-100 truncate">{{ project.name }}</span>
             <Badge :colorScheme="project.archetype === 'software' ? 'blue' : 'teal'" compact>
               {{ project.archetype }}
             </Badge>
           </div>
-          <div v-else-if="loadingProject" class="h-5 w-40 rounded bg-slate-100 animate-pulse" />
+          <div v-else-if="loadingProject" class="h-5 w-40 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
 
           <div class="flex items-center gap-1.5">
-            <InboxIcon class="size-4 text-slate-400" />
-            <span class="text-sm font-medium text-slate-600">Triage</span>
+            <InboxIcon class="size-4 text-slate-400 dark:text-slate-500" />
+            <span class="text-sm font-medium text-slate-600 dark:text-slate-300">Triage</span>
             <span
               v-if="inboxResult && inboxResult.total > 0"
-              class="text-xs text-slate-400 tabular-nums"
+              class="text-xs text-slate-400 dark:text-slate-500 tabular-nums"
             >
               ({{ inboxResult.total }})
             </span>
@@ -282,18 +282,18 @@ const showCreate = ref(false)
       <!-- ── Issue list ──────────────────────────────────────────────────── -->
       <div v-else class="flex-1 overflow-y-auto">
         <div class="max-w-4xl mx-auto px-6 py-4">
-          <div class="border border-slate-200 rounded-lg overflow-hidden">
+          <div class="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
             <div v-for="issue in inbox" :key="issue.id">
 
               <!-- Issue row -->
               <div
-                class="group flex items-center gap-3 px-4 py-3 bg-white border-l-4 border-b border-slate-100 last:border-b-0"
+                class="group flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-l-4 border-b border-slate-100 dark:border-slate-800 last:border-b-0"
                 :class="priorityBorder(issue.priority)"
               >
                 <!-- Issue number -->
                 <router-link
                   :to="`/projects/${slug}/issues/${issue.number}`"
-                  class="text-[11px] font-mono text-slate-400 hover:text-blue-600 flex-shrink-0 w-20"
+                  class="text-[11px] font-mono text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 flex-shrink-0 w-20"
                 >
                   {{ slug.toUpperCase() }}-{{ issue.number }}
                 </router-link>
@@ -301,7 +301,7 @@ const showCreate = ref(false)
                 <!-- Type badge -->
                 <span
                   class="flex-shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded"
-                  :class="issue.type === 'epic' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-600'"
+                  :class="issue.type === 'epic' ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'"
                 >
                   {{ issue.type }}
                 </span>
@@ -309,13 +309,13 @@ const showCreate = ref(false)
                 <!-- Title -->
                 <router-link
                   :to="`/projects/${slug}/issues/${issue.number}`"
-                  class="flex-1 min-w-0 text-sm text-slate-800 truncate hover:underline"
+                  class="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-200 truncate hover:underline"
                 >
                   {{ issue.title }}
                 </router-link>
 
                 <!-- Age -->
-                <RelativeTime :datetime="issue.created_at" class="flex-shrink-0 text-xs text-slate-400" />
+                <RelativeTime :datetime="issue.created_at" class="flex-shrink-0 text-xs text-slate-400 dark:text-slate-500" />
 
                 <!-- Action buttons (when row is not expanded) -->
                 <template v-if="triagingId !== issue.id">
@@ -335,14 +335,14 @@ const showCreate = ref(false)
               <!-- ── Triage form ──────────────────────────────────────── -->
               <div
                 v-if="triagingId === issue.id && triageMode === 'triage'"
-                class="px-4 py-4 bg-slate-50 border-b border-slate-200 border-l-4"
+                class="px-4 py-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 border-l-4"
                 :class="priorityBorder(issue.priority)"
               >
                 <div class="flex flex-col gap-4 max-w-xl">
 
                   <!-- Status (required) -->
                   <div class="flex flex-col gap-1.5">
-                    <label class="text-xs font-medium text-slate-500">
+                    <label class="text-xs font-medium text-slate-500 dark:text-slate-400">
                       Status <span class="text-red-400">*</span>
                     </label>
                     <div class="flex flex-wrap gap-1.5">
@@ -355,8 +355,8 @@ const showCreate = ref(false)
                             ? 'bg-slate-600 text-white border-slate-600'
                             : 'bg-blue-600 text-white border-blue-600'
                           : s.terminal
-                            ? 'bg-white text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-700'
-                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'"
+                            ? 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
+                            : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'"
                         @click="form.status = s.key"
                       >
                         {{ s.label }}
@@ -366,10 +366,10 @@ const showCreate = ref(false)
 
                   <!-- Sprint (optional, only if active/planning sprints exist) -->
                   <div v-if="activeSprints.length" class="flex flex-col gap-1.5">
-                    <label class="text-xs font-medium text-slate-500">Sprint</label>
+                    <label class="text-xs font-medium text-slate-500 dark:text-slate-400">Sprint</label>
                     <select
                       v-model="form.sprint_id"
-                      class="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                      class="w-full rounded-md border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                     >
                       <option :value="null">Backlog (no sprint)</option>
                       <option v-for="s in activeSprints" :key="s.id" :value="s.id">
@@ -402,29 +402,29 @@ const showCreate = ref(false)
               <!-- ── Duplicate form ───────────────────────────────────── -->
               <div
                 v-if="triagingId === issue.id && triageMode === 'duplicate'"
-                class="px-4 py-4 bg-slate-50 border-b border-slate-200 border-l-4"
+                class="px-4 py-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 border-l-4"
                 :class="priorityBorder(issue.priority)"
               >
                 <div class="flex flex-col gap-4 max-w-xl">
 
-                  <p class="text-xs text-slate-500">
-                    This issue will be marked as <span class="font-medium text-slate-700">{{ terminalStatus }}</span> and linked as a duplicate of the issue you select.
+                  <p class="text-xs text-slate-500 dark:text-slate-400">
+                    This issue will be marked as <span class="font-medium text-slate-700 dark:text-slate-300">{{ terminalStatus }}</span> and linked as a duplicate of the issue you select.
                   </p>
 
                   <!-- Issue search -->
                   <div class="flex flex-col gap-1.5">
-                    <label class="text-xs font-medium text-slate-500">
+                    <label class="text-xs font-medium text-slate-500 dark:text-slate-400">
                       Duplicate of <span class="text-red-400">*</span>
                     </label>
 
                     <!-- Selected target -->
-                    <div v-if="dupSelected" class="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md">
-                      <span class="text-[11px] font-mono text-slate-500 flex-shrink-0">
+                    <div v-if="dupSelected" class="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-md">
+                      <span class="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex-shrink-0">
                         {{ slug.toUpperCase() }}-{{ dupSelected.number }}
                       </span>
-                      <span class="flex-1 text-sm text-slate-800 truncate">{{ dupSelected.title }}</span>
+                      <span class="flex-1 text-sm text-slate-800 dark:text-slate-200 truncate">{{ dupSelected.title }}</span>
                       <button
-                        class="text-slate-400 hover:text-slate-600 flex-shrink-0 cursor-pointer"
+                        class="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 flex-shrink-0 cursor-pointer"
                         @click="dupSelected = null; dupSearch = ''"
                       >
                         <XIcon class="size-3.5" />
@@ -439,26 +439,26 @@ const showCreate = ref(false)
                           v-model="dupSearch"
                           type="text"
                           placeholder="Search issues…"
-                          class="w-full pl-8 pr-3 py-1.5 text-sm rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          class="w-full pl-8 pr-3 py-1.5 text-sm rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <div
                         v-if="dupSearch.length >= 2 && dupResults.length"
-                        class="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-md overflow-hidden z-10"
+                        class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-md overflow-hidden z-10"
                       >
                         <button
                           v-for="r in dupResults"
                           :key="r.id"
-                          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50 cursor-pointer transition-colors"
+                          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
                           @click="dupSelected = r; dupSearch = ''"
                         >
-                          <span class="text-[11px] font-mono text-slate-400 flex-shrink-0 w-20">
+                          <span class="text-[11px] font-mono text-slate-400 dark:text-slate-500 flex-shrink-0 w-20">
                             {{ slug.toUpperCase() }}-{{ r.number }}
                           </span>
-                          <span class="flex-1 min-w-0 text-slate-800 truncate">{{ r.title }}</span>
+                          <span class="flex-1 min-w-0 text-slate-800 dark:text-slate-200 truncate">{{ r.title }}</span>
                         </button>
                       </div>
-                      <p v-else-if="dupSearch.length >= 2 && !dupResults.length" class="mt-1 text-xs text-slate-400">
+                      <p v-else-if="dupSearch.length >= 2 && !dupResults.length" class="mt-1 text-xs text-slate-400 dark:text-slate-500">
                         No issues found.
                       </p>
                     </div>

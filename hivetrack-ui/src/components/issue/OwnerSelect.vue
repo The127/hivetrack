@@ -99,7 +99,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
 
 <template>
   <div ref="root" class="flex flex-col gap-1.5">
-    <label class="text-xs font-medium text-slate-500 flex items-center gap-1">
+    <label class="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
       <UserIcon class="size-3" />
       Owner
     </label>
@@ -107,15 +107,15 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
     <!-- Trigger -->
     <button
       ref="triggerBtn"
-      class="w-full flex items-center gap-2 rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-left cursor-pointer bg-white hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+      class="w-full flex items-center gap-2 rounded-md border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 text-sm text-left cursor-pointer bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
       @click="toggle"
     >
       <template v-if="modelValue">
         <Avatar :name="modelValue.display_name" :src="modelValue.avatar_url" size="xs" />
-        <span class="flex-1 min-w-0 truncate text-slate-700">{{ modelValue.display_name }}</span>
+        <span class="flex-1 min-w-0 truncate text-slate-700 dark:text-slate-300">{{ modelValue.display_name }}</span>
       </template>
       <template v-else>
-        <span class="flex-1 text-slate-400">No owner</span>
+        <span class="flex-1 text-slate-400 dark:text-slate-500">No owner</span>
       </template>
     </button>
 
@@ -131,10 +131,10 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
           v-if="open"
           ref="dropdownEl"
           :style="dropdownStyle"
-          class="bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"
+          class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden"
         >
           <!-- Search -->
-          <div v-if="members.length > 5" class="p-2 border-b border-slate-100">
+          <div v-if="members.length > 5" class="p-2 border-b border-slate-100 dark:border-slate-700">
             <div class="relative">
               <SearchIcon class="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
               <input
@@ -142,7 +142,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
                 v-model="search"
                 type="text"
                 placeholder="Search members..."
-                class="w-full pl-7 pr-2 py-1 text-sm text-slate-800 placeholder:text-slate-400 bg-slate-50 rounded border-none focus:outline-none"
+                class="w-full pl-7 pr-2 py-1 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 bg-slate-50 dark:bg-slate-700/50 rounded border-none focus:outline-none"
                 @keydown.escape="open = false"
               />
             </div>
@@ -153,7 +153,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
             <!-- Clear option -->
             <button
               v-if="modelValue"
-              class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left cursor-pointer text-slate-500 hover:bg-slate-50 transition-colors"
+              class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left cursor-pointer text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               @click="clearOwner"
             >
               <XIcon class="size-3.5 flex-shrink-0" />
@@ -164,7 +164,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onClickOutside
               v-for="member in filteredMembers"
               :key="member.user_id"
               class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left cursor-pointer transition-colors"
-              :class="modelValue?.id === member.user_id ? 'bg-slate-50 font-medium text-slate-900' : 'text-slate-700 hover:bg-slate-50'"
+              :class="modelValue?.id === member.user_id ? 'bg-slate-50 dark:bg-slate-700 font-medium text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'"
               @click="selectMember(member.user_id)"
             >
               <CheckIcon v-if="modelValue?.id === member.user_id" class="size-3.5 text-blue-500 flex-shrink-0" />

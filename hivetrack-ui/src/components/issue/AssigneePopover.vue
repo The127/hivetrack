@@ -67,7 +67,7 @@ function closePopover() {
         />
         <span
           v-if="assignees.length > 2"
-          class="size-5 rounded-full bg-slate-100 text-[10px] font-medium text-slate-500 flex items-center justify-center ring-1 ring-white"
+          class="size-5 rounded-full bg-slate-100 dark:bg-slate-700 text-[10px] font-medium text-slate-500 dark:text-slate-400 flex items-center justify-center ring-1 ring-white dark:ring-slate-800"
         >
           +{{ assignees.length - 2 }}
         </span>
@@ -81,7 +81,7 @@ function closePopover() {
       <div
         v-if="showPopover && assignees?.length"
         :style="popoverStyle"
-        class="bg-white border border-slate-200 rounded-lg shadow-lg py-1.5 px-2 min-w-[130px]"
+        class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1.5 px-2 min-w-[130px]"
       >
         <div
           v-for="a in assignees"
@@ -89,7 +89,7 @@ function closePopover() {
           class="flex items-center gap-2 py-1 px-1"
         >
           <Avatar :name="a.display_name" :src="a.avatar_url" size="xs" />
-          <span class="text-xs text-slate-700 whitespace-nowrap">{{ a.display_name }}</span>
+          <span class="text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">{{ a.display_name }}</span>
         </div>
       </div>
     </Transition>
