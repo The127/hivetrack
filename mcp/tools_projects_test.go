@@ -26,7 +26,7 @@ func TestUpdateProject_whenOnlyNameProvided_omitsOtherFieldsFromBody(t *testing.
 	}))
 	defer srv.Close()
 
-	handler := makeUpdateProject(NewClient(srv.URL, "tok"))
+	handler := makeUpdateProject(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"project_id": "proj-uuid",
@@ -61,7 +61,7 @@ func TestUpdateProject_whenWipLimitIsMinusOne_sendsNullInBody(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeUpdateProject(NewClient(srv.URL, "tok"))
+	handler := makeUpdateProject(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"project_id":              "proj-uuid",
@@ -91,7 +91,7 @@ func TestUpdateProject_whenSuccessful_confirmsProjectUpdated(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeUpdateProject(NewClient(srv.URL, "tok"))
+	handler := makeUpdateProject(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"project_id": "proj-uuid",
@@ -122,7 +122,7 @@ func TestDeleteProject_whenProjectIdProvided_sendsDeleteRequest(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeDeleteProject(NewClient(srv.URL, "tok"))
+	handler := makeDeleteProject(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{"project_id": "proj-uuid"}
 
@@ -144,7 +144,7 @@ func TestDeleteProject_whenSuccessful_confirmsDeletion(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeDeleteProject(NewClient(srv.URL, "tok"))
+	handler := makeDeleteProject(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{"project_id": "proj-uuid"}
 

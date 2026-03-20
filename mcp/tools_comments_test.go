@@ -26,7 +26,7 @@ func TestUpdateComment_whenBodyProvided_patchesCommentWithNewBody(t *testing.T) 
 	}))
 	defer srv.Close()
 
-	handler := makeUpdateComment(NewClient(srv.URL, "tok"))
+	handler := makeUpdateComment(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"slug":       "my-proj",
@@ -53,7 +53,7 @@ func TestUpdateComment_whenSuccessful_confirmsCommentUpdated(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeUpdateComment(NewClient(srv.URL, "tok"))
+	handler := makeUpdateComment(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"slug":       "proj",
@@ -86,7 +86,7 @@ func TestDeleteComment_whenCommentIdProvided_sendsDeleteRequest(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeDeleteComment(NewClient(srv.URL, "tok"))
+	handler := makeDeleteComment(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"slug":       "my-proj",
@@ -112,7 +112,7 @@ func TestDeleteComment_whenSuccessful_confirmsDeletion(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeDeleteComment(NewClient(srv.URL, "tok"))
+	handler := makeDeleteComment(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"slug":       "proj",

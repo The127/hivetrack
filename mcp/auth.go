@@ -15,6 +15,7 @@ import (
 type tokenCache struct {
 	AccessToken  string    `json:"access_token"`
 	RefreshToken string    `json:"refresh_token"`
+	IssuedAt     time.Time `json:"issued_at"`
 	Expiry       time.Time `json:"expiry"`
 	ServerURL    string    `json:"server_url"`
 }
@@ -71,15 +72,15 @@ func saveCache(c tokenCache) error {
 	return os.WriteFile(p, data, 0600)
 }
 
-// TryToken returns a valid access token from cache or via token refresh.
-// Returns ("", nil) if no valid token is available and device flow is needed.
-func TryToken(serverURL string) (string, error) {
+// TryToken returns a valid tokenCache from cache or via token refresh.
+// Returns (tokenCache{}, nil) if no valid token is available and device flow is needed.
+func TryToken(serverURL string) (tokenCache, error) {
 	cached, ok := loadCache()
 	if !ok || cached.ServerURL != serverURL {
-		return "", nil
+		return tokenCache{}, nil
 	}
 	if time.Now().Before(cached.Expiry) {
-		return cached.AccessToken, nil
+		return cached, nil
 	}
 	if cached.RefreshToken != "" {
 		refreshed, err := tryRefresh(serverURL, cached.RefreshToken)
@@ -87,11 +88,11 @@ func TryToken(serverURL string) (string, error) {
 			if saveErr := saveCache(refreshed); saveErr != nil {
 				fmt.Fprintf(os.Stderr, "[mcp] warning: failed to save token cache: %v\n", saveErr)
 			}
-			return refreshed.AccessToken, nil
+			return refreshed, nil
 		}
 		fmt.Fprintf(os.Stderr, "[mcp] token refresh failed, device flow required: %v\n", err)
 	}
-	return "", nil
+	return tokenCache{}, nil
 }
 
 // InitDeviceFlow starts the OIDC device authorization flow and returns immediately
@@ -128,14 +129,14 @@ func InitDeviceFlow(serverURL string) (*DeviceFlow, error) {
 }
 
 // WaitForToken polls the token endpoint until the user completes authentication,
-// then saves the token to the cache and returns the access token.
+// then saves the token to the cache and returns the full tokenCache.
 // Respects context cancellation.
-func (f *DeviceFlow) WaitForToken(ctx context.Context) (string, error) {
+func (f *DeviceFlow) WaitForToken(ctx context.Context) (tokenCache, error) {
 	interval := f.interval
 	for {
 		select {
 		case <-ctx.Done():
-			return "", ctx.Err()
+			return tokenCache{}, ctx.Err()
 		case <-time.After(time.Duration(interval) * time.Second):
 		}
 
@@ -145,31 +146,33 @@ func (f *DeviceFlow) WaitForToken(ctx context.Context) (string, error) {
 			"device_code": {f.deviceCode},
 			"client_id":   {f.clientID},
 		}, &tr); err != nil {
-			return "", fmt.Errorf("polling token endpoint: %w", err)
+			return tokenCache{}, fmt.Errorf("polling token endpoint: %w", err)
 		}
 
 		switch tr.Error {
 		case "":
+			now := time.Now()
 			c := tokenCache{
 				AccessToken:  tr.AccessToken,
 				RefreshToken: tr.RefreshToken,
-				Expiry:       time.Now().Add(time.Duration(tr.ExpiresIn) * time.Second),
+				IssuedAt:     now,
+				Expiry:       now.Add(time.Duration(tr.ExpiresIn) * time.Second),
 				ServerURL:    f.serverURL,
 			}
 			if err := saveCache(c); err != nil {
 				fmt.Fprintf(os.Stderr, "[mcp] warning: failed to save token cache: %v\n", err)
 			}
-			return tr.AccessToken, nil
+			return c, nil
 		case "authorization_pending":
 			// keep waiting
 		case "slow_down":
 			interval += 5
 		case "access_denied":
-			return "", fmt.Errorf("device flow: access denied")
+			return tokenCache{}, fmt.Errorf("device flow: access denied")
 		case "expired_token":
-			return "", fmt.Errorf("device flow: device code expired")
+			return tokenCache{}, fmt.Errorf("device flow: device code expired")
 		default:
-			return "", fmt.Errorf("device flow error: %s", tr.Error)
+			return tokenCache{}, fmt.Errorf("device flow error: %s", tr.Error)
 		}
 	}
 }
@@ -177,9 +180,9 @@ func (f *DeviceFlow) WaitForToken(ctx context.Context) (string, error) {
 // EnsureToken returns a valid access token for serverURL, running device flow
 // interactively (printing to stderr) if needed. Suitable for CLI use.
 func EnsureToken(serverURL string) (string, error) {
-	token, err := TryToken(serverURL)
-	if err != nil || token != "" {
-		return token, err
+	tc, err := TryToken(serverURL)
+	if err != nil || tc.AccessToken != "" {
+		return tc.AccessToken, err
 	}
 
 	flow, err := InitDeviceFlow(serverURL)
@@ -194,7 +197,8 @@ func EnsureToken(serverURL string) (string, error) {
 		fmt.Fprintf(os.Stderr, "Go to %s and enter code: %s\n", flow.VerificationURI, flow.UserCode)
 	}
 
-	return flow.WaitForToken(context.Background())
+	tc, err = flow.WaitForToken(context.Background())
+	return tc.AccessToken, err
 }
 
 type oidcProviderConfig struct {
@@ -278,10 +282,12 @@ func tryRefresh(serverURL, refreshTok string) (tokenCache, error) {
 	if tr.Error != "" {
 		return tokenCache{}, fmt.Errorf("token refresh error: %s", tr.Error)
 	}
+	now := time.Now()
 	return tokenCache{
 		AccessToken:  tr.AccessToken,
 		RefreshToken: tr.RefreshToken,
-		Expiry:       time.Now().Add(time.Duration(tr.ExpiresIn) * time.Second),
+		IssuedAt:     now,
+		Expiry:       now.Add(time.Duration(tr.ExpiresIn) * time.Second),
 		ServerURL:    serverURL,
 	}, nil
 }

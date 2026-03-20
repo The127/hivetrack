@@ -24,7 +24,7 @@ func TestGetCurrentUser_whenCalled_callsUsersMeEndpoint(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeGetCurrentUser(NewClient(srv.URL, "tok"))
+	handler := makeGetCurrentUser(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{}
 
@@ -47,7 +47,7 @@ func TestGetCurrentUser_whenCalled_returnsEmailAndAdminStatus(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeGetCurrentUser(NewClient(srv.URL, "tok"))
+	handler := makeGetCurrentUser(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{}
 

@@ -23,7 +23,7 @@ func TestDeleteSprint_whenSlugAndSprintIdProvided_sendsDeleteRequest(t *testing.
 	}))
 	defer srv.Close()
 
-	handler := makeDeleteSprint(NewClient(srv.URL, "tok"))
+	handler := makeDeleteSprint(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"slug":      "my-proj",
@@ -48,7 +48,7 @@ func TestDeleteSprint_whenSuccessful_confirmsSprintDeleted(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeDeleteSprint(NewClient(srv.URL, "tok"))
+	handler := makeDeleteSprint(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"slug":      "proj",
@@ -80,7 +80,7 @@ func TestGetSprintBurndown_whenSlugAndSprintIdProvided_callsBurndownEndpoint(t *
 	}))
 	defer srv.Close()
 
-	handler := makeGetSprintBurndown(NewClient(srv.URL, "tok"))
+	handler := makeGetSprintBurndown(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"slug":      "my-proj",
@@ -106,7 +106,7 @@ func TestGetSprintBurndown_whenDataReturned_formatsPointsWithDatesAndRemaining(t
 	}))
 	defer srv.Close()
 
-	handler := makeGetSprintBurndown(NewClient(srv.URL, "tok"))
+	handler := makeGetSprintBurndown(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"slug":      "proj",

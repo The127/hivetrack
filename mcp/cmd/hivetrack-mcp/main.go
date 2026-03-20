@@ -23,41 +23,40 @@ func main() {
 		apiURL = "http://localhost:8086"
 	}
 
-	token, err := htmcp.TryToken(apiURL)
+	tc, err := htmcp.TryToken(apiURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[mcp] auth error: %v\n", err)
 		os.Exit(1)
 	}
 
-	var flow *htmcp.DeviceFlow
-	if token == "" {
-		flow, err = htmcp.InitDeviceFlow(apiURL)
+	if tc.AccessToken == "" {
+		flow, err := htmcp.InitDeviceFlow(apiURL)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[mcp] failed to start device flow: %v\n", err)
+			os.Exit(1)
+		}
+		authURL := flow.VerificationURIComplete
+		if authURL == "" {
+			authURL = flow.VerificationURI
+		}
+		fmt.Fprintf(os.Stderr, "[mcp] authenticate at: %s\n", authURL)
+		tc, err = flow.WaitForToken(context.Background())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[mcp] device flow failed: %v\n", err)
 			os.Exit(1)
 		}
 	}
 
 	fmt.Fprintf(os.Stderr, "[mcp] starting: url=%s\n", apiURL)
 
-	client := htmcp.NewClient(apiURL, token)
-
-	if flow != nil {
-		authURL := flow.VerificationURIComplete
-		if authURL == "" {
-			authURL = flow.VerificationURI
-		}
-		client.SetAuthURL(authURL)
-		go func() {
-			tok, err := flow.WaitForToken(context.Background())
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "[mcp] device flow failed: %v\n", err)
-				return
-			}
-			client.SetToken(tok)
-			fmt.Fprintln(os.Stderr, "[mcp] authenticated")
-		}()
-	}
+	fetcher := htmcp.NewCachingTokenFetcher(
+		&htmcp.DeviceFlowFetcher{BaseURL: apiURL},
+		htmcp.RealClock,
+		apiURL,
+		tc,
+		0.1,
+	)
+	client := htmcp.NewClient(apiURL, fetcher)
 
 	s := htmcp.NewServer(client)
 

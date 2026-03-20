@@ -24,7 +24,7 @@ func TestDeleteIssue_whenSlugAndNumberProvided_sendsDeleteRequest(t *testing.T) 
 	}))
 	defer srv.Close()
 
-	handler := makeDeleteIssue(NewClient(srv.URL, "tok"))
+	handler := makeDeleteIssue(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{"slug": "my-proj", "number": float64(42)}
 
@@ -46,7 +46,7 @@ func TestDeleteIssue_whenSuccessful_confirmsDeletion(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeDeleteIssue(NewClient(srv.URL, "tok"))
+	handler := makeDeleteIssue(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{"slug": "proj", "number": float64(7)}
 
@@ -68,7 +68,7 @@ func TestDeleteIssue_whenSlugMissing_returnsErrorWithoutCallingAPI(t *testing.T)
 	}))
 	defer srv.Close()
 
-	handler := makeDeleteIssue(NewClient(srv.URL, "tok"))
+	handler := makeDeleteIssue(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{"number": float64(42)}
 
@@ -98,7 +98,7 @@ func TestRefineIssue_whenSlugAndNumberProvided_sendsPostToRefineEndpoint(t *test
 	}))
 	defer srv.Close()
 
-	handler := makeRefineIssue(NewClient(srv.URL, "tok"))
+	handler := makeRefineIssue(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{"slug": "my-proj", "number": float64(5)}
 
@@ -120,7 +120,7 @@ func TestRefineIssue_whenSuccessful_confirmsIssueMarkedRefined(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeRefineIssue(NewClient(srv.URL, "tok"))
+	handler := makeRefineIssue(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{"slug": "proj", "number": float64(3)}
 
@@ -150,7 +150,7 @@ func TestAddIssueLink_whenLinkTypeAndTargetProvided_sendsLinkBodyToLinksEndpoint
 	}))
 	defer srv.Close()
 
-	handler := makeAddIssueLink(NewClient(srv.URL, "tok"))
+	handler := makeAddIssueLink(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"slug":          "my-proj",
@@ -180,7 +180,7 @@ func TestAddIssueLink_whenSuccessful_confirmsLinkCreated(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeAddIssueLink(NewClient(srv.URL, "tok"))
+	handler := makeAddIssueLink(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"slug":          "proj",
@@ -217,7 +217,7 @@ func TestSplitIssue_whenTitlesProvided_sendsArrayToSplitEndpoint(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeSplitIssue(NewClient(srv.URL, "tok"))
+	handler := makeSplitIssue(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"slug":   "my-proj",
@@ -253,7 +253,7 @@ func TestSplitIssue_whenSuccessful_returnsCreatedIssueNumbers(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	handler := makeSplitIssue(NewClient(srv.URL, "tok"))
+	handler := makeSplitIssue(testClient(srv.URL))
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{
 		"slug":   "proj",
