@@ -49,14 +49,14 @@ func main() {
 
 	fmt.Fprintf(os.Stderr, "[mcp] starting: url=%s\n", apiURL)
 
-	fetcher := htmcp.NewCachingTokenFetcher(
-		&htmcp.DeviceFlowFetcher{BaseURL: apiURL},
+	provider := htmcp.NewCachingTokenProvider(
+		&htmcp.DeviceFlowProvider{BaseURL: apiURL},
 		htmcp.RealClock,
 		apiURL,
 		tc,
 		0.1,
 	)
-	client := htmcp.NewClient(apiURL, fetcher)
+	client := htmcp.NewClient(apiURL, provider)
 
 	s := htmcp.NewServer(client)
 

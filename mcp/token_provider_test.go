@@ -7,25 +7,25 @@ import (
 	"time"
 )
 
-func newCachingFetcher(inner TokenFetcher, clock Clock, initial tokenCache, refreshFn func(string, string) (tokenCache, error)) *CachingTokenFetcher {
-	c := NewCachingTokenFetcher(inner, clock, "http://example.com", initial, 0.1)
+func newCachingFetcher(inner TokenProvider, clock Clock, initial tokenCache, refreshFn func(string, string) (tokenCache, error)) *CachingTokenProvider {
+	c := NewCachingTokenProvider(inner, clock, "http://example.com", initial, 0.1)
 	if refreshFn != nil {
 		c.refreshFn = refreshFn
 	}
 	return c
 }
 
-func TestCachingTokenFetcher_whenTokenIsFresh_returnsSameTokenOnRepeatedCalls(t *testing.T) {
+func TestCachingTokenProvider_whenTokenIsFresh_returnsSameTokenOnRepeatedCalls(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)}
-	inner := &randomTokenFetcher{clock: clock}
+	inner := &randomTokenProvider{clock: clock}
 
 	c := newCachingFetcher(inner, clock, tokenCache{}, nil)
 
-	first, err := c.FetchToken(context.Background())
+	first, err := c.ProvideToken(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	second, err := c.FetchToken(context.Background())
+	second, err := c.ProvideToken(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -38,23 +38,23 @@ func TestCachingTokenFetcher_whenTokenIsFresh_returnsSameTokenOnRepeatedCalls(t 
 	}
 }
 
-func TestCachingTokenFetcher_whenBelowRefreshThreshold_proactivelyRefreshes(t *testing.T) {
+func TestCachingTokenProvider_whenBelowRefreshThreshold_proactivelyRefreshes(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)}
-	// 5% lifetime remaining → below 10% threshold → refresh expected
 	initial := tokenCache{
 		AccessToken:  "old-token",
 		RefreshToken: "rt",
-		IssuedAt:     clock.now.Add(-95 * time.Minute),
-		Expiry:       clock.now.Add(5 * time.Minute),
+		IssuedAt:     clock.Now(),
+		Expiry:       clock.Now().Add(100 * time.Minute),
 	}
-	inner := &fakeFetcher{}
+	clock.Tick(91 * time.Minute) // 9% remaining < 10% threshold
+	inner := &fakeProvider{}
 
-	refreshed := tokenCache{AccessToken: "refreshed-token", IssuedAt: clock.now, Expiry: clock.now.Add(time.Hour)}
+	refreshed := tokenCache{AccessToken: "refreshed-token", IssuedAt: clock.Now(), Expiry: clock.Now().Add(time.Hour)}
 	c := newCachingFetcher(inner, clock, initial, func(_, _ string) (tokenCache, error) {
 		return refreshed, nil
 	})
 
-	tc, err := c.FetchToken(context.Background())
+	tc, err := c.ProvideToken(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -66,22 +66,23 @@ func TestCachingTokenFetcher_whenBelowRefreshThreshold_proactivelyRefreshes(t *t
 	}
 }
 
-func TestCachingTokenFetcher_whenRefreshFails_callsInner(t *testing.T) {
+func TestCachingTokenProvider_whenRefreshFails_callsInner(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)}
 	initial := tokenCache{
 		AccessToken:  "old-token",
 		RefreshToken: "rt",
-		IssuedAt:     clock.now.Add(-95 * time.Minute),
-		Expiry:       clock.now.Add(5 * time.Minute),
+		IssuedAt:     clock.Now(),
+		Expiry:       clock.Now().Add(100 * time.Minute),
 	}
-	innerToken := tokenCache{AccessToken: "inner-token", IssuedAt: clock.now, Expiry: clock.now.Add(time.Hour)}
-	inner := &fakeFetcher{token: innerToken}
+	clock.Tick(91 * time.Minute) // 9% remaining < 10% threshold
+	innerToken := tokenCache{AccessToken: "inner-token", IssuedAt: clock.Now(), Expiry: clock.Now().Add(time.Hour)}
+	inner := &fakeProvider{token: innerToken}
 
 	c := newCachingFetcher(inner, clock, initial, func(_, _ string) (tokenCache, error) {
 		return tokenCache{}, errors.New("refresh error")
 	})
 
-	tc, err := c.FetchToken(context.Background())
+	tc, err := c.ProvideToken(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

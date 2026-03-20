@@ -10,14 +10,14 @@ import (
 
 // testClient creates a Client pre-loaded with a non-expired test token.
 func testClient(url string) *Client {
-	fetcher := staticTokenFetcher{tc: tokenCache{AccessToken: "tok", Expiry: time.Now().Add(time.Hour)}}
-	return NewClient(url, fetcher)
+	provider := staticTokenProvider{tc: tokenCache{AccessToken: "tok", Expiry: time.Now().Add(time.Hour)}}
+	return NewClient(url, provider)
 }
 
-// staticTokenFetcher always returns the same token, used in tests.
-type staticTokenFetcher struct{ tc tokenCache }
+// staticTokenProvider always returns the same token, used in tests.
+type staticTokenProvider struct{ tc tokenCache }
 
-func (s staticTokenFetcher) FetchToken(_ context.Context) (tokenCache, error) { return s.tc, nil }
+func (s staticTokenProvider) ProvideToken(_ context.Context) (tokenCache, error) { return s.tc, nil }
 
 // extractText pulls the text content from a tool result's first content item.
 func extractText(result *mcp.CallToolResult) string {

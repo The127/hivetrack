@@ -15,15 +15,15 @@ import (
 // Client is a thin HTTP client for the Hivetrack REST API.
 type Client struct {
 	baseURL    string
-	fetcher    TokenFetcher
+	provider    TokenProvider
 	httpClient *http.Client
 }
 
 // NewClient creates a new Hivetrack API client.
-func NewClient(baseURL string, fetcher TokenFetcher) *Client {
+func NewClient(baseURL string, provider TokenProvider) *Client {
 	return &Client{
 		baseURL: baseURL,
-		fetcher: fetcher,
+		provider: provider,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -47,7 +47,7 @@ func (c *Client) delete(path string) (json.RawMessage, error) {
 }
 
 func (c *Client) do(method, path string, query url.Values, body any) (json.RawMessage, error) {
-	tc, err := c.fetcher.FetchToken(context.Background())
+	tc, err := c.provider.ProvideToken(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("not authenticated: %w", err)
 	}

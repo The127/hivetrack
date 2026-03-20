@@ -10,13 +10,13 @@ import (
 	"time"
 )
 
-// staticFetcher is a TokenFetcher that always returns the same token.
-type staticFetcher struct{ tc tokenCache }
+// staticProvider is a TokenProvider that always returns the same token.
+type staticProvider struct{ tc tokenCache }
 
-func (s staticFetcher) FetchToken(_ context.Context) (tokenCache, error) { return s.tc, nil }
+func (s staticProvider) ProvideToken(_ context.Context) (tokenCache, error) { return s.tc, nil }
 
-func freshFetcher(token string) TokenFetcher {
-	return staticFetcher{tc: tokenCache{AccessToken: token, Expiry: time.Now().Add(time.Hour)}}
+func freshProvider(token string) TokenProvider {
+	return staticProvider{tc: tokenCache{AccessToken: token, Expiry: time.Now().Add(time.Hour)}}
 }
 
 func TestClient_Get(t *testing.T) {
@@ -35,7 +35,7 @@ func TestClient_Get(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient(srv.URL, freshFetcher("test-token"))
+	client := NewClient(srv.URL, freshProvider("test-token"))
 	data, err := client.get("/api/v1/projects", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -60,7 +60,7 @@ func TestClient_GetWithQuery(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient(srv.URL, freshFetcher("test-token"))
+	client := NewClient(srv.URL, freshProvider("test-token"))
 	q := url.Values{}
 	q.Set("status", "todo")
 	_, err := client.get("/api/v1/projects/my-project/issues", q)
@@ -91,7 +91,7 @@ func TestClient_Post(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient(srv.URL, freshFetcher("test-token"))
+	client := NewClient(srv.URL, freshProvider("test-token"))
 	data, err := client.post("/api/v1/projects/my-project/issues", map[string]any{
 		"title": "Test issue",
 		"type":  "task",
@@ -116,7 +116,7 @@ func TestClient_Patch(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient(srv.URL, freshFetcher("test-token"))
+	client := NewClient(srv.URL, freshProvider("test-token"))
 	data, err := client.patch("/api/v1/projects/my-project/issues/1", map[string]any{
 		"status": "done",
 	})
@@ -138,7 +138,7 @@ func TestClient_ErrorResponse(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient(srv.URL, freshFetcher("test-token"))
+	client := NewClient(srv.URL, freshProvider("test-token"))
 	_, err := client.get("/api/v1/projects/nonexistent", nil)
 	if err == nil {
 		t.Fatal("expected error for 404 response")
