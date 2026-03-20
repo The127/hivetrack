@@ -23,7 +23,7 @@ type Client struct {
 // NewClient creates a new Hivetrack API client.
 func NewClient(baseURL string, provider TokenProvider) *Client {
 	return &Client{
-		baseURL: strings.TrimRight(baseURL, "/"),
+		baseURL:  strings.TrimRight(baseURL, "/"),
 		provider: provider,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
