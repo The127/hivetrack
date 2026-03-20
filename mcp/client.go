@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -24,7 +25,7 @@ type Client struct {
 // NewClient creates a new Hivetrack API client.
 func NewClient(baseURL, token string) *Client {
 	return &Client{
-		baseURL: baseURL,
+		baseURL: strings.TrimRight(baseURL, "/"),
 		token:   token,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
