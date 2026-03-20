@@ -10,7 +10,14 @@ import (
 	htmcp "github.com/the127/hivetrack/mcp"
 )
 
+var version = "dev"
+
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
+		fmt.Fprintln(os.Stdout, "hivetrack-mcp "+version)
+		os.Exit(0)
+	}
+
 	apiURL := os.Getenv("HIVETRACK_URL")
 	if apiURL == "" {
 		apiURL = "http://localhost:8086"

@@ -10,8 +10,8 @@ permissions:
   packages: write
 
 jobs:
-  release:
-    name: Build & Release
+  build-app:
+    name: Build App (Linux)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,26 +35,160 @@ jobs:
 
       - name: Build backend binary
         working-directory: hivetrack
-        run: CGO_ENABLED=0 GOOS=linux go build -o ../bin/hivetrack ./cmd/hivetrack
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=${{ github.ref_name }}" -o ../bin/hivetrack ./cmd/hivetrack
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-binary
+          path: bin/hivetrack
+
+  build-mcp:
+    name: Build MCP (${{ matrix.os }}/${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            suffix: ""
+          - os: linux
+            arch: arm64
+            suffix: ""
+          - os: darwin
+            arch: amd64
+            suffix: ""
+          - os: darwin
+            arch: arm64
+            suffix: ""
+          - os: windows
+            arch: amd64
+            suffix: ".exe"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: mcp/go.sum
 
       - name: Build MCP binaries
         working-directory: mcp
         run: |
-          CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -o ../bin/hivetrack-mcp-linux-amd64   ./cmd/hivetrack-mcp
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o ../bin/hivetrack-mcp-windows-amd64.exe ./cmd/hivetrack-mcp
-          CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -o ../bin/hivetrack-mcp-darwin-amd64  ./cmd/hivetrack-mcp
-          CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -o ../bin/hivetrack-mcp-darwin-arm64  ./cmd/hivetrack-mcp
+          CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} \
+            go build -ldflags "-X main.version=${{ github.ref_name }}" \
+            -o ../bin/hivetrack-mcp-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }} \
+            ./cmd/hivetrack-mcp
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mcp-${{ matrix.os }}-${{ matrix.arch }}
+          path: bin/hivetrack-mcp-*
+
+  release:
+    name: Create Release
+    needs: [build-app, build-mcp]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: bin
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: bin
+        run: sha256sum * > checksums.txt
+
+      - name: Create mcp/ prefixed tag
+        run: |
+          git tag "mcp/${{ github.ref_name }}" "${{ github.ref_name }}"
+          git push origin "mcp/${{ github.ref_name }}"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            bin/hivetrack
-            bin/hivetrack-mcp-linux-amd64
-            bin/hivetrack-mcp-windows-amd64.exe
-            bin/hivetrack-mcp-darwin-amd64
-            bin/hivetrack-mcp-darwin-arm64
+            bin/*
           generate_release_notes: true
+
+      - name: Publish to npm
+        if: vars.NPM_PUBLISH == 'true'
+        working-directory: npm/hivetrack-mcp
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          npm version "$VERSION" --no-git-tag-version
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          npm publish --access public
+
+      - name: Update Homebrew tap
+        if: vars.HOMEBREW_TAP == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+
+          DARWIN_AMD64_SHA=$(grep 'hivetrack-mcp-darwin-amd64' bin/checksums.txt | awk '{print $1}')
+          DARWIN_ARM64_SHA=$(grep 'hivetrack-mcp-darwin-arm64' bin/checksums.txt | awk '{print $1}')
+          LINUX_AMD64_SHA=$(grep 'hivetrack-mcp-linux-amd64' bin/checksums.txt | awk '{print $1}')
+          LINUX_ARM64_SHA=$(grep 'hivetrack-mcp-linux-arm64' bin/checksums.txt | awk '{print $1}')
+
+          BASE_URL="https://github.com/The127/hivetrack/releases/download/${TAG}"
+
+          FORMULA=$(cat <<FORMULA_EOF
+          class HivetrackMcp < Formula
+            desc "MCP server for Hivetrack task planning tool"
+            homepage "https://github.com/The127/hivetrack"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "${BASE_URL}/hivetrack-mcp-darwin-arm64"
+                sha256 "${DARWIN_ARM64_SHA}"
+              else
+                url "${BASE_URL}/hivetrack-mcp-darwin-amd64"
+                sha256 "${DARWIN_AMD64_SHA}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "${BASE_URL}/hivetrack-mcp-linux-arm64"
+                sha256 "${LINUX_ARM64_SHA}"
+              else
+                url "${BASE_URL}/hivetrack-mcp-linux-amd64"
+                sha256 "${LINUX_AMD64_SHA}"
+              end
+            end
+
+            def install
+              suffix = if OS.mac?
+                Hardware::CPU.arm? ? "darwin-arm64" : "darwin-amd64"
+              else
+                Hardware::CPU.arm? ? "linux-arm64" : "linux-amd64"
+              end
+              bin.install "hivetrack-mcp-#{suffix}" => "hivetrack-mcp"
+            end
+
+            test do
+              assert_match "hivetrack-mcp", shell_output("#{bin}/hivetrack-mcp --version", 0)
+            end
+          end
+          FORMULA_EOF
+          )
+
+          gh repo clone The127/homebrew-tap /tmp/homebrew-tap
+          mkdir -p /tmp/homebrew-tap/Formula
+          echo "$FORMULA" > /tmp/homebrew-tap/Formula/hivetrack-mcp.rb
+          cd /tmp/homebrew-tap
+          git add Formula/hivetrack-mcp.rb
+          git commit -m "Update hivetrack-mcp to ${VERSION}"
+          git push
 
   docker:
     name: Docker Images
