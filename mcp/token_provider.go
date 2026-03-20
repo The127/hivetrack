@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 )
 
 // TokenProvider returns a valid tokenCache, blocking if necessary (e.g. device flow).
@@ -95,21 +96,65 @@ func (c *CachingTokenProvider) ProvideToken(ctx context.Context) (tokenCache, er
 }
 
 // DeviceFlowProvider implements TokenProvider via OIDC device flow.
-// It logs the auth URL to stderr and blocks until the user completes auth.
+// The first call to ProvideToken initiates device flow and starts a background
+// goroutine that polls for completion. It returns an error containing the auth URL
+// so the caller can surface it immediately. Once the user authenticates, subsequent
+// calls return the token.
 type DeviceFlowProvider struct {
 	BaseURL string
+
+	mu      sync.Mutex
+	flow    *DeviceFlow
+	result  *tokenCache
+	flowErr error
+	expires time.Time
 }
 
-// ProvideToken initiates device flow, prints the auth URL, and waits for completion.
-func (f *DeviceFlowProvider) ProvideToken(ctx context.Context) (tokenCache, error) {
-	flow, err := InitDeviceFlow(f.BaseURL)
-	if err != nil {
-		return tokenCache{}, err
+// ProvideToken starts device flow on first call and returns an error with the auth URL.
+// Once the user completes auth, the next call returns the cached token.
+func (f *DeviceFlowProvider) ProvideToken(_ context.Context) (tokenCache, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	// Completed flow available — return and reset so a fresh flow can start later.
+	if f.result != nil && time.Now().Before(f.expires) {
+		tc := *f.result
+		f.result = nil
+		f.flow = nil
+		return tc, nil
 	}
-	authURL := flow.VerificationURIComplete
+
+	// Previous flow errored or expired — reset and start fresh.
+	if f.flowErr != nil || (f.result != nil && !time.Now().Before(f.expires)) {
+		f.flow = nil
+		f.result = nil
+		f.flowErr = nil
+	}
+
+	// Start a new flow if none in progress.
+	if f.flow == nil {
+		flow, err := InitDeviceFlow(f.BaseURL)
+		if err != nil {
+			return tokenCache{}, fmt.Errorf("failed to start device flow: %w", err)
+		}
+		f.flow = flow
+		go func() {
+			tc, err := flow.WaitForToken(context.Background())
+			f.mu.Lock()
+			defer f.mu.Unlock()
+			if err != nil {
+				f.flowErr = err
+				f.flow = nil
+			} else {
+				f.result = &tc
+				f.expires = tc.Expiry
+			}
+		}()
+	}
+
+	authURL := f.flow.VerificationURIComplete
 	if authURL == "" {
-		authURL = flow.VerificationURI
+		authURL = f.flow.VerificationURI
 	}
-	fmt.Fprintf(os.Stderr, "[mcp] authenticate at: %s\n", authURL)
-	return flow.WaitForToken(ctx)
+	return tokenCache{}, fmt.Errorf("not authenticated — open this URL to log in: %s", authURL)
 }

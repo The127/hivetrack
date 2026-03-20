@@ -49,10 +49,7 @@ func (c *Client) delete(path string) (json.RawMessage, error) {
 func (c *Client) do(method, path string, query url.Values, body any) (json.RawMessage, error) {
 	tc, err := c.provider.ProvideToken(context.Background())
 	if err != nil {
-		return nil, fmt.Errorf("not authenticated: %w", err)
-	}
-	if tc.AccessToken == "" {
-		return nil, fmt.Errorf("not authenticated: please complete the device authorization flow and retry")
+		return nil, err
 	}
 
 	u := c.baseURL + path

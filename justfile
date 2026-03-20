@@ -163,6 +163,11 @@ mcp-build:
 mcp-test:
     cd mcp && {{go}} test ./... -count=1
 
+# Launch the MCP Inspector UI against the MCP server binary
+# Override server URL with: just mcp-inspect url=https://your-instance.example.com
+mcp-inspect url="https://hivetrack.karo.gay": mcp-build
+    npx @modelcontextprotocol/inspector -e HIVETRACK_URL={{url}} {{justfile_directory()}}/bin/hivetrack-mcp
+
 # ─── Utilities ────────────────────────────────────────────────────────────────
 
 # Print the current version (from git tag or commit)

@@ -177,28 +177,31 @@ func (f *DeviceFlow) WaitForToken(ctx context.Context) (tokenCache, error) {
 	}
 }
 
-// EnsureToken returns a valid access token for serverURL, running device flow
-// interactively (printing to stderr) if needed. Suitable for CLI use.
-func EnsureToken(serverURL string) (string, error) {
+// Login runs the OIDC device flow interactively, printing the auth URL to stderr.
+// If a valid token already exists, it reports that and returns immediately.
+func Login(serverURL string) error {
 	tc, err := TryToken(serverURL)
-	if err != nil || tc.AccessToken != "" {
-		return tc.AccessToken, err
+	if err != nil {
+		return err
+	}
+	if tc.AccessToken != "" {
+		fmt.Fprintln(os.Stderr, "[mcp] already authenticated (token is valid)")
+		return nil
 	}
 
 	flow, err := InitDeviceFlow(serverURL)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	if flow.VerificationURIComplete != "" {
-		fmt.Fprintf(os.Stderr, "Open %s\n(or go to %s and enter code: %s)\n",
-			flow.VerificationURIComplete, flow.VerificationURI, flow.UserCode)
-	} else {
-		fmt.Fprintf(os.Stderr, "Go to %s and enter code: %s\n", flow.VerificationURI, flow.UserCode)
+	authURL := flow.VerificationURIComplete
+	if authURL == "" {
+		authURL = flow.VerificationURI
 	}
+	fmt.Fprintf(os.Stderr, "Open this URL to authenticate:\n\n  %s\n\n", authURL)
 
-	tc, err = flow.WaitForToken(context.Background())
-	return tc.AccessToken, err
+	_, err = flow.WaitForToken(context.Background())
+	return err
 }
 
 type oidcProviderConfig struct {
