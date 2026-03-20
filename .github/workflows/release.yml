@@ -37,16 +37,23 @@ jobs:
         working-directory: hivetrack
         run: CGO_ENABLED=0 GOOS=linux go build -o ../bin/hivetrack ./cmd/hivetrack
 
-      - name: Build MCP binary
+      - name: Build MCP binaries
         working-directory: mcp
-        run: CGO_ENABLED=0 GOOS=linux go build -o ../bin/hivetrack-mcp ./cmd/hivetrack-mcp
+        run: |
+          CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -o ../bin/hivetrack-mcp-linux-amd64   ./cmd/hivetrack-mcp
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o ../bin/hivetrack-mcp-windows-amd64.exe ./cmd/hivetrack-mcp
+          CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -o ../bin/hivetrack-mcp-darwin-amd64  ./cmd/hivetrack-mcp
+          CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -o ../bin/hivetrack-mcp-darwin-arm64  ./cmd/hivetrack-mcp
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             bin/hivetrack
-            bin/hivetrack-mcp
+            bin/hivetrack-mcp-linux-amd64
+            bin/hivetrack-mcp-windows-amd64.exe
+            bin/hivetrack-mcp-darwin-amd64
+            bin/hivetrack-mcp-darwin-arm64
           generate_release_notes: true
 
   docker:
