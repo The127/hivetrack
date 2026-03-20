@@ -3,42 +3,9 @@ package mcp
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 )
-
-// fakeClock is a controllable Clock for tests.
-type fakeClock struct{ now time.Time }
-
-func (f *fakeClock) Now() time.Time { return f.now }
-
-// randomTokenFetcher returns a unique token on each call.
-type randomTokenFetcher struct {
-	clock Clock
-	calls int
-}
-
-func (r *randomTokenFetcher) FetchToken(_ context.Context) (tokenCache, error) {
-	r.calls++
-	return tokenCache{
-		AccessToken: fmt.Sprintf("token-%d", r.calls),
-		IssuedAt:    r.clock.Now(),
-		Expiry:      r.clock.Now().Add(time.Hour),
-	}, nil
-}
-
-// fakeFetcher returns a preset result and records whether it was called.
-type fakeFetcher struct {
-	token tokenCache
-	err   error
-	calls int
-}
-
-func (f *fakeFetcher) FetchToken(_ context.Context) (tokenCache, error) {
-	f.calls++
-	return f.token, f.err
-}
 
 func newCachingFetcher(inner TokenFetcher, clock Clock, initial tokenCache, refreshFn func(string, string) (tokenCache, error)) *CachingTokenFetcher {
 	c := NewCachingTokenFetcher(inner, clock, "http://example.com", initial, 0.1)
