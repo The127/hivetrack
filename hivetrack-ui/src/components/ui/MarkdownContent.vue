@@ -20,5 +20,5 @@ const html = computed(() => DOMPurify.sanitize(md.parse(props.content ?? "")));
 
 <template>
   <!-- eslint-disable-next-line vue/no-v-html — html is DOMPurify-sanitized -->
-  <div class="prose prose-sm prose-slate max-w-none" v-html="html" />
+  <div class="prose prose-sm prose-slate dark:prose-invert max-w-none" v-html="html" />
 </template>

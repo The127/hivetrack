@@ -3,7 +3,11 @@ import { VueQueryPlugin } from '@tanstack/vue-query'
 import App from './App.vue'
 import './style.css'
 import { initAuth } from '@/composables/useAuth'
+import { initTheme } from '@/composables/useTheme'
 import router from '@/router/index.js'
+
+// Apply theme before first render to avoid flash of wrong theme.
+initTheme()
 
 // Initialise OIDC before installing the router — app.use(router) triggers the
 // initial navigation synchronously, so the guard must have auth state ready.

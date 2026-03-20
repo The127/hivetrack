@@ -140,15 +140,15 @@ function submit() {
 
       <!-- Archetype -->
       <div class="flex flex-col gap-1.5">
-        <span class="text-sm font-medium text-slate-700">Type</span>
+        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Type</span>
         <div class="grid grid-cols-2 gap-2">
           <button
             type="button"
             :class="[
               'flex flex-col items-start gap-1.5 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer',
               archetype === 'software'
-                ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
-                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50',
+                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-500'
+                : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800',
             ]"
             @click="archetype = 'software'"
           >
@@ -159,12 +159,12 @@ function submit() {
               <p
                 :class="[
                   'text-sm font-medium',
-                  archetype === 'software' ? 'text-blue-700' : 'text-slate-700',
+                  archetype === 'software' ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300',
                 ]"
               >
                 Software
               </p>
-              <p class="text-xs text-slate-500">Sprints, backlog, board</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Sprints, backlog, board</p>
             </div>
           </button>
 
@@ -173,8 +173,8 @@ function submit() {
             :class="[
               'flex flex-col items-start gap-1.5 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer',
               archetype === 'support'
-                ? 'border-teal-500 bg-teal-50 ring-1 ring-teal-500'
-                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50',
+                ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20 ring-1 ring-teal-500'
+                : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800',
             ]"
             @click="archetype = 'support'"
           >
@@ -185,12 +185,12 @@ function submit() {
               <p
                 :class="[
                   'text-sm font-medium',
-                  archetype === 'support' ? 'text-teal-700' : 'text-slate-700',
+                  archetype === 'support' ? 'text-teal-700 dark:text-teal-300' : 'text-slate-700 dark:text-slate-300',
                 ]"
               >
                 Support
               </p>
-              <p class="text-xs text-slate-500">Email intake, token tracking</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Email intake, token tracking</p>
             </div>
           </button>
         </div>
@@ -198,12 +198,12 @@ function submit() {
 
       <!-- Description (optional) -->
       <div class="flex flex-col gap-1">
-        <label class="text-sm font-medium text-slate-700">Description <span class="text-slate-400 font-normal">(optional)</span></label>
+        <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Description <span class="text-slate-400 dark:text-slate-500 font-normal">(optional)</span></label>
         <textarea
           v-model="description"
           rows="2"
           placeholder="What is this project for?"
-          class="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-blue-400 focus:ring-blue-200 resize-none transition-colors"
+          class="block w-full rounded-md border border-slate-300 dark:border-slate-600 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-blue-400 focus:ring-blue-200 resize-none transition-colors"
         />
       </div>
 

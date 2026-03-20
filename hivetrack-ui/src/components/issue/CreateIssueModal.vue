@@ -148,13 +148,13 @@ function submit() {
     <form class="flex flex-col gap-5" @submit.prevent="submit">
       <!-- Project (only when no projectSlug prop) -->
       <div v-if="needsProjectPicker" class="flex flex-col gap-1.5">
-        <label class="text-sm font-medium text-slate-700" for="create-issue-project">Project</label>
+        <label class="text-sm font-medium text-slate-700 dark:text-slate-300" for="create-issue-project">Project</label>
         <select
           id="create-issue-project"
           v-model="selectedProject"
           :class="[
-            'w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer',
-            errors.project ? 'border-red-300' : 'border-slate-200',
+            'w-full rounded-md border px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer',
+            errors.project ? 'border-red-300 dark:border-red-700' : 'border-slate-200 dark:border-slate-700',
           ]"
         >
           <option value="" disabled>Select a project…</option>
@@ -181,15 +181,15 @@ function submit() {
 
       <!-- Type (hidden when locked by caller via defaultType) -->
       <div v-if="defaultType === 'task'" class="flex flex-col gap-1.5">
-        <span class="text-sm font-medium text-slate-700">Type</span>
+        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Type</span>
         <div class="flex gap-2">
           <button
             type="button"
             :class="[
               'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer',
               type === 'task'
-                ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500'
-                : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50',
+                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500'
+                : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800',
             ]"
             @click="type = 'task'"
           >
@@ -200,8 +200,8 @@ function submit() {
             :class="[
               'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer',
               type === 'epic'
-                ? 'border-violet-500 bg-violet-50 text-violet-700 ring-1 ring-violet-500'
-                : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50',
+                ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 ring-1 ring-violet-500'
+                : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800',
             ]"
             @click="type = 'epic'"
           >
@@ -212,8 +212,8 @@ function submit() {
 
       <!-- Priority -->
       <div class="flex flex-col gap-1.5">
-        <span class="text-sm font-medium text-slate-700">
-          Priority <span class="text-slate-400 font-normal">(optional)</span>
+        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
+          Priority <span class="text-slate-400 dark:text-slate-500 font-normal">(optional)</span>
         </span>
         <div class="flex gap-2 flex-wrap">
           <button
@@ -224,7 +224,7 @@ function submit() {
               'rounded-md border px-3 py-1.5 text-xs font-medium capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer',
               priority === p
                 ? priorityActiveClass(p)
-                : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50',
+                : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800',
             ]"
             @click="priority = p"
           >

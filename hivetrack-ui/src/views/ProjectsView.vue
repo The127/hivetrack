@@ -55,8 +55,8 @@ const archivedProjects = computed(() =>
       <!-- Page header -->
       <div class="mb-6 flex items-start justify-between">
         <div>
-          <h1 class="text-xl font-semibold text-slate-900">Projects</h1>
-          <p class="text-sm text-slate-500 mt-0.5">
+          <h1 class="text-xl font-semibold text-slate-900 dark:text-slate-100">Projects</h1>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             All projects you have access to.
           </p>
         </div>
@@ -78,8 +78,8 @@ const archivedProjects = computed(() =>
       <template v-else-if="projects?.items?.length">
         <!-- Active projects -->
         <section>
-          <h2 class="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
-            <FolderKanbanIcon class="size-4 text-slate-500" />
+          <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+            <FolderKanbanIcon class="size-4 text-slate-500 dark:text-slate-400" />
             Active
             <span v-if="activeProjects.length" class="text-xs font-normal text-slate-500">
               {{ activeProjects.length }}
@@ -88,23 +88,23 @@ const archivedProjects = computed(() =>
 
           <div
             v-if="activeProjects.length"
-            class="rounded-lg border border-slate-200 divide-y divide-slate-100 overflow-hidden"
+            class="rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden"
           >
             <RouterLink
               v-for="project in activeProjects"
               :key="project.id"
               :to="`/projects/${project.slug}/board`"
-              class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors group"
+              class="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
             >
               <!-- Project initial -->
               <span
-                class="size-8 rounded-md flex items-center justify-center text-xs font-semibold bg-slate-100 text-slate-600 flex-shrink-0"
+                class="size-8 rounded-md flex items-center justify-center text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex-shrink-0"
               >
                 {{ project.slug.slice(0, 2).toUpperCase() }}
               </span>
 
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-slate-800 group-hover:text-slate-900 truncate">
+                <p class="text-sm font-medium text-slate-800 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-slate-100 truncate">
                   {{ project.name }}
                 </p>
                 <p class="text-xs text-slate-500 truncate">
@@ -125,7 +125,7 @@ const archivedProjects = computed(() =>
             </RouterLink>
           </div>
 
-          <p v-else class="text-sm text-slate-500 py-4">
+          <p v-else class="text-sm text-slate-500 dark:text-slate-400 py-4">
             No active projects. Create one to get started.
           </p>
         </section>
@@ -144,13 +144,13 @@ const archivedProjects = computed(() =>
 
           <div
             v-if="showArchived"
-            class="rounded-lg border border-slate-200 divide-y divide-slate-100 overflow-hidden opacity-75"
+            class="rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden opacity-75"
           >
             <RouterLink
               v-for="project in archivedProjects"
               :key="project.id"
               :to="`/projects/${project.slug}/board`"
-              class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors group"
+              class="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
             >
               <span
                 class="size-8 rounded-md flex items-center justify-center text-xs font-semibold bg-slate-100 text-slate-500 flex-shrink-0"
@@ -159,7 +159,7 @@ const archivedProjects = computed(() =>
               </span>
 
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-slate-600 group-hover:text-slate-700 truncate">
+                <p class="text-sm font-medium text-slate-600 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 truncate">
                   {{ project.name }}
                 </p>
                 <p class="text-xs text-slate-400 truncate">

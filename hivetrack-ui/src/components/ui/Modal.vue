@@ -67,7 +67,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       >
         <!-- Backdrop -->
         <div
-          class="absolute inset-0 bg-black/40"
+          class="absolute inset-0 bg-black/40 dark:bg-black/60"
           aria-hidden="true"
           @click="emit('close')"
         />
@@ -76,16 +76,16 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
         <div
           role="dialog"
           :aria-label="title"
-          class="relative z-10 w-full max-w-lg rounded-xl bg-white shadow-xl ring-1 ring-slate-900/10"
+          class="relative z-10 w-full max-w-lg rounded-xl bg-white dark:bg-slate-900 shadow-xl ring-1 ring-slate-900/10 dark:ring-slate-700"
         >
           <!-- Header -->
-          <div class="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-slate-100">
+          <div class="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <h2 class="text-base font-semibold text-slate-900">{{ title }}</h2>
-              <p v-if="description" class="mt-0.5 text-sm text-slate-500">{{ description }}</p>
+              <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">{{ title }}</h2>
+              <p v-if="description" class="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{{ description }}</p>
             </div>
             <button
-              class="flex-shrink-0 rounded-md p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
+              class="flex-shrink-0 rounded-md p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
               @click="emit('close')"
             >
               <XIcon class="size-4" />
@@ -100,7 +100,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
           <!-- Footer -->
           <div
             v-if="$slots.footer"
-            class="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100"
+            class="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100 dark:border-slate-800"
           >
             <slot name="footer" />
           </div>

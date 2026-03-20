@@ -224,13 +224,13 @@ function formatDateRange(start, end) {
       <div>
         <div class="flex items-start gap-4">
           <span
-            class="size-12 rounded-lg flex items-center justify-center text-base font-bold bg-slate-100 text-slate-600 flex-shrink-0"
+            class="size-12 rounded-lg flex items-center justify-center text-base font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex-shrink-0"
           >
             {{ project.slug.slice(0, 2).toUpperCase() }}
           </span>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <h1 class="text-xl font-semibold text-slate-900">{{ project.name }}</h1>
+              <h1 class="text-xl font-semibold text-slate-900 dark:text-slate-100">{{ project.name }}</h1>
               <Badge :colorScheme="project.archetype === 'software' ? 'blue' : 'teal'" compact>
                 <component
                   :is="project.archetype === 'software' ? CodeIcon : HeadphonesIcon"
@@ -239,10 +239,10 @@ function formatDateRange(start, end) {
                 {{ project.archetype }}
               </Badge>
             </div>
-            <p v-if="project.description" class="text-sm text-slate-500 mt-0.5">
+            <p v-if="project.description" class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
               {{ project.description }}
             </p>
-            <p class="text-xs text-slate-400 mt-1 font-mono">{{ project.slug }}</p>
+            <p class="text-xs text-slate-400 dark:text-slate-500 mt-1 font-mono">{{ project.slug }}</p>
           </div>
         </div>
       </div>
@@ -251,45 +251,45 @@ function formatDateRange(start, end) {
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <RouterLink
           :to="`/projects/${slug}/board`"
-          class="flex items-center gap-2.5 rounded-lg border border-slate-200 px-4 py-3 hover:bg-slate-50 hover:border-slate-300 transition-colors group"
+          class="flex items-center gap-2.5 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-colors group"
         >
-          <KanbanIcon class="size-4 text-slate-500 group-hover:text-slate-700 flex-shrink-0" />
-          <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">Board</span>
+          <KanbanIcon class="size-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 flex-shrink-0" />
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">Board</span>
         </RouterLink>
         <RouterLink
           :to="`/projects/${slug}/backlog`"
-          class="flex items-center gap-2.5 rounded-lg border border-slate-200 px-4 py-3 hover:bg-slate-50 hover:border-slate-300 transition-colors group"
+          class="flex items-center gap-2.5 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-colors group"
         >
-          <ListIcon class="size-4 text-slate-500 group-hover:text-slate-700 flex-shrink-0" />
-          <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">Backlog</span>
+          <ListIcon class="size-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 flex-shrink-0" />
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">Backlog</span>
         </RouterLink>
         <RouterLink
           :to="`/projects/${slug}/epics`"
-          class="flex items-center gap-2.5 rounded-lg border border-slate-200 px-4 py-3 hover:bg-slate-50 hover:border-slate-300 transition-colors group"
+          class="flex items-center gap-2.5 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-colors group"
         >
-          <LayersIcon class="size-4 text-slate-500 group-hover:text-slate-700 flex-shrink-0" />
-          <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">Epics</span>
+          <LayersIcon class="size-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 flex-shrink-0" />
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">Epics</span>
         </RouterLink>
         <RouterLink
           :to="`/projects/${slug}/milestones`"
-          class="flex items-center gap-2.5 rounded-lg border border-slate-200 px-4 py-3 hover:bg-slate-50 hover:border-slate-300 transition-colors group"
+          class="flex items-center gap-2.5 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-colors group"
         >
-          <FlagIcon class="size-4 text-slate-500 group-hover:text-slate-700 flex-shrink-0" />
-          <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">Milestones</span>
+          <FlagIcon class="size-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 flex-shrink-0" />
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">Milestones</span>
         </RouterLink>
       </div>
 
       <!-- ── Active sprint ────────────────────────────────────────────────────── -->
       <section v-if="activeSprint">
-        <h2 class="text-sm font-medium text-slate-700 mb-3">Active Sprint</h2>
-        <div class="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+        <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Active Sprint</h2>
+        <div class="rounded-lg border border-blue-100 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-900/20 px-4 py-3">
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-2 min-w-0">
               <span
-                class="text-xs font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0"
+                class="text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-800/50 px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0"
               >Sprint</span>
-              <span class="text-sm font-semibold text-slate-900 truncate">{{ activeSprint.name }}</span>
-              <span v-if="activeSprint.start_date" class="text-xs text-slate-500 flex-shrink-0">
+              <span class="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{{ activeSprint.name }}</span>
+              <span v-if="activeSprint.start_date" class="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0">
                 <CalendarIcon class="size-3 inline mr-0.5 -mt-px" />
                 {{ formatDateRange(activeSprint.start_date, activeSprint.end_date) }}
               </span>
@@ -298,8 +298,8 @@ function formatDateRange(start, end) {
               <ProgressBar :done="sprintDone" :total="sprintIssues.length" />
             </div>
           </div>
-          <p v-if="activeSprint.goal" class="text-xs text-slate-600 mt-2">
-            <span class="text-slate-400 font-medium">Goal:</span> {{ activeSprint.goal }}
+          <p v-if="activeSprint.goal" class="text-xs text-slate-600 dark:text-slate-400 mt-2">
+            <span class="text-slate-400 dark:text-slate-500 font-medium">Goal:</span> {{ activeSprint.goal }}
           </p>
           <div v-if="burndownResult && activeSprint.start_date && activeSprint.end_date" class="mt-3">
             <SprintBurndownChart
@@ -314,8 +314,8 @@ function formatDateRange(start, end) {
 
       <!-- ── Issue stats ─────────────────────────────────────────────────────── -->
       <section>
-        <h2 class="text-sm font-medium text-slate-700 mb-3">Issues</h2>
-        <div class="rounded-lg border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+        <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Issues</h2>
+        <div class="rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
           <div
             v-for="s in statusDefs"
             :key="s.key"
@@ -326,21 +326,21 @@ function formatDateRange(start, end) {
               class="size-4 flex-shrink-0"
               :class="SCHEME_ICON_CLASS[s.scheme]"
             />
-            <span class="text-sm text-slate-700 flex-1">{{ s.label }}</span>
-            <span class="text-sm font-medium text-slate-900 tabular-nums">
+            <span class="text-sm text-slate-700 dark:text-slate-300 flex-1">{{ s.label }}</span>
+            <span class="text-sm font-medium text-slate-900 dark:text-slate-100 tabular-nums">
               {{ statusCounts[s.key] }}
             </span>
           </div>
           <!-- Inbox row -->
           <RouterLink
             :to="`/projects/${slug}/triage`"
-            class="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors group"
+            class="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
           >
             <InboxIcon class="size-4 flex-shrink-0 text-amber-500" />
-            <span class="text-sm text-slate-700 flex-1 group-hover:text-slate-900">Inbox (untriaged)</span>
+            <span class="text-sm text-slate-700 dark:text-slate-300 flex-1 group-hover:text-slate-900 dark:group-hover:text-slate-100">Inbox (untriaged)</span>
             <span
               class="text-sm font-medium tabular-nums"
-              :class="inboxCount > 0 ? 'text-amber-600' : 'text-slate-900'"
+              :class="inboxCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-slate-100'"
             >
               {{ inboxCount }}
             </span>
@@ -350,21 +350,21 @@ function formatDateRange(start, end) {
 
       <!-- ── Members ─────────────────────────────────────────────────────────── -->
       <section v-if="project.members?.length">
-        <h2 class="text-sm font-medium text-slate-700 mb-3 flex items-center gap-1.5">
-          <UsersIcon class="size-4 text-slate-500" />
+        <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
+          <UsersIcon class="size-4 text-slate-500 dark:text-slate-400" />
           Members
-          <span class="text-xs font-normal text-slate-500">{{ project.members.length }}</span>
+          <span class="text-xs font-normal text-slate-500 dark:text-slate-400">{{ project.members.length }}</span>
         </h2>
         <div class="flex flex-wrap gap-2">
           <div
             v-for="m in project.members"
             :key="m.user_id"
-            class="group flex items-center gap-2 rounded-md border border-slate-200 px-2.5 py-1.5"
+            class="group flex items-center gap-2 rounded-md border border-slate-200 dark:border-slate-700 px-2.5 py-1.5"
           >
-            <span class="text-sm text-slate-700">{{ m.display_name }}</span>
+            <span class="text-sm text-slate-700 dark:text-slate-300">{{ m.display_name }}</span>
             <Badge colorScheme="gray" compact>{{ m.role.replace('project_', '') }}</Badge>
             <button
-              class="opacity-0 group-hover:opacity-100 ml-0.5 rounded p-0.5 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
+              class="opacity-0 group-hover:opacity-100 ml-0.5 rounded p-0.5 text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all cursor-pointer"
               title="Remove member"
               @click="memberToRemove = m"
             >
@@ -376,8 +376,8 @@ function formatDateRange(start, end) {
 
       <!-- ── Labels ─────────────────────────────────────────────────────────── -->
       <section v-if="labels.length">
-        <h2 class="text-sm font-medium text-slate-700 mb-3 flex items-center gap-1.5">
-          <TagIcon class="size-4 text-slate-500" />
+        <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
+          <TagIcon class="size-4 text-slate-500 dark:text-slate-400" />
           Labels
           <span class="text-xs font-normal text-slate-500">{{ labels.length }}</span>
         </h2>
@@ -390,7 +390,7 @@ function formatDateRange(start, end) {
           >
             <span class="text-xs font-medium" :style="{ color: label.color }">{{ label.name }}</span>
             <button
-              class="opacity-0 group-hover:opacity-100 rounded-full p-0.5 text-slate-400 hover:text-red-500 hover:bg-red-100 transition-all cursor-pointer"
+              class="opacity-0 group-hover:opacity-100 rounded-full p-0.5 text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all cursor-pointer"
               title="Delete label"
               @click="labelToDelete = label"
             >
@@ -402,20 +402,20 @@ function formatDateRange(start, end) {
 
       <!-- ── Board settings (WIP limits, software only) ──────────────────── -->
       <section v-if="project.archetype === 'software'">
-        <h2 class="text-sm font-medium text-slate-700 mb-3 flex items-center gap-1.5">
-          <SlidersHorizontalIcon class="size-4 text-slate-500" />
+        <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
+          <SlidersHorizontalIcon class="size-4 text-slate-500 dark:text-slate-400" />
           Board
         </h2>
-        <div class="rounded-lg border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+        <div class="rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
           <div class="flex items-center gap-3 px-4 py-2.5">
             <CircleDotIcon class="size-4 flex-shrink-0 text-blue-500" />
-            <span class="text-sm text-slate-700 flex-1">In Progress limit</span>
+            <span class="text-sm text-slate-700 dark:text-slate-300 flex-1">In Progress limit</span>
             <input
               v-model="wipInProgressInput"
               type="number"
               min="1"
               placeholder="None"
-              class="w-20 text-sm text-right border border-slate-200 rounded px-2 py-0.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
+              class="w-20 text-sm text-right border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded px-2 py-0.5 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
               :disabled="savingWip"
               @blur="saveWipInProgress"
               @keydown.enter="$event.target.blur()"
@@ -423,20 +423,20 @@ function formatDateRange(start, end) {
           </div>
           <div class="flex items-center gap-3 px-4 py-2.5">
             <GitPullRequestIcon class="size-4 flex-shrink-0 text-violet-500" />
-            <span class="text-sm text-slate-700 flex-1">In Review limit</span>
+            <span class="text-sm text-slate-700 dark:text-slate-300 flex-1">In Review limit</span>
             <input
               v-model="wipInReviewInput"
               type="number"
               min="1"
               placeholder="None"
-              class="w-20 text-sm text-right border border-slate-200 rounded px-2 py-0.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
+              class="w-20 text-sm text-right border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded px-2 py-0.5 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
               :disabled="savingWip"
               @blur="saveWipInReview"
               @keydown.enter="$event.target.blur()"
             />
           </div>
         </div>
-        <p class="text-xs text-slate-400 mt-1.5">Informational only — the board highlights columns that exceed these limits.</p>
+        <p class="text-xs text-slate-400 dark:text-slate-500 mt-1.5">Informational only — the board highlights columns that exceed these limits.</p>
       </section>
 
     </div>

@@ -92,22 +92,22 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
 </script>
 
 <template>
-  <div class="flex h-screen overflow-hidden bg-white">
+  <div class="flex h-screen overflow-hidden bg-white dark:bg-slate-950">
     <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
     <aside
       :class="collapsed ? 'w-14' : 'w-56'"
-      class="hidden lg:flex flex-shrink-0 flex-col bg-gray-50 text-gray-700 border-r border-gray-200 overflow-y-auto transition-[width] duration-200 ease-in-out"
+      class="hidden lg:flex flex-shrink-0 flex-col bg-gray-50 dark:bg-slate-900 text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-800 overflow-y-auto transition-[width] duration-200 ease-in-out"
     >
       <!-- App identity + collapse toggle -->
       <!-- Expanded: single row with logo, title, chevron -->
       <div
         v-if="!collapsed"
-        class="flex items-center gap-2 px-3 py-3 border-b border-gray-200"
+        class="flex items-center gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800"
       >
         <img src="@/assets/logo.svg" alt="Hivetrack" class="size-6 flex-shrink-0" />
-        <span class="font-semibold tracking-tight text-gray-900 text-sm flex-1">Hivetrack</span>
+        <span class="font-semibold tracking-tight text-gray-900 dark:text-gray-100 text-sm flex-1">Hivetrack</span>
         <button
-          class="flex items-center justify-center size-6 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 cursor-pointer flex-shrink-0"
+          class="flex items-center justify-center size-6 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 cursor-pointer flex-shrink-0"
           title="Collapse sidebar"
           @click="collapsed = !collapsed"
         >
@@ -117,11 +117,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
       <!-- Collapsed: logo above chevron, centered -->
       <div
         v-else
-        class="flex flex-col items-center gap-1 px-2 py-3 border-b border-gray-200"
+        class="flex flex-col items-center gap-1 px-2 py-3 border-b border-gray-200 dark:border-gray-800"
       >
         <img src="@/assets/logo.svg" alt="Hivetrack" class="size-6" />
         <button
-          class="flex items-center justify-center size-6 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 cursor-pointer"
+          class="flex items-center justify-center size-6 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 cursor-pointer"
           title="Expand sidebar"
           @click="collapsed = !collapsed"
         >
@@ -135,10 +135,10 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           to="/"
           :class="[
             collapsed ? 'justify-center px-0' : 'gap-2.5 px-2',
-            route.path === '/' ? 'bg-gray-200 text-gray-900' : '',
+            route.path === '/' ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : '',
           ]"
-          class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
-          exact-active-class="bg-gray-200 text-gray-900"
+          class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+          exact-active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           title="My Work"
         >
           <LayoutDashboardIcon class="size-4 flex-shrink-0" />
@@ -148,8 +148,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
         <RouterLink
           to="/projects"
           :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
-          class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
-          active-class="bg-gray-200 text-gray-900"
+          class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+          active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           title="Projects"
         >
           <FolderKanbanIcon class="size-4 flex-shrink-0" />
@@ -161,26 +161,26 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           <div v-if="!collapsed" class="pt-3 pb-1 px-2 flex items-center gap-1">
             <RouterLink
               to="/projects"
-              class="text-[11px] font-medium uppercase tracking-wider text-gray-400 hover:text-gray-600 transition-colors"
+              class="text-[11px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               Projects
             </RouterLink>
-            <ChevronRightIcon class="size-3 text-gray-400" />
+            <ChevronRightIcon class="size-3 text-gray-400 dark:text-gray-600" />
             <span
-              class="text-[11px] font-medium uppercase tracking-wider text-gray-500 truncate max-w-24"
+              class="text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 truncate max-w-24"
             >
               {{ projectSlug }}
             </span>
           </div>
           <div v-else class="pt-2 pb-1 flex justify-center">
-            <div class="w-5 border-t border-gray-300" />
+            <div class="w-5 border-t border-gray-300 dark:border-gray-700" />
           </div>
 
           <RouterLink
             :to="`/projects/${projectSlug}/overview`"
             :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
-            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
-            active-class="bg-gray-200 text-gray-900"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             title="Overview"
           >
             <LayoutIcon class="size-4 flex-shrink-0" />
@@ -190,8 +190,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           <RouterLink
             :to="`/projects/${projectSlug}/board`"
             :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
-            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
-            active-class="bg-gray-200 text-gray-900"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             title="Board"
           >
             <KanbanIcon class="size-4 flex-shrink-0" />
@@ -201,8 +201,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           <RouterLink
             :to="`/projects/${projectSlug}/backlog`"
             :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
-            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
-            active-class="bg-gray-200 text-gray-900"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             title="Backlog"
           >
             <ListIcon class="size-4 flex-shrink-0" />
@@ -212,8 +212,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           <RouterLink
             :to="`/projects/${projectSlug}/sprints`"
             :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
-            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
-            active-class="bg-gray-200 text-gray-900"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             title="Sprints"
           >
             <TimerIcon class="size-4 flex-shrink-0" />
@@ -223,8 +223,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           <RouterLink
             :to="`/projects/${projectSlug}/epics`"
             :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
-            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
-            active-class="bg-gray-200 text-gray-900"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             title="Epics"
           >
             <LayersIcon class="size-4 flex-shrink-0" />
@@ -234,8 +234,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           <RouterLink
             :to="`/projects/${projectSlug}/triage`"
             :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
-            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
-            active-class="bg-gray-200 text-gray-900"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             title="Triage"
           >
             <InboxIcon class="size-4 flex-shrink-0" />
@@ -252,8 +252,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           <RouterLink
             :to="`/projects/${projectSlug}/milestones`"
             :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
-            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
-            active-class="bg-gray-200 text-gray-900"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             title="Milestones"
           >
             <FlagIcon class="size-4 flex-shrink-0" />
@@ -263,8 +263,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           <RouterLink
             :to="`/projects/${projectSlug}/settings`"
             :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
-            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
-            active-class="bg-gray-200 text-gray-900"
+            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             title="Settings"
           >
             <SettingsIcon class="size-4 flex-shrink-0" />
@@ -274,10 +274,10 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
       </nav>
 
       <!-- Search hint + bottom section -->
-      <div class="px-2 py-2 border-t border-gray-200 space-y-0.5">
+      <div class="px-2 py-2 border-t border-gray-200 dark:border-gray-800 space-y-0.5">
         <button
           :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
-          class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 text-left cursor-pointer"
+          class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 text-left cursor-pointer"
           title="Press / to search"
           @click="
             () => {
@@ -289,7 +289,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           <span v-if="!collapsed" class="flex-1">Search</span>
           <kbd
             v-if="!collapsed"
-            class="text-[10px] font-mono text-gray-400 bg-gray-200 px-1 rounded"
+            class="text-[10px] font-mono text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1 rounded"
             >/</kbd
           >
         </button>
@@ -297,8 +297,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
         <RouterLink
           to="/settings"
           :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
-          class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
-          active-class="bg-gray-200 text-gray-900"
+          class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+          active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           title="Instance settings"
         >
           <SettingsIcon class="size-4 flex-shrink-0" />
@@ -309,13 +309,13 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
       <!-- User profile -->
       <div
         :class="collapsed ? 'justify-center px-2' : 'px-3 gap-2.5'"
-        class="py-2.5 border-t border-gray-200 flex items-center min-w-0"
+        class="py-2.5 border-t border-gray-200 dark:border-gray-800 flex items-center min-w-0"
       >
         <Avatar :name="userName" size="sm" :src="user?.profile?.picture" :title="collapsed ? userName : undefined" />
         <template v-if="!collapsed">
-          <span class="text-sm text-gray-700 truncate flex-1 min-w-0">{{ userName }}</span>
+          <span class="text-sm text-gray-700 dark:text-gray-300 truncate flex-1 min-w-0">{{ userName }}</span>
           <button
-            class="flex-shrink-0 text-gray-400 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors duration-100 cursor-pointer"
+            class="flex-shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors duration-100 cursor-pointer"
             title="Sign out"
             @click="signOut"
           >
@@ -326,7 +326,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
     </aside>
 
     <!-- ── Main content ────────────────────────────────────────────────── -->
-    <main class="flex-1 overflow-y-auto min-w-0">
+    <main class="flex-1 overflow-y-auto min-w-0 bg-white dark:bg-slate-950">
       <slot />
     </main>
   </div>

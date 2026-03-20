@@ -209,7 +209,7 @@ const { mutate: updateChildPriority } = useMutation({
   <div class="space-y-3">
     <!-- Progress header -->
     <div class="flex items-center justify-between">
-      <h3 class="text-sm font-medium text-slate-700">Child tasks</h3>
+      <h3 class="text-sm font-medium text-slate-700 dark:text-slate-300">Child tasks</h3>
       <div class="w-40">
         <ProgressBar :done="childDoneCount" :total="childCount" />
       </div>
@@ -217,7 +217,7 @@ const { mutate: updateChildPriority } = useMutation({
 
     <!-- Task list (backlog-style rows) -->
     <div v-if="isLoading" class="text-sm text-slate-400">Loading...</div>
-    <div v-else class="border border-slate-200 rounded-lg overflow-hidden">
+    <div v-else class="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
       <VueDraggable
         v-model="childList"
         :group="{ name: 'epic-tasks' }"
@@ -232,7 +232,7 @@ const { mutate: updateChildPriority } = useMutation({
         <div
           v-for="child in childList"
           :key="child.id"
-          class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100"
+          class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100 dark:border-slate-800"
           :class="priorityBorder(child.priority)"
         >
           <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
@@ -246,19 +246,19 @@ const { mutate: updateChildPriority } = useMutation({
           </div>
           <router-link
             :to="`/projects/${projectSlug}/issues/${child.number}`"
-            class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline"
+            class="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-slate-900 dark:group-hover:text-slate-100 hover:underline"
             @click.stop
           >
             {{ child.title }}
           </router-link>
-          <span v-if="child.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">on hold</span>
+          <span v-if="child.on_hold" class="flex-shrink-0 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">on hold</span>
           <div @click.stop>
             <StatusSelect :status="child.status" :archetype="archetype" @update:status="updateChildStatus({ number: child.number, status: $event })" />
           </div>
           <div @click.stop>
             <PrioritySelect :priority="child.priority ?? 'none'" @update:priority="updateChildPriority({ number: child.number, priority: $event })" />
           </div>
-          <span v-if="estimateLabel(child.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(child.estimate) }}</span>
+          <span v-if="estimateLabel(child.estimate)" class="flex-shrink-0 text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded w-7 text-center">{{ estimateLabel(child.estimate) }}</span>
           <span v-else class="w-7 flex-shrink-0" />
           <div class="flex-shrink-0 flex -space-x-1 w-10 justify-end">
             <Avatar v-for="a in (child.assignees ?? []).slice(0, 2)" :key="a.id" :name="a.display_name" :src="a.avatar_url" size="xs" class="ring-1 ring-white" />
@@ -269,7 +269,7 @@ const { mutate: updateChildPriority } = useMutation({
       <!-- Inline create row (matches backlog inline-create style) -->
       <div
         v-if="showInlineCreate"
-        class="flex items-center gap-3 px-6 py-2.5 border-b border-slate-100 border-l-4 border-l-blue-400 bg-blue-50/30"
+        class="flex items-center gap-3 px-6 py-2.5 border-b border-slate-100 dark:border-slate-800 border-l-4 border-l-blue-400 bg-blue-50/30 dark:bg-blue-900/10"
       >
         <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
           <PlusIcon class="size-3 text-blue-400" />
@@ -279,7 +279,7 @@ const { mutate: updateChildPriority } = useMutation({
           v-model="newTaskTitle"
           type="text"
           placeholder="Task title — Enter to create, Esc to close"
-          class="flex-1 min-w-0 text-sm text-slate-800 bg-transparent placeholder:text-slate-400 focus:outline-none"
+          class="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-200 bg-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
           @keydown.enter.prevent="submitCreate"
           @keydown.escape="showInlineCreate = false; newTaskTitle = ''"
         />
@@ -294,7 +294,7 @@ const { mutate: updateChildPriority } = useMutation({
           v-model="searchText"
           type="text"
           placeholder="Search tasks to attach..."
-          class="w-full rounded-md border border-slate-200 pl-8 pr-8 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full rounded-md border border-slate-200 dark:border-slate-700 dark:bg-slate-800 pl-8 pr-8 py-1.5 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <button
           class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
@@ -303,17 +303,17 @@ const { mutate: updateChildPriority } = useMutation({
           <XIcon class="size-3.5" />
         </button>
       </div>
-      <div v-if="searchResults.length" class="border border-slate-200 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+      <div v-if="searchResults.length" class="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
         <button
           v-for="task in searchResults"
           :key="task.id"
-          class="w-full group flex items-center gap-3 px-6 py-2.5 text-left hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100 last:border-b-0"
+          class="w-full group flex items-center gap-3 px-6 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-b-0"
           @click="attachTask({ number: task.number })"
         >
           <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
             <span class="text-[11px] font-mono text-slate-400">{{ projectSlug.toUpperCase() }}-{{ task.number }}</span>
           </div>
-          <span class="flex-1 min-w-0 text-sm text-slate-700 truncate">{{ task.title }}</span>
+          <span class="flex-1 min-w-0 text-sm text-slate-700 dark:text-slate-300 truncate">{{ task.title }}</span>
         </button>
       </div>
       <div v-else-if="searchText.length >= 2" class="text-xs text-slate-400">No unparented tasks found.</div>
@@ -323,7 +323,7 @@ const { mutate: updateChildPriority } = useMutation({
     <div class="flex items-center gap-2">
       <button
         v-if="!showInlineCreate"
-        class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 cursor-pointer"
+        class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
         @click="showInlineCreate = true"
       >
         <PlusIcon class="size-3" />
@@ -331,7 +331,7 @@ const { mutate: updateChildPriority } = useMutation({
       </button>
       <button
         v-if="!showAttach"
-        class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 cursor-pointer"
+        class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
         @click="showAttach = true"
       >
         <LinkIcon class="size-3" />

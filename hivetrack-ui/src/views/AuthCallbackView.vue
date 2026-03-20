@@ -29,8 +29,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-slate-50">
-    <div class="flex flex-col items-center gap-3 text-slate-500">
+  <div class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+    <div class="flex flex-col items-center gap-3 text-slate-500 dark:text-slate-400">
       <Spinner class="size-6" />
       <p class="text-sm">Signing you in…</p>
     </div>

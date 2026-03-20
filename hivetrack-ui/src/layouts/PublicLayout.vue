@@ -18,13 +18,13 @@ defineProps({
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 flex flex-col">
+  <div class="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
     <!-- Minimal public header -->
-    <header class="h-12 border-b border-slate-200 bg-white flex items-center px-6 gap-3">
-      <span class="text-sm font-semibold text-slate-800 tracking-tight">Hivetrack</span>
+    <header class="h-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center px-6 gap-3">
+      <span class="text-sm font-semibold text-slate-800 dark:text-slate-200 tracking-tight">Hivetrack</span>
       <template v-if="projectName">
-        <span class="text-slate-300">/</span>
-        <span class="text-sm text-slate-600">{{ projectName }}</span>
+        <span class="text-slate-300 dark:text-slate-600">/</span>
+        <span class="text-sm text-slate-600 dark:text-slate-400">{{ projectName }}</span>
       </template>
     </header>
 
@@ -35,7 +35,7 @@ defineProps({
       </div>
     </main>
 
-    <footer class="py-4 text-center text-xs text-slate-400">
+    <footer class="py-4 text-center text-xs text-slate-400 dark:text-slate-600">
       Powered by Hivetrack
     </footer>
   </div>

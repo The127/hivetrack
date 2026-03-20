@@ -675,16 +675,16 @@ function formatDateRange(startDate, endDate) {
     <div class="flex flex-col h-full">
       <!-- ── Header ─────────────────────────────────────────────────────── -->
       <div
-        class="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white"
+        class="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
       >
         <div class="flex items-center gap-3 min-w-0">
           <div v-if="project" class="flex items-center gap-2 min-w-0">
             <span
-              class="size-7 rounded flex items-center justify-center text-xs font-semibold bg-slate-100 text-slate-600 flex-shrink-0"
+              class="size-7 rounded flex items-center justify-center text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex-shrink-0"
             >
               {{ project.slug.slice(0, 2).toUpperCase() }}
             </span>
-            <span class="font-semibold text-slate-900 truncate">{{
+            <span class="font-semibold text-slate-900 dark:text-slate-100 truncate">{{
               project.name
             }}</span>
             <Badge
@@ -696,12 +696,12 @@ function formatDateRange(startDate, endDate) {
           </div>
           <div
             v-else-if="loadingProject"
-            class="h-5 w-40 rounded bg-slate-100 animate-pulse"
+            class="h-5 w-40 rounded bg-slate-100 dark:bg-slate-800 animate-pulse"
           />
 
-          <div class="flex items-center gap-1.5 text-slate-400">
+          <div class="flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
             <ListIcon class="size-4" />
-            <span class="text-sm font-medium text-slate-600">Backlog</span>
+            <span class="text-sm font-medium text-slate-600 dark:text-slate-300">Backlog</span>
           </div>
         </div>
 
@@ -710,14 +710,14 @@ function formatDateRange(startDate, endDate) {
           <div v-if="epics.length" ref="epicFilterRoot" class="relative">
             <button
               ref="epicFilterTrigger"
-              class="flex items-center gap-1.5 cursor-pointer rounded-md border border-slate-200 px-2.5 h-8 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+              class="flex items-center gap-1.5 cursor-pointer rounded-md border border-slate-200 dark:border-slate-700 px-2.5 h-8 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
               @click="toggleEpicFilter"
             >
               <LayersIcon class="size-3.5 text-violet-400 flex-shrink-0" />
               <span
                 class="text-sm"
                 :class="
-                  selectedEpic ? 'text-slate-700 font-medium' : 'text-slate-500'
+                  selectedEpic ? 'text-slate-700 dark:text-slate-200 font-medium' : 'text-slate-500 dark:text-slate-400'
                 "
               >
                 {{ selectedEpic ? selectedEpic.title : "All issues" }}
@@ -736,12 +736,12 @@ function formatDateRange(startDate, endDate) {
                   v-if="epicFilterOpen"
                   ref="epicFilterDropdownEl"
                   :style="epicFilterStyle"
-                  class="bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden min-w-52"
+                  class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden min-w-52"
                 >
                   <!-- Search (when many epics) -->
                   <div
                     v-if="epics.length > 5"
-                    class="p-2 border-b border-slate-100"
+                    class="p-2 border-b border-slate-100 dark:border-slate-700"
                   >
                     <div class="relative">
                       <SearchIcon
@@ -752,7 +752,7 @@ function formatDateRange(startDate, endDate) {
                         v-model="epicFilterSearch"
                         type="text"
                         placeholder="Search epics..."
-                        class="w-full pl-7 pr-2 py-1 text-sm text-slate-800 placeholder:text-slate-400 bg-slate-50 rounded border-none focus:outline-none"
+                        class="w-full pl-7 pr-2 py-1 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 bg-slate-50 dark:bg-slate-700 rounded border-none focus:outline-none"
                         @keydown.escape="epicFilterOpen = false"
                       />
                     </div>
@@ -764,8 +764,8 @@ function formatDateRange(startDate, endDate) {
                       class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left cursor-pointer transition-colors"
                       :class="
                         !selectedEpicId
-                          ? 'bg-slate-50 font-medium text-slate-900'
-                          : 'text-slate-500 hover:bg-slate-50'
+                          ? 'bg-slate-50 dark:bg-slate-700 font-medium text-slate-900 dark:text-slate-100'
+                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
                       "
                       @click="selectEpicFilter(null)"
                     >
@@ -783,8 +783,8 @@ function formatDateRange(startDate, endDate) {
                       class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left cursor-pointer transition-colors"
                       :class="
                         epic.id === selectedEpicId
-                          ? 'bg-slate-50 font-medium text-slate-900'
-                          : 'text-slate-700 hover:bg-slate-50'
+                          ? 'bg-slate-50 dark:bg-slate-700 font-medium text-slate-900 dark:text-slate-100'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                       "
                       @click="selectEpicFilter(epic.id)"
                     >
@@ -803,7 +803,7 @@ function formatDateRange(startDate, endDate) {
 
                     <p
                       v-if="epicFilterSearch && !filteredEpicOptions.length"
-                      class="px-3 py-2 text-xs text-slate-400"
+                      class="px-3 py-2 text-xs text-slate-400 dark:text-slate-500"
                     >
                       No epics match "{{ epicFilterSearch }}"
                     </p>
@@ -826,21 +826,21 @@ function formatDateRange(startDate, endDate) {
       <!-- ── Epic filter banner ────────────────────────────────────────── -->
       <div
         v-if="selectedEpic"
-        class="flex-shrink-0 flex items-center gap-3 px-6 py-2 border-b border-violet-200 bg-violet-50"
+        class="flex-shrink-0 flex items-center gap-3 px-6 py-2 border-b border-violet-200 dark:border-violet-800/50 bg-violet-50 dark:bg-violet-900/20"
       >
         <LayersIcon class="size-4 text-violet-500 flex-shrink-0" />
         <span
-          class="text-xs font-medium text-violet-600 uppercase tracking-wide"
+          class="text-xs font-medium text-violet-600 dark:text-violet-400 uppercase tracking-wide"
           >Filtered by epic</span
         >
         <router-link
           :to="`/projects/${slug}/issues/${selectedEpic.number}`"
-          class="font-medium text-sm text-violet-700 hover:underline"
+          class="font-medium text-sm text-violet-700 dark:text-violet-300 hover:underline"
         >
           {{ selectedEpic.title }}
         </router-link>
         <button
-          class="ml-auto text-xs text-violet-500 hover:text-violet-700 cursor-pointer"
+          class="ml-auto text-xs text-violet-500 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-200 cursor-pointer"
           @click="selectedEpicId = null"
         >
           Clear filter
@@ -857,19 +857,19 @@ function formatDateRange(startDate, endDate) {
         <!-- ── Active Sprint ─────────────────────────────────────────────── -->
         <template v-if="activeSprint">
           <div
-            class="px-6 py-2.5 border-b border-slate-100 bg-blue-50 flex items-center justify-between"
+            class="px-6 py-2.5 border-b border-slate-100 dark:border-slate-800 bg-blue-50 dark:bg-blue-900/20 flex items-center justify-between"
           >
             <div class="flex items-center gap-2 min-w-0">
               <span
-                class="text-xs font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0"
+                class="text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-800/50 px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0"
                 >Active</span
               >
-              <span class="font-semibold text-slate-900 text-sm truncate">{{
+              <span class="font-semibold text-slate-900 dark:text-slate-100 text-sm truncate">{{
                 activeSprint.name
               }}</span>
               <span
                 v-if="activeSprint.start_date"
-                class="text-xs text-slate-500 flex-shrink-0"
+                class="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0"
               >
                 {{
                   formatDateRange(
@@ -880,7 +880,7 @@ function formatDateRange(startDate, endDate) {
               </span>
               <span
                 v-if="activeSprint.goal"
-                class="text-xs text-slate-500 italic truncate max-w-48"
+                class="text-xs text-slate-500 dark:text-slate-400 italic truncate max-w-48"
                 >{{ activeSprint.goal }}</span
               >
               <div class="w-28 flex-shrink-0">
@@ -892,21 +892,21 @@ function formatDateRange(startDate, endDate) {
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
               <button
-                class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
+                class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2.5 h-7 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
                 @click="requestCompleteSprint()"
               >
                 <CheckIcon class="size-3.5" />
                 Complete sprint
               </button>
               <button
-                class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 h-7 text-slate-400 hover:text-slate-600 hover:border-slate-400 focus-visible:outline-none transition-colors cursor-pointer"
+                class="inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 h-7 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500 focus-visible:outline-none transition-colors cursor-pointer"
                 title="Edit sprint"
                 @click="startEditSprint(activeSprint)"
               >
                 <PencilIcon class="size-3.5" />
               </button>
               <button
-                class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 h-7 text-slate-400 hover:text-red-600 hover:border-red-300 focus-visible:outline-none transition-colors cursor-pointer"
+                class="inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 h-7 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:border-red-300 focus-visible:outline-none transition-colors cursor-pointer"
                 title="Delete sprint (moves issues to backlog)"
                 @click="doDeleteSprint(activeSprint.id)"
               >
@@ -918,33 +918,33 @@ function formatDateRange(startDate, endDate) {
           <!-- Inline edit form for active sprint -->
           <div
             v-if="editingSprintId === activeSprint.id"
-            class="px-6 py-4 border-b border-slate-100 bg-blue-50/40"
+            class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-blue-50/40 dark:bg-blue-900/10"
           >
             <div class="max-w-lg space-y-3">
-              <div class="text-sm font-medium text-slate-700">Edit sprint</div>
+              <div class="text-sm font-medium text-slate-700 dark:text-slate-300">Edit sprint</div>
 
               <input
                 v-model="editSprintForm.name"
                 type="text"
                 placeholder="Sprint name (required)"
-                class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
 
               <div class="flex gap-3">
                 <div class="flex-1">
-                  <label class="text-xs text-slate-500 mb-1 block">Start date</label>
+                  <label class="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Start date</label>
                   <input
                     v-model="editSprintForm.start_date"
                     type="date"
-                    class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
                 <div class="flex-1">
-                  <label class="text-xs text-slate-500 mb-1 block">End date</label>
+                  <label class="text-xs text-slate-500 dark:text-slate-400 mb-1 block">End date</label>
                   <input
                     v-model="editSprintForm.end_date"
                     type="date"
-                    class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -953,7 +953,7 @@ function formatDateRange(startDate, endDate) {
                 v-model="editSprintForm.goal"
                 type="text"
                 placeholder="Sprint goal (optional)"
-                class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
 
               <div v-if="editSprintError" class="text-xs text-red-600">
@@ -969,7 +969,7 @@ function formatDateRange(startDate, endDate) {
                   Save
                 </button>
                 <button
-                  class="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none transition-colors cursor-pointer"
+                  class="inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 h-7 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus-visible:outline-none transition-colors cursor-pointer"
                   @click="cancelEditSprint"
                 >
                   Cancel
@@ -992,13 +992,13 @@ function formatDateRange(startDate, endDate) {
             <div
               v-for="issue in sectionIssues[activeSprint.id]"
               :key="issue.id"
-              class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100"
+              class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100 dark:border-slate-800"
               :class="priorityBorder(issue.priority)"
             >
               <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
                 <router-link
                   :to="`/projects/${slug}/issues/${issue.number}`"
-                  class="text-[11px] font-mono text-slate-400 hover:text-blue-600 hover:underline"
+                  class="text-[11px] font-mono text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
                   >{{ slug.toUpperCase() }}-{{ issue.number }}</router-link
                 >
                 <LayersIcon
@@ -1008,12 +1008,12 @@ function formatDateRange(startDate, endDate) {
               </div>
               <router-link
                 :to="`/projects/${slug}/issues/${issue.number}`"
-                class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline"
+                class="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-slate-900 dark:group-hover:text-slate-100 hover:underline"
                 >{{ issue.title }}</router-link
               >
               <span
                 v-if="issue.on_hold"
-                class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded"
+                class="flex-shrink-0 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded"
                 >on hold</span
               >
               <StatusSelect
@@ -1027,7 +1027,7 @@ function formatDateRange(startDate, endDate) {
               />
               <span
                 v-if="estimateLabel(issue.estimate)"
-                class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center"
+                class="flex-shrink-0 text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded w-7 text-center"
                 >{{ estimateLabel(issue.estimate) }}</span
               >
               <span v-else class="w-7 flex-shrink-0" />
@@ -1045,7 +1045,7 @@ function formatDateRange(startDate, endDate) {
                 <AssigneePopover :assignees="issue.assignees ?? []" />
               </div>
               <button
-                class="flex-shrink-0 opacity-0 group-hover:opacity-100 text-[11px] text-slate-400 hover:text-slate-600 transition-opacity cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-100"
+                class="flex-shrink-0 opacity-0 group-hover:opacity-100 text-[11px] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-opacity cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
                 @click.stop="moveToBacklog(issue)"
               >
                 ↓ Backlog
@@ -1055,7 +1055,7 @@ function formatDateRange(startDate, endDate) {
           <!-- Inline create row for active sprint -->
           <div
             v-if="activeInlineCreate === activeSprint.id"
-            class="flex items-center gap-3 px-6 py-2.5 border-b border-slate-100 border-l-4 border-l-blue-400 bg-blue-50/30"
+            class="flex items-center gap-3 px-6 py-2.5 border-b border-slate-100 dark:border-slate-800 border-l-4 border-l-blue-400 bg-blue-50/30 dark:bg-blue-900/10"
           >
             <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
               <PlusIcon class="size-3 text-blue-400" />
@@ -1065,7 +1065,7 @@ function formatDateRange(startDate, endDate) {
               v-model="inlineCreateTitle"
               type="text"
               placeholder="Issue title — Enter to create, Esc to close"
-              class="flex-1 min-w-0 text-sm text-slate-800 bg-transparent placeholder:text-slate-400 focus:outline-none"
+              class="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-200 bg-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
               @keydown.enter.prevent="submitInlineCreate(activeSprint.id)"
               @keydown.escape="cancelInlineCreate"
               @blur="cancelInlineCreate"
@@ -1078,16 +1078,16 @@ function formatDateRange(startDate, endDate) {
           </div>
           <div
             v-else
-            class="flex items-center gap-3 px-6 py-2 border-b border-slate-100 border-l-4 border-l-transparent cursor-text group/create"
+            class="flex items-center gap-3 px-6 py-2 border-b border-slate-100 dark:border-slate-800 border-l-4 border-l-transparent cursor-text group/create"
             @click="activateInlineCreate(activeSprint.id)"
           >
             <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
               <PlusIcon
-                class="size-3 text-slate-300 group-hover/create:text-slate-400"
+                class="size-3 text-slate-300 dark:text-slate-600 group-hover/create:text-slate-400 dark:group-hover/create:text-slate-500"
               />
             </div>
             <span
-              class="text-sm text-slate-300 group-hover/create:text-slate-400"
+              class="text-sm text-slate-300 dark:text-slate-600 group-hover/create:text-slate-400 dark:group-hover/create:text-slate-500"
               >Create issue</span
             >
           </div>
@@ -1096,23 +1096,23 @@ function formatDateRange(startDate, endDate) {
         <!-- ── Planning Sprints ──────────────────────────────────────────── -->
         <template v-for="sprint in planningSprints" :key="sprint.id">
           <div
-            class="px-6 py-2.5 border-b border-slate-100 bg-slate-50 flex items-center justify-between"
+            class="px-6 py-2.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between"
           >
             <div class="flex items-center gap-2 min-w-0">
               <span
-                class="text-xs font-medium text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0"
+                class="text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0"
                 >Planning</span
               >
-              <span class="font-semibold text-slate-900 text-sm truncate">{{
+              <span class="font-semibold text-slate-900 dark:text-slate-100 text-sm truncate">{{
                 sprint.name
               }}</span>
               <span
                 v-if="sprint.start_date"
-                class="text-xs text-slate-500 flex-shrink-0"
+                class="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0"
               >
                 {{ formatDateRange(sprint.start_date, sprint.end_date) }}
               </span>
-              <span class="text-xs text-slate-400 tabular-nums flex-shrink-0">
+              <span class="text-xs text-slate-400 dark:text-slate-500 tabular-nums flex-shrink-0">
                 {{ (sectionIssues[sprint.id] ?? []).length }} issues
               </span>
             </div>
@@ -1123,21 +1123,21 @@ function formatDateRange(startDate, endDate) {
                 >{{ sprintErrors[sprint.id] }}</span
               >
               <button
-                class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
+                class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2.5 h-7 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer"
                 @click="activateSprint(sprint.id)"
               >
                 <PlayIcon class="size-3.5" />
                 Activate
               </button>
               <button
-                class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 h-7 text-slate-400 hover:text-slate-600 hover:border-slate-400 focus-visible:outline-none transition-colors cursor-pointer"
+                class="inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 h-7 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500 focus-visible:outline-none transition-colors cursor-pointer"
                 title="Edit sprint"
                 @click="startEditSprint(sprint)"
               >
                 <PencilIcon class="size-3.5" />
               </button>
               <button
-                class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 h-7 text-slate-400 hover:text-red-600 hover:border-red-300 focus-visible:outline-none transition-colors cursor-pointer"
+                class="inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 h-7 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:border-red-300 focus-visible:outline-none transition-colors cursor-pointer"
                 title="Delete sprint (moves issues to backlog)"
                 @click="doDeleteSprint(sprint.id)"
               >
@@ -1149,33 +1149,33 @@ function formatDateRange(startDate, endDate) {
           <!-- Inline edit form for planning sprint -->
           <div
             v-if="editingSprintId === sprint.id"
-            class="px-6 py-4 border-b border-slate-100 bg-slate-50"
+            class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50"
           >
             <div class="max-w-lg space-y-3">
-              <div class="text-sm font-medium text-slate-700">Edit sprint</div>
+              <div class="text-sm font-medium text-slate-700 dark:text-slate-300">Edit sprint</div>
 
               <input
                 v-model="editSprintForm.name"
                 type="text"
                 placeholder="Sprint name (required)"
-                class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
 
               <div class="flex gap-3">
                 <div class="flex-1">
-                  <label class="text-xs text-slate-500 mb-1 block">Start date</label>
+                  <label class="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Start date</label>
                   <input
                     v-model="editSprintForm.start_date"
                     type="date"
-                    class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
                 <div class="flex-1">
-                  <label class="text-xs text-slate-500 mb-1 block">End date</label>
+                  <label class="text-xs text-slate-500 dark:text-slate-400 mb-1 block">End date</label>
                   <input
                     v-model="editSprintForm.end_date"
                     type="date"
-                    class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -1184,7 +1184,7 @@ function formatDateRange(startDate, endDate) {
                 v-model="editSprintForm.goal"
                 type="text"
                 placeholder="Sprint goal (optional)"
-                class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
 
               <div v-if="editSprintError" class="text-xs text-red-600">
@@ -1200,7 +1200,7 @@ function formatDateRange(startDate, endDate) {
                   Save
                 </button>
                 <button
-                  class="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none transition-colors cursor-pointer"
+                  class="inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 h-7 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus-visible:outline-none transition-colors cursor-pointer"
                   @click="cancelEditSprint"
                 >
                   Cancel
@@ -1223,13 +1223,13 @@ function formatDateRange(startDate, endDate) {
             <div
               v-for="issue in sectionIssues[sprint.id]"
               :key="issue.id"
-              class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100"
+              class="group flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100 dark:border-slate-800"
               :class="priorityBorder(issue.priority)"
             >
               <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
                 <router-link
                   :to="`/projects/${slug}/issues/${issue.number}`"
-                  class="text-[11px] font-mono text-slate-400 hover:text-blue-600 hover:underline"
+                  class="text-[11px] font-mono text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
                   >{{ slug.toUpperCase() }}-{{ issue.number }}</router-link
                 >
                 <LayersIcon
@@ -1239,12 +1239,12 @@ function formatDateRange(startDate, endDate) {
               </div>
               <router-link
                 :to="`/projects/${slug}/issues/${issue.number}`"
-                class="flex-1 min-w-0 text-sm text-slate-800 truncate group-hover:text-slate-900 hover:underline"
+                class="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-slate-900 dark:group-hover:text-slate-100 hover:underline"
                 >{{ issue.title }}</router-link
               >
               <span
                 v-if="issue.on_hold"
-                class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded"
+                class="flex-shrink-0 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded"
                 >on hold</span
               >
               <StatusSelect
@@ -1258,7 +1258,7 @@ function formatDateRange(startDate, endDate) {
               />
               <span
                 v-if="estimateLabel(issue.estimate)"
-                class="flex-shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-7 text-center"
+                class="flex-shrink-0 text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded w-7 text-center"
                 >{{ estimateLabel(issue.estimate) }}</span
               >
               <span v-else class="w-7 flex-shrink-0" />
@@ -1276,7 +1276,7 @@ function formatDateRange(startDate, endDate) {
                 <AssigneePopover :assignees="issue.assignees ?? []" />
               </div>
               <button
-                class="flex-shrink-0 opacity-0 group-hover:opacity-100 text-[11px] text-slate-400 hover:text-slate-600 transition-opacity cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-100"
+                class="flex-shrink-0 opacity-0 group-hover:opacity-100 text-[11px] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-opacity cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
                 @click.stop="moveToBacklog(issue)"
               >
                 ↓ Backlog
@@ -1286,7 +1286,7 @@ function formatDateRange(startDate, endDate) {
           <!-- Inline create row for planning sprint -->
           <div
             v-if="activeInlineCreate === sprint.id"
-            class="flex items-center gap-3 px-6 py-2.5 border-b border-slate-100 border-l-4 border-l-blue-400 bg-blue-50/30"
+            class="flex items-center gap-3 px-6 py-2.5 border-b border-slate-100 dark:border-slate-800 border-l-4 border-l-blue-400 bg-blue-50/30 dark:bg-blue-900/10"
           >
             <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
               <PlusIcon class="size-3 text-blue-400" />
@@ -1296,7 +1296,7 @@ function formatDateRange(startDate, endDate) {
               v-model="inlineCreateTitle"
               type="text"
               placeholder="Issue title — Enter to create, Esc to close"
-              class="flex-1 min-w-0 text-sm text-slate-800 bg-transparent placeholder:text-slate-400 focus:outline-none"
+              class="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-200 bg-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
               @keydown.enter.prevent="submitInlineCreate(sprint.id)"
               @keydown.escape="cancelInlineCreate"
               @blur="cancelInlineCreate"
@@ -1309,16 +1309,16 @@ function formatDateRange(startDate, endDate) {
           </div>
           <div
             v-else
-            class="flex items-center gap-3 px-6 py-2 border-b border-slate-100 border-l-4 border-l-transparent cursor-text group/create"
+            class="flex items-center gap-3 px-6 py-2 border-b border-slate-100 dark:border-slate-800 border-l-4 border-l-transparent cursor-text group/create"
             @click="activateInlineCreate(sprint.id)"
           >
             <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
               <PlusIcon
-                class="size-3 text-slate-300 group-hover/create:text-slate-400"
+                class="size-3 text-slate-300 dark:text-slate-600 group-hover/create:text-slate-400 dark:group-hover/create:text-slate-500"
               />
             </div>
             <span
-              class="text-sm text-slate-300 group-hover/create:text-slate-400"
+              class="text-sm text-slate-300 dark:text-slate-600 group-hover/create:text-slate-400 dark:group-hover/create:text-slate-500"
               >Create issue</span
             >
           </div>
@@ -1326,11 +1326,11 @@ function formatDateRange(startDate, endDate) {
 
         <!-- ── Backlog section header ─────────────────────────────────────── -->
         <div
-          class="px-6 py-2.5 border-b border-slate-100 bg-white flex items-center justify-between"
+          class="px-6 py-2.5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between"
         >
           <div class="flex items-center gap-2">
-            <span class="font-semibold text-slate-900 text-sm">Backlog</span>
-            <span class="text-xs text-slate-400 tabular-nums"
+            <span class="font-semibold text-slate-900 dark:text-slate-100 text-sm">Backlog</span>
+            <span class="text-xs text-slate-400 dark:text-slate-500 tabular-nums"
               >{{ (sectionIssues[BACKLOG_KEY] ?? []).length }} issues</span
             >
           </div>
@@ -1349,7 +1349,7 @@ function formatDateRange(startDate, endDate) {
           class="px-6 py-4 border-b border-slate-100 bg-slate-50"
         >
           <div class="max-w-lg space-y-3">
-            <div class="text-sm font-medium text-slate-700">New sprint</div>
+            <div class="text-sm font-medium text-slate-700 dark:text-slate-300">New sprint</div>
 
             <input
               v-model="newSprint.name"
@@ -1366,7 +1366,7 @@ function formatDateRange(startDate, endDate) {
                 <input
                   v-model="newSprint.start_date"
                   type="date"
-                  class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div class="flex-1">
@@ -1376,7 +1376,7 @@ function formatDateRange(startDate, endDate) {
                 <input
                   v-model="newSprint.end_date"
                   type="date"
-                  class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>
@@ -1428,7 +1428,7 @@ function formatDateRange(startDate, endDate) {
           <div
             v-for="issue in sectionIssues[BACKLOG_KEY]"
             :key="issue.id"
-            class="group relative flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100"
+            class="group relative flex items-center gap-3 px-6 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-grab active:cursor-grabbing border-l-4 border-b border-slate-100 dark:border-slate-800"
             :class="priorityBorder(issue.priority)"
           >
             <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
@@ -1484,19 +1484,19 @@ function formatDateRange(startDate, endDate) {
             <!-- Move to sprint dropdown -->
             <div v-if="targetSprints.length" class="relative flex-shrink-0">
               <button
-                class="opacity-0 group-hover:opacity-100 text-[11px] text-slate-400 hover:text-slate-600 transition-opacity cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-100 inline-flex items-center gap-0.5"
+                class="opacity-0 group-hover:opacity-100 text-[11px] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-opacity cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 inline-flex items-center gap-0.5"
                 @click.stop="toggleDropdown(issue.id)"
               >
                 → Sprint <ChevronDownIcon class="size-3" />
               </button>
               <div
                 v-if="openDropdown === issue.id"
-                class="absolute right-0 top-full mt-1 z-10 bg-white border border-slate-200 rounded-md shadow-md py-1 min-w-36"
+                class="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-md py-1 min-w-36"
               >
                 <button
                   v-for="sprint in targetSprints"
                   :key="sprint.id"
-                  class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 cursor-pointer truncate"
+                  class="w-full text-left px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer truncate"
                   @click="moveToSprint(issue, sprint.id)"
                 >
                   {{ sprint.name }}
@@ -1536,7 +1536,7 @@ function formatDateRange(startDate, endDate) {
         >
           <div class="flex items-center gap-1.5 flex-shrink-0 w-24">
             <PlusIcon
-              class="size-3 text-slate-300 group-hover/create:text-slate-400"
+              class="size-3 text-slate-300 dark:text-slate-600 group-hover/create:text-slate-400 dark:group-hover/create:text-slate-500"
             />
           </div>
           <span class="text-sm text-slate-300 group-hover/create:text-slate-400"
@@ -1580,7 +1580,7 @@ function formatDateRange(startDate, endDate) {
           class="fixed right-4 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 w-52"
         >
           <div
-            class="text-[11px] font-medium text-slate-500 uppercase tracking-wide px-1 mb-0.5 flex items-center gap-1"
+            class="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide px-1 mb-0.5 flex items-center gap-1"
           >
             <ArrowRightIcon class="size-3" />
             Move to
@@ -1590,11 +1590,11 @@ function formatDateRange(startDate, endDate) {
               v-model="overlayDropZones[sprint.id]"
               :group="{ name: 'backlog', put: true, pull: false }"
               :animation="0"
-              class="rounded-lg border-2 border-dashed px-3 py-3 text-center min-h-12 transition-colors bg-white/90 backdrop-blur-sm shadow-lg"
+              class="rounded-lg border-2 border-dashed px-3 py-3 text-center min-h-12 transition-colors bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-lg"
               :class="
                 overlayDropZones[sprint.id]?.length
-                  ? 'border-blue-400 bg-blue-50/90'
-                  : 'border-slate-300 hover:border-blue-300'
+                  ? 'border-blue-400 bg-blue-50/90 dark:bg-blue-900/40'
+                  : 'border-slate-300 dark:border-slate-600 hover:border-blue-300'
               "
               @add="(evt) => onDropToOverlayZone(evt, sprint.id)"
             >
@@ -1604,7 +1604,7 @@ function formatDateRange(startDate, endDate) {
                 class="hidden"
               />
             </VueDraggable>
-            <div class="text-xs text-slate-600 font-medium truncate mt-1 px-1">
+            <div class="text-xs text-slate-600 dark:text-slate-400 font-medium truncate mt-1 px-1">
               {{ sprint.name }}
               <span v-if="sprint.status === 'active'" class="text-blue-600"
                 >(active)</span
@@ -1612,16 +1612,16 @@ function formatDateRange(startDate, endDate) {
             </div>
           </div>
           <!-- Backlog drop zone -->
-          <div class="mt-1 pt-2 border-t border-slate-200">
+          <div class="mt-1 pt-2 border-t border-slate-200 dark:border-slate-700">
             <VueDraggable
               v-model="overlayDropZones[BACKLOG_KEY]"
               :group="{ name: 'backlog', put: true, pull: false }"
               :animation="0"
-              class="rounded-lg border-2 border-dashed px-3 py-3 text-center min-h-12 transition-colors bg-white/90 backdrop-blur-sm shadow-lg"
+              class="rounded-lg border-2 border-dashed px-3 py-3 text-center min-h-12 transition-colors bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-lg"
               :class="
                 overlayDropZones[BACKLOG_KEY]?.length
-                  ? 'border-blue-400 bg-blue-50/90'
-                  : 'border-slate-300 hover:border-blue-300'
+                  ? 'border-blue-400 bg-blue-50/90 dark:bg-blue-900/40'
+                  : 'border-slate-300 dark:border-slate-600 hover:border-blue-300'
               "
               @add="(evt) => onDropToOverlayZone(evt, BACKLOG_KEY)"
             >
@@ -1631,7 +1631,7 @@ function formatDateRange(startDate, endDate) {
                 class="hidden"
               />
             </VueDraggable>
-            <div class="text-xs text-slate-600 font-medium mt-1 px-1">
+            <div class="text-xs text-slate-600 dark:text-slate-400 font-medium mt-1 px-1">
               Backlog
             </div>
           </div>

@@ -45,8 +45,8 @@ function confirm() {
 <template>
   <Modal :open="open" title="Complete sprint" @close="emit('close')">
     <div class="space-y-4">
-      <p class="text-sm text-slate-600">
-        <span class="font-semibold text-slate-900">{{ openIssueCount }}</span>
+      <p class="text-sm text-slate-600 dark:text-slate-400">
+        <span class="font-semibold text-slate-900 dark:text-slate-100">{{ openIssueCount }}</span>
         {{ openIssueCount === 1 ? 'issue is' : 'issues are' }} not yet complete.
         Where should {{ openIssueCount === 1 ? 'it' : 'they' }} go?
       </p>
@@ -54,7 +54,7 @@ function confirm() {
       <!-- Option: Move to backlog -->
       <label
         class="flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors"
-        :class="choice === 'backlog' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'"
+        :class="choice === 'backlog' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'"
       >
         <input
           v-model="choice"
@@ -64,10 +64,10 @@ function confirm() {
         />
         <div>
           <div class="flex items-center gap-1.5">
-            <InboxIcon class="size-4 text-slate-500" />
-            <span class="text-sm font-medium text-slate-900">Move to backlog</span>
+            <InboxIcon class="size-4 text-slate-500 dark:text-slate-400" />
+            <span class="text-sm font-medium text-slate-900 dark:text-slate-100">Move to backlog</span>
           </div>
-          <p class="text-xs text-slate-500 mt-0.5">Issues will be unassigned from any sprint.</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Issues will be unassigned from any sprint.</p>
         </div>
       </label>
 
@@ -75,7 +75,7 @@ function confirm() {
       <label
         class="flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors"
         :class="[
-          choice === 'sprint' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300',
+          choice === 'sprint' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600',
           !sprints.length ? 'opacity-50 pointer-events-none' : '',
         ]"
       >
@@ -88,14 +88,14 @@ function confirm() {
         />
         <div class="flex-1">
           <div class="flex items-center gap-1.5">
-            <ArrowRightIcon class="size-4 text-slate-500" />
-            <span class="text-sm font-medium text-slate-900">Move to another sprint</span>
+            <ArrowRightIcon class="size-4 text-slate-500 dark:text-slate-400" />
+            <span class="text-sm font-medium text-slate-900 dark:text-slate-100">Move to another sprint</span>
           </div>
-          <p v-if="!sprints.length" class="text-xs text-slate-500 mt-0.5">No other sprints available.</p>
+          <p v-if="!sprints.length" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">No other sprints available.</p>
           <select
             v-else-if="choice === 'sprint'"
             v-model="selectedSprintId"
-            class="mt-2 w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            class="mt-2 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option v-for="s in sprints" :key="s.id" :value="s.id">{{ s.name }}</option>
           </select>

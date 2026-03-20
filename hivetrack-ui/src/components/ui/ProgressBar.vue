@@ -21,13 +21,13 @@ const percent = computed(() => (props.total > 0 ? Math.round((props.done / props
 
 <template>
   <div class="flex items-center gap-2">
-    <div class="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+    <div class="flex-1 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
       <div
         class="h-full rounded-full transition-all duration-300"
         :class="percent === 100 ? 'bg-emerald-500' : 'bg-blue-500'"
         :style="{ width: `${percent}%` }"
       />
     </div>
-    <span class="text-xs text-slate-500 tabular-nums flex-shrink-0">{{ done }}/{{ total }}</span>
+    <span class="text-xs text-slate-500 dark:text-slate-400 tabular-nums flex-shrink-0">{{ done }}/{{ total }}</span>
   </div>
 </template>

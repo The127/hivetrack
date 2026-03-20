@@ -48,20 +48,21 @@ const emit = defineEmits(['update:modelValue'])
 const id = useId()
 
 const inputClasses = computed(() => [
-  'block w-full rounded-md border px-3 text-sm text-slate-900 placeholder:text-slate-400',
+  'block w-full rounded-md border px-3 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500',
+  'bg-white dark:bg-slate-800',
   'h-8',
   'focus:outline-none focus:ring-2 focus:ring-offset-0',
-  'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500',
+  'disabled:cursor-not-allowed disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-500',
   'transition-colors',
   props.error
     ? 'border-red-400 focus:border-red-400 focus:ring-red-300'
-    : 'border-slate-300 focus:border-blue-400 focus:ring-blue-200',
+    : 'border-slate-300 dark:border-slate-600 focus:border-blue-400 focus:ring-blue-200 dark:focus:ring-blue-900',
 ])
 </script>
 
 <template>
   <div class="flex flex-col gap-1">
-    <label v-if="label" :for="id" class="text-sm font-medium text-slate-700">
+    <label v-if="label" :for="id" class="text-sm font-medium text-slate-700 dark:text-slate-300">
       {{ label }}
     </label>
     <input
@@ -71,7 +72,7 @@ const inputClasses = computed(() => [
       :class="inputClasses"
       @input="emit('update:modelValue', $event.target.value)"
     />
-    <p v-if="error" class="text-xs text-red-600">{{ error }}</p>
-    <p v-else-if="hint" class="text-xs text-slate-500">{{ hint }}</p>
+    <p v-if="error" class="text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+    <p v-else-if="hint" class="text-xs text-slate-500 dark:text-slate-400">{{ hint }}</p>
   </div>
 </template>

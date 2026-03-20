@@ -40,7 +40,7 @@ const emit = defineEmits(['confirm', 'cancel'])
 
 <template>
   <Modal :open="open" :title="title" @close="emit('cancel')">
-    <p class="text-sm text-slate-600">{{ message }}</p>
+    <p class="text-sm text-slate-600 dark:text-slate-400">{{ message }}</p>
 
     <template #footer>
       <Button variant="secondary" :disabled="loading" @click="emit('cancel')">
