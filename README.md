@@ -50,6 +50,32 @@ just install-hooks    # install git pre-push hook
 | [docs/engineering-principles.md](docs/engineering-principles.md) | TDD, patterns, coding conventions |
 | [docs/api-and-ai.md](docs/api-and-ai.md) | API design, webhooks, AI integration |
 
+## MCP (AI integration)
+
+Hivetrack ships an MCP server so AI assistants (Claude, Cursor, etc.) can read and write issues directly. Auth is handled automatically on first use.
+
+**Claude Code** — one command installs and registers the server:
+
+```bash
+claude mcp add hivetrack -e HIVETRACK_URL=https://your-hivetrack -- npx hivetrack-mcp
+```
+
+If you already have the binary installed via Homebrew or Go:
+
+```bash
+claude mcp add hivetrack -e HIVETRACK_URL=https://your-hivetrack -- hivetrack-mcp
+```
+
+**Other clients** — install the binary first:
+
+```bash
+npx hivetrack-mcp                                                      # npm
+brew install The127/tap/hivetrack-mcp                                  # Homebrew
+go install github.com/the127/hivetrack/mcp/cmd/hivetrack-mcp@latest   # Go
+```
+
+Then add it to your client's MCP config with `HIVETRACK_URL` pointing at your instance. Refer to your client's documentation for the exact config format.
+
 ## Stack
 
 **Backend:** Go 1.24 · PostgreSQL · CQRS + mediator · IoC DI
