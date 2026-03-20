@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   packages: write
+  id-token: write
 
 jobs:
   build-app:
@@ -112,17 +113,18 @@ jobs:
             bin/*
           generate_release_notes: true
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+
       - name: Publish to npm
-        if: vars.NPM_PUBLISH == 'true'
         working-directory: npm/hivetrack-mcp
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           VERSION="${{ github.ref_name }}"
           VERSION="${VERSION#v}"
           npm version "$VERSION" --no-git-tag-version
-          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
-          npm publish --access public
+          npm publish --access public --provenance
 
       - name: Update Homebrew tap
         if: vars.HOMEBREW_TAP == 'true'
