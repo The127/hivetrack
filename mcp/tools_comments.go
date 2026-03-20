@@ -21,6 +21,21 @@ func registerCommentTools(s *server.MCPServer, client *Client) {
 		mcp.WithNumber("number", mcp.Required(), mcp.Description("Issue number")),
 		mcp.WithString("body", mcp.Required(), mcp.Description("Comment body (markdown)")),
 	), makeCreateComment(client))
+
+	s.AddTool(mcp.NewTool("update_comment",
+		mcp.WithDescription("Update the body of an existing comment"),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
+		mcp.WithNumber("number", mcp.Required(), mcp.Description("Issue number")),
+		mcp.WithString("comment_id", mcp.Required(), mcp.Description("Comment ID (UUID)")),
+		mcp.WithString("body", mcp.Required(), mcp.Description("New comment body (markdown)")),
+	), makeUpdateComment(client))
+
+	s.AddTool(mcp.NewTool("delete_comment",
+		mcp.WithDescription("Delete a comment from an issue"),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
+		mcp.WithNumber("number", mcp.Required(), mcp.Description("Issue number")),
+		mcp.WithString("comment_id", mcp.Required(), mcp.Description("Comment ID (UUID)")),
+	), makeDeleteComment(client))
 }
 
 func makeListComments(client *Client) server.ToolHandlerFunc {
@@ -37,6 +52,45 @@ func makeListComments(client *Client) server.ToolHandlerFunc {
 			return errResult(err), nil
 		}
 		return textResult(formatListComments(data)), nil
+	}
+}
+
+func makeUpdateComment(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		slug, _ := args["slug"].(string)
+		number := intArg(args, "number")
+		commentID, _ := args["comment_id"].(string)
+		body, _ := args["body"].(string)
+		if slug == "" || number == 0 || commentID == "" || body == "" {
+			return errResult(errMissing("slug, number, comment_id, body")), nil
+		}
+
+		_, err := client.patch(fmt.Sprintf("/api/v1/projects/%s/issues/%d/comments/%s", slug, number, commentID), map[string]any{
+			"body": body,
+		})
+		if err != nil {
+			return errResult(err), nil
+		}
+		return textResult(fmt.Sprintf("Comment %s updated on #%d", commentID, number)), nil
+	}
+}
+
+func makeDeleteComment(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		slug, _ := args["slug"].(string)
+		number := intArg(args, "number")
+		commentID, _ := args["comment_id"].(string)
+		if slug == "" || number == 0 || commentID == "" {
+			return errResult(errMissing("slug, number, comment_id")), nil
+		}
+
+		_, err := client.delete(fmt.Sprintf("/api/v1/projects/%s/issues/%d/comments/%s", slug, number, commentID))
+		if err != nil {
+			return errResult(err), nil
+		}
+		return textResult(fmt.Sprintf("Comment %s deleted from #%d", commentID, number)), nil
 	}
 }
 
