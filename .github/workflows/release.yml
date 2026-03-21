@@ -114,18 +114,6 @@ jobs:
             bin/*
           generate_release_notes: true
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Publish to npm
-        working-directory: npm/hivetrack-mcp
-        run: |
-          VERSION="${{ github.ref_name }}"
-          VERSION="${VERSION#v}"
-          npm version "$VERSION" --no-git-tag-version --allow-same-version
-          npm publish --access public --provenance
-
       - name: Update Homebrew tap
         if: vars.HOMEBREW_TAP == 'true'
         env:
