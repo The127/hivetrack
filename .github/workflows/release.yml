@@ -96,6 +96,7 @@ jobs:
         with:
           path: bin
           merge-multiple: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate checksums
         working-directory: bin
