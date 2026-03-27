@@ -329,9 +329,9 @@ func (h *IssueHandler) TriageIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Status      models.IssueStatus   `json:"status"`
-		SprintID    *uuid.UUID           `json:"sprint_id"`
-		MilestoneID *uuid.UUID           `json:"milestone_id"`
+		Status      models.IssueStatus    `json:"status"`
+		SprintID    *uuid.UUID            `json:"sprint_id"`
+		MilestoneID *uuid.UUID            `json:"milestone_id"`
 		Priority    *models.IssuePriority `json:"priority"`
 		Estimate    *models.IssueEstimate `json:"estimate"`
 	}
