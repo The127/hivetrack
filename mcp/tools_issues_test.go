@@ -245,6 +245,120 @@ func TestSplitIssue_whenTitlesProvided_sendsArrayToSplitEndpoint(t *testing.T) {
 	}
 }
 
+func TestTriageIssue_whenPriorityAndEstimateProvided_sendsThemInBody(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+			t.Fatalf("failed to decode body: %v", err)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	handler := makeTriageIssue(testClient(srv.URL))
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = map[string]any{
+		"slug":     "my-proj",
+		"number":   float64(5),
+		"status":   "todo",
+		"priority": "high",
+		"estimate": "m",
+	}
+
+	result, err := handler(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Errorf("expected success, got error")
+	}
+	if gotBody["priority"] != "high" {
+		t.Errorf("expected priority=high in body, got: %v", gotBody["priority"])
+	}
+	if gotBody["estimate"] != "m" {
+		t.Errorf("expected estimate=m in body, got: %v", gotBody["estimate"])
+	}
+}
+
+func TestListIssues_whenLabelIdProvided_passesAsQueryParam(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("label_id") != "uuid-123" {
+			t.Errorf("expected label_id=uuid-123 in query, got: %s", r.URL.Query().Get("label_id"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"items":[],"total":0}`))
+	}))
+	defer srv.Close()
+
+	handler := makeListIssues(testClient(srv.URL))
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = map[string]any{
+		"slug":     "proj",
+		"label_id": "uuid-123",
+	}
+
+	result, err := handler(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Errorf("expected success, got error")
+	}
+}
+
+func TestBatchUpdateIssues_whenNumbersProvided_callsBatchEndpoint(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/v1/projects/my-proj/issues/batch-update" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+			t.Fatalf("failed to decode body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"Updated":3}`))
+	}))
+	defer srv.Close()
+
+	handler := makeBatchUpdateIssues(testClient(srv.URL))
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = map[string]any{
+		"slug":     "my-proj",
+		"numbers":  "1,2,3",
+		"status":   "in_progress",
+		"priority": "high",
+	}
+
+	result, err := handler(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Errorf("expected success, got error: %s", extractText(result))
+	}
+	text := extractText(result)
+	if !contains(text, "3") {
+		t.Errorf("expected update count in result, got: %s", text)
+	}
+	// Verify numbers were sent as array
+	nums, ok := gotBody["numbers"].([]interface{})
+	if !ok {
+		t.Fatalf("expected numbers array in body, got: %T", gotBody["numbers"])
+	}
+	if len(nums) != 3 {
+		t.Errorf("expected 3 numbers, got %d", len(nums))
+	}
+	if gotBody["status"] != "in_progress" {
+		t.Errorf("expected status in body, got: %v", gotBody["status"])
+	}
+}
+
 func TestSplitIssue_whenSuccessful_returnsCreatedIssueNumbers(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

@@ -104,10 +104,7 @@ func makeCreateComment(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, number, body")), nil
 		}
 
-		_, err := client.post(fmt.Sprintf("/api/v1/projects/%s/issues/%d/comments", slug, number), map[string]any{
-			"body": body,
-		})
-		if err != nil {
+		if err := client.Typed().CreateComment(ctx, slug, number, body); err != nil {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Added comment to #%d", number)), nil

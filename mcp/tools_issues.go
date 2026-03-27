@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"strings"
 
+	htclient "github.com/the127/hivetrack/client"
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -408,16 +410,23 @@ func makeTriageIssue(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, number, status")), nil
 		}
 
-		body := map[string]any{
-			"status": status,
+		req := htclient.TriageIssueRequest{
+			Status: status,
 		}
-		setOptionalString(body, args, "sprint_id")
-		setOptionalString(body, args, "milestone_id")
-		setOptionalString(body, args, "priority")
-		setOptionalString(body, args, "estimate")
+		if v, ok := args["sprint_id"].(string); ok && v != "" {
+			req.SprintID = &v
+		}
+		if v, ok := args["milestone_id"].(string); ok && v != "" {
+			req.MilestoneID = &v
+		}
+		if v, ok := args["priority"].(string); ok && v != "" {
+			req.Priority = &v
+		}
+		if v, ok := args["estimate"].(string); ok && v != "" {
+			req.Estimate = &v
+		}
 
-		_, err := client.post(fmt.Sprintf("/api/v1/projects/%s/issues/%d/triage", slug, number), body)
-		if err != nil {
+		if err := client.Typed().TriageIssue(ctx, slug, number, req); err != nil {
 			return errResult(err), nil
 		}
 		return textResult(formatTriageIssue(number, status, args)), nil
@@ -501,8 +510,7 @@ func makeDeleteIssue(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, number")), nil
 		}
 
-		_, err := client.delete(fmt.Sprintf("/api/v1/projects/%s/issues/%d", slug, number))
-		if err != nil {
+		if err := client.Typed().DeleteIssue(ctx, slug, number); err != nil {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Issue #%d deleted", number)), nil
@@ -518,8 +526,7 @@ func makeRefineIssue(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, number")), nil
 		}
 
-		_, err := client.post(fmt.Sprintf("/api/v1/projects/%s/issues/%d/refine", slug, number), nil)
-		if err != nil {
+		if err := client.Typed().RefineIssue(ctx, slug, number); err != nil {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Issue #%d marked as refined", number)), nil
@@ -565,11 +572,7 @@ func makeAddIssueLink(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, number, link_type, target_number")), nil
 		}
 
-		_, err := client.post(fmt.Sprintf("/api/v1/projects/%s/issues/%d/links", slug, number), map[string]any{
-			"link_type":     linkType,
-			"target_number": targetNumber,
-		})
-		if err != nil {
+		if err := client.Typed().AddIssueLink(ctx, slug, number, htclient.LinkType(linkType), targetNumber); err != nil {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Added link %s from #%d to #%d", linkType, number, targetNumber)), nil
@@ -681,8 +684,7 @@ func makeRemoveChecklistItem(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, number, item_id")), nil
 		}
 
-		_, err := client.delete(fmt.Sprintf("/api/v1/projects/%s/issues/%d/checklist/%s", slug, number, itemID))
-		if err != nil {
+		if err := client.Typed().RemoveChecklistItem(ctx, slug, number, itemID); err != nil {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Removed checklist item from #%d", number)), nil

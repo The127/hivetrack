@@ -11,6 +11,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	htclient "github.com/the127/hivetrack/client"
 )
 
 // Client is a thin HTTP client for the Hivetrack REST API.
@@ -18,17 +20,32 @@ type Client struct {
 	baseURL    string
 	provider    TokenProvider
 	httpClient *http.Client
+	typed      *htclient.Client // typed client library instance
 }
 
 // NewClient creates a new Hivetrack API client.
 func NewClient(baseURL string, provider TokenProvider) *Client {
-	return &Client{
-		baseURL:  strings.TrimRight(baseURL, "/"),
+	base := strings.TrimRight(baseURL, "/")
+	c := &Client{
+		baseURL:  base,
 		provider: provider,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
 	}
+	c.typed = htclient.New(base, func(ctx context.Context) (string, error) {
+		tc, err := provider.ProvideToken(ctx)
+		if err != nil {
+			return "", err
+		}
+		return tc.AccessToken, nil
+	})
+	return c
+}
+
+// Typed returns the typed client library instance.
+func (c *Client) Typed() *htclient.Client {
+	return c.typed
 }
 
 func (c *Client) get(path string, query url.Values) (json.RawMessage, error) {
