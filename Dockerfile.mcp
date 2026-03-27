@@ -16,4 +16,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /hivetrack-mcp ./cmd/hivetrack-mcp
 FROM alpine:3.21
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /hivetrack-mcp /hivetrack-mcp
+
+# Default to HTTP transport for container deployments.
+# The only required env var is HIVETRACK_URL.
+# Auth is pass-through: callers provide their own OIDC Bearer token.
+ENV HIVETRACK_MCP_TRANSPORT=http
+ENV HIVETRACK_MCP_LISTEN=:8080
+EXPOSE 8080
+
 ENTRYPOINT ["/hivetrack-mcp"]
