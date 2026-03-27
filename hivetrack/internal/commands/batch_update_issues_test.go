@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -57,6 +58,37 @@ func TestHandleBatchUpdateIssues_UpdatesMultipleIssues(t *testing.T) {
 	updated2, _ := db.Issues().GetByID(context.Background(), issue2.GetId())
 	assert.Equal(t, models.IssuePriorityHigh, updated2.GetPriority())
 	assert.Equal(t, models.IssueStatusInProgress, updated2.GetStatus())
+}
+
+func TestHandleBatchUpdateIssues_ClearSprintID(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	sprintID := uuid.New()
+	reporterID := actor.GetId()
+	issue := models.NewIssue(
+		project.GetId(), 1, models.IssueTypeTask, "In Sprint",
+		models.IssueStatusTodo, models.IssuePriorityNone, models.IssueEstimateNone,
+		&reporterID, true, models.IssueVisibilityNormal,
+		nil, &sprintID, nil, nil, nil,
+	)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	_, err := commands.HandleBatchUpdateIssues(ctx, commands.BatchUpdateIssuesCommand{
+		ProjectID:     project.GetId(),
+		IssueNumbers:  []int{1},
+		ClearSprintID: true,
+	})
+	require.NoError(t, err)
+
+	updated, _ := db.Issues().GetByID(context.Background(), issue.GetId())
+	assert.Nil(t, updated.GetSprintID())
 }
 
 func TestHandleBatchUpdateIssues_UnknownIssueReturnsError(t *testing.T) {
