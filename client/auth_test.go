@@ -1,17 +1,49 @@
-package mcp
+package client
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 )
 
-func newCachingFetcher(inner TokenProvider, clock Clock, initial tokenCache, refreshFn func(string, string) (tokenCache, error)) *CachingTokenProvider {
+type fakeClock struct{ now time.Time }
+
+func (f *fakeClock) Now() time.Time       { return f.now }
+func (f *fakeClock) Tick(d time.Duration) { f.now = f.now.Add(d) }
+
+type fakeProvider struct {
+	token TokenCache
+	err   error
+	calls int
+}
+
+func (f *fakeProvider) ProvideToken(_ context.Context) (TokenCache, error) {
+	f.calls++
+	return f.token, f.err
+}
+
+type randomTokenProvider struct {
+	clock Clock
+	calls int
+}
+
+func (r *randomTokenProvider) ProvideToken(_ context.Context) (TokenCache, error) {
+	r.calls++
+	return TokenCache{
+		AccessToken: fmt.Sprintf("token-%d", r.calls),
+		IssuedAt:    r.clock.Now(),
+		Expiry:      r.clock.Now().Add(time.Hour),
+	}, nil
+}
+
+func newTestCaching(inner TokenProvider, clock Clock, initial TokenCache, refreshFn func(string, string) (TokenCache, error)) *CachingTokenProvider {
 	c := NewCachingTokenProvider(inner, clock, "http://example.com", initial, 0.1)
 	if refreshFn != nil {
-		c.refreshFn = refreshFn
+		c.RefreshFn = refreshFn
 	}
+	c.SaveFn = nil // don't write to disk in tests
 	return c
 }
 
@@ -19,7 +51,7 @@ func TestCachingTokenProvider_whenTokenIsFresh_returnsSameTokenOnRepeatedCalls(t
 	clock := &fakeClock{now: time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)}
 	inner := &randomTokenProvider{clock: clock}
 
-	c := newCachingFetcher(inner, clock, tokenCache{}, nil)
+	c := newTestCaching(inner, clock, TokenCache{}, nil)
 
 	first, err := c.ProvideToken(context.Background())
 	if err != nil {
@@ -40,7 +72,7 @@ func TestCachingTokenProvider_whenTokenIsFresh_returnsSameTokenOnRepeatedCalls(t
 
 func TestCachingTokenProvider_whenBelowRefreshThreshold_proactivelyRefreshes(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)}
-	initial := tokenCache{
+	initial := TokenCache{
 		AccessToken:  "old-token",
 		RefreshToken: "rt",
 		IssuedAt:     clock.Now(),
@@ -49,8 +81,8 @@ func TestCachingTokenProvider_whenBelowRefreshThreshold_proactivelyRefreshes(t *
 	clock.Tick(91 * time.Minute) // 9% remaining < 10% threshold
 	inner := &fakeProvider{}
 
-	refreshed := tokenCache{AccessToken: "refreshed-token", IssuedAt: clock.Now(), Expiry: clock.Now().Add(time.Hour)}
-	c := newCachingFetcher(inner, clock, initial, func(_, _ string) (tokenCache, error) {
+	refreshed := TokenCache{AccessToken: "refreshed-token", IssuedAt: clock.Now(), Expiry: clock.Now().Add(time.Hour)}
+	c := newTestCaching(inner, clock, initial, func(_, _ string) (TokenCache, error) {
 		return refreshed, nil
 	})
 
@@ -68,18 +100,18 @@ func TestCachingTokenProvider_whenBelowRefreshThreshold_proactivelyRefreshes(t *
 
 func TestCachingTokenProvider_whenRefreshFails_callsInner(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)}
-	initial := tokenCache{
+	initial := TokenCache{
 		AccessToken:  "old-token",
 		RefreshToken: "rt",
 		IssuedAt:     clock.Now(),
 		Expiry:       clock.Now().Add(100 * time.Minute),
 	}
-	clock.Tick(91 * time.Minute) // 9% remaining < 10% threshold
-	innerToken := tokenCache{AccessToken: "inner-token", IssuedAt: clock.Now(), Expiry: clock.Now().Add(time.Hour)}
+	clock.Tick(91 * time.Minute)
+	innerToken := TokenCache{AccessToken: "inner-token", IssuedAt: clock.Now(), Expiry: clock.Now().Add(time.Hour)}
 	inner := &fakeProvider{token: innerToken}
 
-	c := newCachingFetcher(inner, clock, initial, func(_, _ string) (tokenCache, error) {
-		return tokenCache{}, errors.New("refresh error")
+	c := newTestCaching(inner, clock, initial, func(_, _ string) (TokenCache, error) {
+		return TokenCache{}, errors.New("refresh error")
 	})
 
 	tc, err := c.ProvideToken(context.Background())
@@ -91,5 +123,25 @@ func TestCachingTokenProvider_whenRefreshFails_callsInner(t *testing.T) {
 	}
 	if inner.calls != 1 {
 		t.Errorf("expected inner called once, got %d", inner.calls)
+	}
+}
+
+func TestStaticTokenProvider(t *testing.T) {
+	tc := TokenCache{AccessToken: "static"}
+	p := &StaticTokenProvider{Token: tc}
+	got, err := p.ProvideToken(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.AccessToken != "static" {
+		t.Errorf("expected static, got %s", got.AccessToken)
+	}
+}
+
+func TestNewWithAuth(t *testing.T) {
+	tc := TokenCache{AccessToken: "test-tok", Expiry: time.Now().Add(time.Hour)}
+	c := NewWithAuth("http://example.com", &StaticTokenProvider{Token: tc})
+	if c == nil {
+		t.Fatal("expected non-nil client")
 	}
 }

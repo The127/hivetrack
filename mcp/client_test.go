@@ -1,22 +1,20 @@
 package mcp
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
+
+	htclient "github.com/the127/hivetrack/client"
 )
 
-// staticProvider is a TokenProvider that always returns the same token.
-type staticProvider struct{ tc tokenCache }
-
-func (s staticProvider) ProvideToken(_ context.Context) (tokenCache, error) { return s.tc, nil }
-
-func freshProvider(token string) TokenProvider {
-	return staticProvider{tc: tokenCache{AccessToken: token, Expiry: time.Now().Add(time.Hour)}}
+func freshProvider(token string) htclient.TokenProvider {
+	return &htclient.StaticTokenProvider{
+		Token: htclient.TokenCache{AccessToken: token, Expiry: time.Now().Add(time.Hour)},
+	}
 }
 
 func TestClient_Get(t *testing.T) {
@@ -123,7 +121,6 @@ func TestClient_Patch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// 204 returns {"ok":true}
 	var result map[string]any
 	json.Unmarshal(data, &result)
 	if result["ok"] != true {

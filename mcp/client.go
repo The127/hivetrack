@@ -15,38 +15,34 @@ import (
 	htclient "github.com/the127/hivetrack/client"
 )
 
-// Client is a thin HTTP client for the Hivetrack REST API.
+// Client is the MCP HTTP client. It wraps a typed client library instance
+// and provides raw HTTP methods for backward compatibility during migration.
 type Client struct {
 	baseURL    string
-	provider    TokenProvider
+	provider   htclient.TokenProvider
 	httpClient *http.Client
-	typed      *htclient.Client // typed client library instance
+	typed      *htclient.Client
 }
 
-// NewClient creates a new Hivetrack API client.
-func NewClient(baseURL string, provider TokenProvider) *Client {
+// NewClient creates a new Hivetrack MCP client.
+func NewClient(baseURL string, provider htclient.TokenProvider) *Client {
 	base := strings.TrimRight(baseURL, "/")
-	c := &Client{
+	return &Client{
 		baseURL:  base,
 		provider: provider,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		typed: htclient.NewWithAuth(base, provider),
 	}
-	c.typed = htclient.New(base, func(ctx context.Context) (string, error) {
-		tc, err := provider.ProvideToken(ctx)
-		if err != nil {
-			return "", err
-		}
-		return tc.AccessToken, nil
-	})
-	return c
 }
 
 // Typed returns the typed client library instance.
 func (c *Client) Typed() *htclient.Client {
 	return c.typed
 }
+
+// Raw HTTP methods — used by tests and the few remaining tools that build dynamic maps.
 
 func (c *Client) get(path string, query url.Values) (json.RawMessage, error) {
 	return c.do("GET", path, query, nil)
@@ -71,7 +67,7 @@ func (c *Client) do(method, path string, query url.Values, body any) (json.RawMe
 	}
 
 	u := c.baseURL + path
-	if query != nil && len(query) > 0 {
+	if len(query) > 0 {
 		u += "?" + query.Encode()
 	}
 
@@ -111,7 +107,6 @@ func (c *Client) do(method, path string, query url.Values, body any) (json.RawMe
 		return nil, fmt.Errorf("API error (HTTP %d): %s", resp.StatusCode, string(respBody))
 	}
 
-	// 204 No Content — return empty JSON object
 	if resp.StatusCode == http.StatusNoContent || len(respBody) == 0 {
 		return json.RawMessage(`{"ok":true}`), nil
 	}
