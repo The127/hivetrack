@@ -3,6 +3,9 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"strings"
+
+	htclient "github.com/the127/hivetrack/client"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -86,11 +89,11 @@ func registerProjectTools(s *server.MCPServer, client *Client) {
 
 func makeListProjects(client *Client) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		data, err := client.get("/api/v1/projects", nil)
+		projects, err := client.Typed().ListProjects(ctx)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatListProjects(data)), nil
+		return textResult(formatListProjects(projects)), nil
 	}
 }
 
@@ -104,18 +107,16 @@ func makeCreateProject(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, name, archetype")), nil
 		}
 
-		body := map[string]any{
-			"slug":      slug,
-			"name":      name,
-			"archetype": archetype,
-		}
-		setOptionalString(body, args, "description")
-
-		data, err := client.post("/api/v1/projects", body)
+		_, err := client.Typed().CreateProject(ctx, htclient.CreateProjectRequest{
+			Slug:        slug,
+			Name:        name,
+			Archetype:   archetype,
+			Description: stringOr(args, "description", ""),
+		})
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatCreateProject(data, slug, name, archetype)), nil
+		return textResult(formatCreateProject(slug, name, archetype)), nil
 	}
 }
 
@@ -129,16 +130,11 @@ func makeAddProjectMember(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, user_id, role")), nil
 		}
 
-		body := map[string]any{
-			"user_id": userID,
-			"role":    role,
-		}
-
-		data, err := client.post("/api/v1/projects/"+slug+"/members", body)
-		if err != nil {
+		htRole := htclient.ProjectRole(role)
+		if err := client.Typed().AddProjectMember(ctx, slug, userID, htRole); err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+		return textResult(fmt.Sprintf("Added %s to project %s as %s", userID, slug, role)), nil
 	}
 }
 
@@ -151,11 +147,10 @@ func makeRemoveProjectMember(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, user_id")), nil
 		}
 
-		data, err := client.delete("/api/v1/projects/" + slug + "/members/" + userID)
-		if err != nil {
+		if err := client.Typed().RemoveProjectMember(ctx, slug, userID); err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+		return textResult(fmt.Sprintf("Removed %s from project %s", userID, slug)), nil
 	}
 }
 
@@ -167,28 +162,42 @@ func makeUpdateProject(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("project_id")), nil
 		}
 
-		body := map[string]any{}
-		setOptionalString(body, args, "name")
-		setOptionalString(body, args, "description")
-		if v, ok := args["archived"].(bool); ok {
-			body["archived"] = v
+		req := htclient.UpdateProjectRequest{}
+		hasChanges := false
+		if v, ok := args["name"].(string); ok && v != "" {
+			req.Name = htclient.Set(v)
+			hasChanges = true
 		}
-		for _, key := range []string{"wip_limit_in_progress", "wip_limit_in_review"} {
-			if v, ok := args[key].(float64); ok {
-				if v == -1 {
-					body[key] = nil
-				} else {
-					body[key] = int(v)
-				}
+		if v, ok := args["description"].(string); ok && v != "" {
+			req.Description = htclient.Set(v)
+			hasChanges = true
+		}
+		if v, ok := args["archived"].(bool); ok {
+			req.Archived = htclient.Set(v)
+			hasChanges = true
+		}
+		if v, ok := args["wip_limit_in_progress"].(float64); ok {
+			if v == -1 {
+				req.WipLimitInProgress = htclient.Null[int]()
+			} else {
+				req.WipLimitInProgress = htclient.Set(int(v))
 			}
+			hasChanges = true
+		}
+		if v, ok := args["wip_limit_in_review"].(float64); ok {
+			if v == -1 {
+				req.WipLimitInReview = htclient.Null[int]()
+			} else {
+				req.WipLimitInReview = htclient.Set(int(v))
+			}
+			hasChanges = true
 		}
 
-		if len(body) == 0 {
+		if !hasChanges {
 			return errResult(fmt.Errorf("no fields to update")), nil
 		}
 
-		_, err := client.patch("/api/v1/projects/"+projectID, body)
-		if err != nil {
+		if err := client.Typed().UpdateProject(ctx, projectID, req); err != nil {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Project %s updated", projectID)), nil
@@ -203,8 +212,7 @@ func makeDeleteProject(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("project_id")), nil
 		}
 
-		_, err := client.delete("/api/v1/projects/" + projectID)
-		if err != nil {
+		if err := client.Typed().DeleteProject(ctx, projectID); err != nil {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Project %s deleted", projectID)), nil
@@ -218,10 +226,24 @@ func makeGetProject(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug")), nil
 		}
 
-		data, err := client.get("/api/v1/projects/"+slug, nil)
+		project, err := client.Typed().GetProject(ctx, slug)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "%s (%s, %s)\n", project.Name, project.Slug, project.Archetype)
+		fmt.Fprintf(&sb, "ID: %s\n", project.ID)
+		if len(project.Members) > 0 {
+			sb.WriteString("\nMembers:\n")
+			for _, m := range project.Members {
+				name := m.DisplayName
+				if name == "" {
+					name = m.Email
+				}
+				fmt.Fprintf(&sb, "  • %s (%s)\n", name, m.Role)
+			}
+		}
+		return textResult(sb.String()), nil
 	}
 }

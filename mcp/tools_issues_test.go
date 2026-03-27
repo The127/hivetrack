@@ -245,6 +245,259 @@ func TestSplitIssue_whenTitlesProvided_sendsArrayToSplitEndpoint(t *testing.T) {
 	}
 }
 
+func TestTriageIssue_whenPriorityAndEstimateProvided_sendsThemInBody(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+			t.Fatalf("failed to decode body: %v", err)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	handler := makeTriageIssue(testClient(srv.URL))
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = map[string]any{
+		"slug":     "my-proj",
+		"number":   float64(5),
+		"status":   "todo",
+		"priority": "high",
+		"estimate": "m",
+	}
+
+	result, err := handler(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Errorf("expected success, got error")
+	}
+	if gotBody["priority"] != "high" {
+		t.Errorf("expected priority=high in body, got: %v", gotBody["priority"])
+	}
+	if gotBody["estimate"] != "m" {
+		t.Errorf("expected estimate=m in body, got: %v", gotBody["estimate"])
+	}
+}
+
+func TestListIssues_whenLabelIdProvided_passesAsQueryParam(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("label_id") != "uuid-123" {
+			t.Errorf("expected label_id=uuid-123 in query, got: %s", r.URL.Query().Get("label_id"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"items":[],"total":0}`))
+	}))
+	defer srv.Close()
+
+	handler := makeListIssues(testClient(srv.URL))
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = map[string]any{
+		"slug":     "proj",
+		"label_id": "uuid-123",
+	}
+
+	result, err := handler(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Errorf("expected success, got error")
+	}
+}
+
+func TestBatchUpdateIssues_whenNumbersProvided_callsBatchEndpoint(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/v1/projects/my-proj/issues/batch-update" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+			t.Fatalf("failed to decode body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"Updated":3}`))
+	}))
+	defer srv.Close()
+
+	handler := makeBatchUpdateIssues(testClient(srv.URL))
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = map[string]any{
+		"slug":     "my-proj",
+		"numbers":  "1,2,3",
+		"status":   "in_progress",
+		"priority": "high",
+	}
+
+	result, err := handler(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Errorf("expected success, got error: %s", extractText(result))
+	}
+	text := extractText(result)
+	if !contains(text, "3") {
+		t.Errorf("expected update count in result, got: %s", text)
+	}
+	// Verify numbers were sent as array
+	nums, ok := gotBody["numbers"].([]interface{})
+	if !ok {
+		t.Fatalf("expected numbers array in body, got: %T", gotBody["numbers"])
+	}
+	if len(nums) != 3 {
+		t.Errorf("expected 3 numbers, got %d", len(nums))
+	}
+	if gotBody["status"] != "in_progress" {
+		t.Errorf("expected status in body, got: %v", gotBody["status"])
+	}
+}
+
+func TestGetIssue_whenSlugAndNumberProvided_returnsIssueDetail(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/projects/proj/issues/5" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"id": "uuid-1", "number": 5, "title": "Test", "type": "task",
+			"status": "todo", "triaged": true, "assignees": []any{}, "labels": []any{},
+			"links": []any{}, "checklist": []any{},
+		})
+	}))
+	defer srv.Close()
+
+	handler := makeGetIssue(testClient(srv.URL))
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = map[string]any{"slug": "proj", "number": float64(5)}
+
+	result, err := handler(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := extractText(result)
+	if !contains(text, "#5 Test") {
+		t.Errorf("expected issue detail, got: %s", text)
+	}
+}
+
+func TestGetMyIssues_returnsFormattedList(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/me/issues" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		json.NewEncoder(w).Encode(map[string]any{
+			"items": []map[string]any{{"number": 1, "title": "My Issue", "type": "task", "status": "todo"}},
+		})
+	}))
+	defer srv.Close()
+
+	handler := makeGetMyIssues(testClient(srv.URL))
+	req := mcp.CallToolRequest{}
+
+	result, err := handler(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := extractText(result)
+	if !contains(text, "My Issue") {
+		t.Errorf("expected issue in result, got: %s", text)
+	}
+}
+
+func TestCreateIssue_whenTitleProvided_createsIssue(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]any{"ID": "new-uuid", "Number": 10})
+	}))
+	defer srv.Close()
+
+	handler := makeCreateIssue(testClient(srv.URL))
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = map[string]any{"slug": "proj", "title": "New Issue", "priority": "high"}
+
+	result, err := handler(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := extractText(result)
+	if !contains(text, "#10") || !contains(text, "New Issue") {
+		t.Errorf("expected issue info, got: %s", text)
+	}
+}
+
+func TestUpdateIssue_whenFieldsProvided_updatesIssue(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			t.Errorf("expected PATCH, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	handler := makeUpdateIssue(testClient(srv.URL))
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = map[string]any{"slug": "proj", "number": float64(5), "status": "done", "priority": "high"}
+
+	result, err := handler(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := extractText(result)
+	if !contains(text, "status") || !contains(text, "priority") {
+		t.Errorf("expected update confirmation, got: %s", text)
+	}
+}
+
+func TestAddChecklistItem_whenTextProvided_addsItem(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]any{"ID": "item-uuid"})
+	}))
+	defer srv.Close()
+
+	handler := makeAddChecklistItem(testClient(srv.URL))
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = map[string]any{"slug": "proj", "number": float64(1), "text": "Do this"}
+
+	result, err := handler(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := extractText(result)
+	if !contains(text, "Do this") || !contains(text, "item-uuid") {
+		t.Errorf("expected checklist info, got: %s", text)
+	}
+}
+
+func TestUpdateChecklistItem_whenDoneProvided_updatesItem(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	handler := makeUpdateChecklistItem(testClient(srv.URL))
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = map[string]any{"slug": "proj", "number": float64(1), "item_id": "item-1", "done": true}
+
+	result, err := handler(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := extractText(result)
+	if !contains(text, "done") {
+		t.Errorf("expected done confirmation, got: %s", text)
+	}
+}
+
 func TestSplitIssue_whenSuccessful_returnsCreatedIssueNumbers(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

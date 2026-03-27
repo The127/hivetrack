@@ -63,6 +63,7 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 	issueH := handlers.NewIssueHandler(med)
 	protected.HandleFunc("/projects/{slug}/issues", issueH.ListIssues).Methods("GET")
 	protected.HandleFunc("/projects/{slug}/issues", issueH.CreateIssue).Methods("POST")
+	protected.HandleFunc("/projects/{slug}/issues/batch-update", issueH.BatchUpdateIssues).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}", issueH.GetIssue).Methods("GET")
 	protected.HandleFunc("/projects/{slug}/issues/{number}", issueH.UpdateIssue).Methods("PATCH")
 	protected.HandleFunc("/projects/{slug}/issues/{number}", issueH.DeleteIssue).Methods("DELETE")

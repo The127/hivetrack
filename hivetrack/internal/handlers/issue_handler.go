@@ -75,6 +75,16 @@ func (h *IssueHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
 			q.AssigneeID = &assigneeID
 		}
 	}
+	if lid := r.URL.Query().Get("label_id"); lid != "" {
+		if labelID, err := uuid.Parse(lid); err == nil {
+			q.LabelID = &labelID
+		}
+	}
+	if elid := r.URL.Query().Get("exclude_label_id"); elid != "" {
+		if excludeLabelID, err := uuid.Parse(elid); err == nil {
+			q.ExcludeLabelID = &excludeLabelID
+		}
+	}
 	if l := r.URL.Query().Get("limit"); l != "" {
 		limit, _ := strconv.Atoi(l)
 		q.Limit = limit
@@ -319,9 +329,11 @@ func (h *IssueHandler) TriageIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Status      models.IssueStatus `json:"status"`
-		SprintID    *uuid.UUID         `json:"sprint_id"`
-		MilestoneID *uuid.UUID         `json:"milestone_id"`
+		Status      models.IssueStatus    `json:"status"`
+		SprintID    *uuid.UUID            `json:"sprint_id"`
+		MilestoneID *uuid.UUID            `json:"milestone_id"`
+		Priority    *models.IssuePriority `json:"priority"`
+		Estimate    *models.IssueEstimate `json:"estimate"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		RespondError(w, models.ErrBadRequest)
@@ -333,6 +345,8 @@ func (h *IssueHandler) TriageIssue(w http.ResponseWriter, r *http.Request) {
 		Status:      body.Status,
 		SprintID:    body.SprintID,
 		MilestoneID: body.MilestoneID,
+		Priority:    body.Priority,
+		Estimate:    body.Estimate,
 	})
 	if err != nil {
 		RespondError(w, err)
@@ -605,6 +619,54 @@ func (h *IssueHandler) AddIssueLink(w http.ResponseWriter, r *http.Request) {
 
 func (h *IssueHandler) GetMyIssues(w http.ResponseWriter, r *http.Request) {
 	result, err := mediatr.Send[*queries.GetMyIssuesResult](r.Context(), h.mediator, queries.GetMyIssuesQuery{})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	RespondJSON(w, http.StatusOK, result)
+}
+
+func (h *IssueHandler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
+	slug := mux.Vars(r)["slug"]
+
+	projectResult, err := mediatr.Send[*queries.GetProjectResult](r.Context(), h.mediator, queries.GetProjectQuery{Slug: slug})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	if projectResult == nil {
+		RespondError(w, models.ErrNotFound)
+		return
+	}
+
+	var body struct {
+		Numbers       []int                 `json:"numbers"`
+		Status        *models.IssueStatus   `json:"status"`
+		Priority      *models.IssuePriority `json:"priority"`
+		Estimate      *models.IssueEstimate `json:"estimate"`
+		AssigneeIDs   []uuid.UUID           `json:"assignee_ids"`
+		LabelIDs      []uuid.UUID           `json:"label_ids"`
+		SprintID      *uuid.UUID            `json:"sprint_id"`
+		ClearSprintID bool                  `json:"clear_sprint_id"`
+		MilestoneID   *uuid.UUID            `json:"milestone_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	result, err := mediatr.Send[*commands.BatchUpdateIssuesResult](r.Context(), h.mediator, commands.BatchUpdateIssuesCommand{
+		ProjectID:     projectResult.ID,
+		IssueNumbers:  body.Numbers,
+		Status:        body.Status,
+		Priority:      body.Priority,
+		Estimate:      body.Estimate,
+		AssigneeIDs:   body.AssigneeIDs,
+		LabelIDs:      body.LabelIDs,
+		SprintID:      body.SprintID,
+		ClearSprintID: body.ClearSprintID,
+		MilestoneID:   body.MilestoneID,
+	})
 	if err != nil {
 		RespondError(w, err)
 		return

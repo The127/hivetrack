@@ -47,11 +47,11 @@ func makeListComments(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, number")), nil
 		}
 
-		data, err := client.get(fmt.Sprintf("/api/v1/projects/%s/issues/%d/comments", slug, number), nil)
+		comments, total, err := client.Typed().ListComments(ctx, slug, number)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatListComments(data)), nil
+		return textResult(formatListComments(comments, total)), nil
 	}
 }
 
@@ -66,10 +66,7 @@ func makeUpdateComment(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, number, comment_id, body")), nil
 		}
 
-		_, err := client.patch(fmt.Sprintf("/api/v1/projects/%s/issues/%d/comments/%s", slug, number, commentID), map[string]any{
-			"body": body,
-		})
-		if err != nil {
+		if err := client.Typed().UpdateComment(ctx, slug, number, commentID, body); err != nil {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Comment %s updated on #%d", commentID, number)), nil
@@ -86,8 +83,7 @@ func makeDeleteComment(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, number, comment_id")), nil
 		}
 
-		_, err := client.delete(fmt.Sprintf("/api/v1/projects/%s/issues/%d/comments/%s", slug, number, commentID))
-		if err != nil {
+		if err := client.Typed().DeleteComment(ctx, slug, number, commentID); err != nil {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Comment %s deleted from #%d", commentID, number)), nil
@@ -104,10 +100,7 @@ func makeCreateComment(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, number, body")), nil
 		}
 
-		_, err := client.post(fmt.Sprintf("/api/v1/projects/%s/issues/%d/comments", slug, number), map[string]any{
-			"body": body,
-		})
-		if err != nil {
+		if err := client.Typed().CreateComment(ctx, slug, number, body); err != nil {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Added comment to #%d", number)), nil

@@ -155,5 +155,24 @@ func matchesIssueFilter(issue *models.Issue, filter *repositories.IssueFilter) b
 			return false
 		}
 	}
+	if filter.LabelID != nil {
+		found := false
+		for _, l := range issue.GetLabels() {
+			if l == *filter.LabelID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	if filter.ExcludeLabelID != nil {
+		for _, l := range issue.GetLabels() {
+			if l == *filter.ExcludeLabelID {
+				return false
+			}
+		}
+	}
 	return true
 }

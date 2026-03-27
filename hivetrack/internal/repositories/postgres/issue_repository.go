@@ -340,9 +340,19 @@ func (r *IssueRepository) List(ctx context.Context, filter *repositories.IssueFi
 	if filter.ParentID != nil {
 		baseQuery += fmt.Sprintf(` AND i.parent_id=$%d`, argIdx)
 		args = append(args, *filter.ParentID)
+		argIdx++
 	}
 	if filter.HasNoParent != nil && *filter.HasNoParent {
 		baseQuery += ` AND i.parent_id IS NULL`
+	}
+	if filter.LabelID != nil {
+		baseQuery += fmt.Sprintf(` AND EXISTS (SELECT 1 FROM issue_labels il WHERE il.issue_id = i.id AND il.label_id=$%d)`, argIdx)
+		args = append(args, *filter.LabelID)
+		argIdx++
+	}
+	if filter.ExcludeLabelID != nil {
+		baseQuery += fmt.Sprintf(` AND NOT EXISTS (SELECT 1 FROM issue_labels il WHERE il.issue_id = i.id AND il.label_id=$%d)`, argIdx)
+		args = append(args, *filter.ExcludeLabelID)
 	}
 
 	// Count total

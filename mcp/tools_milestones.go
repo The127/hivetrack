@@ -2,9 +2,10 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
+
+	htclient "github.com/the127/hivetrack/client"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -48,11 +49,11 @@ func makeListMilestones(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug")), nil
 		}
 
-		data, err := client.get("/api/v1/projects/"+slug+"/milestones", nil)
+		milestones, err := client.Typed().ListMilestones(ctx, slug)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatListMilestones(data)), nil
+		return textResult(formatListMilestones(milestones)), nil
 	}
 }
 
@@ -65,22 +66,15 @@ func makeCreateMilestone(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, title")), nil
 		}
 
-		body := map[string]any{"title": title}
-		setOptionalString(body, args, "description")
-		setOptionalString(body, args, "target_date")
-
-		data, err := client.post("/api/v1/projects/"+slug+"/milestones", body)
+		id, err := client.Typed().CreateMilestone(ctx, slug, htclient.CreateMilestoneRequest{
+			Title:       title,
+			Description: stringOr(args, "description", ""),
+			TargetDate:  stringOr(args, "target_date", ""),
+		})
 		if err != nil {
 			return errResult(err), nil
 		}
-
-		var resp struct {
-			ID string `json:"ID"`
-		}
-		if jsonErr := json.Unmarshal(data, &resp); jsonErr == nil && resp.ID != "" {
-			return textResult(fmt.Sprintf("Created milestone %q (id: %s)", title, resp.ID)), nil
-		}
-		return textResult(fmt.Sprintf("Created milestone %q", title)), nil
+		return textResult(fmt.Sprintf("Created milestone %q (id: %s)", title, id)), nil
 	}
 }
 
@@ -93,34 +87,45 @@ func makeUpdateMilestone(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, milestone_id")), nil
 		}
 
-		body := map[string]any{}
-		setOptionalString(body, args, "title")
-		setOptionalString(body, args, "description")
-		setOptionalString(body, args, "target_date")
-		if v, ok := args["close"].(string); ok && v != "" {
-			body["close"] = v == "true"
-		}
-		if len(body) == 0 {
-			return errResult(fmt.Errorf("no fields to update")), nil
+		setStr := func(key string) htclient.Field[string] {
+			if v, ok := args[key].(string); ok && v != "" {
+				return htclient.Set(v)
+			}
+			return htclient.Field[string]{}
 		}
 
-		_, err := client.patch(fmt.Sprintf("/api/v1/projects/%s/milestones/%s", slug, milestoneID), body)
-		if err != nil {
-			return errResult(err), nil
+		req := htclient.UpdateMilestoneRequest{
+			Title:       setStr("title"),
+			Description: setStr("description"),
+			TargetDate:  setStr("target_date"),
+		}
+		if v, ok := args["close"].(string); ok && v != "" {
+			req.Close = htclient.Set(v == "true")
 		}
 
 		var changes []string
-		for _, key := range []string{"title", "description", "target_date"} {
-			if v, ok := body[key].(string); ok {
-				changes = append(changes, fmt.Sprintf("%s → %s", key, v))
-			}
+		if req.Title.IsSet() {
+			changes = append(changes, fmt.Sprintf("title → %s", req.Title.Value()))
 		}
-		if v, ok := body["close"].(bool); ok {
-			if v {
+		if req.Description.IsSet() {
+			changes = append(changes, fmt.Sprintf("description → %s", req.Description.Value()))
+		}
+		if req.TargetDate.IsSet() {
+			changes = append(changes, fmt.Sprintf("target_date → %s", req.TargetDate.Value()))
+		}
+		if req.Close.IsSet() {
+			if req.Close.Value() {
 				changes = append(changes, "closed")
 			} else {
 				changes = append(changes, "reopened")
 			}
+		}
+		if len(changes) == 0 {
+			return errResult(fmt.Errorf("no fields to update")), nil
+		}
+
+		if err := client.Typed().UpdateMilestone(ctx, slug, milestoneID, req); err != nil {
+			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Updated milestone: %s", strings.Join(changes, ", "))), nil
 	}
@@ -135,8 +140,7 @@ func makeDeleteMilestone(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, milestone_id")), nil
 		}
 
-		_, err := client.delete(fmt.Sprintf("/api/v1/projects/%s/milestones/%s", slug, milestoneID))
-		if err != nil {
+		if err := client.Typed().DeleteMilestone(ctx, slug, milestoneID); err != nil {
 			return errResult(err), nil
 		}
 		return textResult("Deleted milestone"), nil

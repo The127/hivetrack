@@ -1,7 +1,7 @@
 package mcp
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -60,26 +60,28 @@ func parseUUIDList(args map[string]any, key string) ([]string, error) {
 	return ids, nil
 }
 
+// resolveLabelNames fetches project labels and resolves comma-separated names to UUIDs.
+// Returns nil if the key is absent or empty. Uses the typed client library.
+func resolveLabelNames(client *Client, slug string, args map[string]any, key string) ([]string, error) {
+	v, ok := args[key].(string)
+	if !ok || v == "" {
+		return nil, nil
+	}
+	return client.Typed().ResolveLabelNames(context.Background(), slug, v)
+}
+
 // resolveIssueID takes a value that is either a UUID or an issue number string,
 // and returns the UUID. If it's a number, it fetches the issue to get its ID.
 func resolveIssueID(client *Client, slug, value string) (string, error) {
-	// If it looks like a number, resolve it via the API
 	num, err := strconv.Atoi(value)
 	if err != nil {
 		// Not a number — assume it's already a UUID
 		return value, nil
 	}
 
-	data, err := client.get(fmt.Sprintf("/api/v1/projects/%s/issues/%d", slug, num), nil)
+	issue, err := client.Typed().GetIssue(context.Background(), slug, num)
 	if err != nil {
 		return "", fmt.Errorf("fetching issue #%d: %w", num, err)
-	}
-
-	var issue struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(data, &issue); err != nil {
-		return "", fmt.Errorf("parsing issue response: %w", err)
 	}
 	if issue.ID == "" {
 		return "", fmt.Errorf("issue #%d has no ID", num)

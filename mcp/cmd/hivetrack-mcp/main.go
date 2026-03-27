@@ -6,6 +6,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/server"
 
+	htclient "github.com/the127/hivetrack/client"
 	htmcp "github.com/the127/hivetrack/mcp"
 )
 
@@ -23,7 +24,7 @@ func main() {
 	}
 
 	if len(os.Args) > 1 && os.Args[1] == "login" {
-		if err := htmcp.Login(apiURL); err != nil {
+		if err := htclient.Login(apiURL); err != nil {
 			fmt.Fprintf(os.Stderr, "[mcp] login failed: %v\n", err)
 			os.Exit(1)
 		}
@@ -31,13 +32,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	tc, _ := htmcp.TryToken(apiURL) // best-effort; empty tokenCache if nothing valid
+	tc, _ := htclient.LoadTokenFile() // best-effort; empty TokenCache if nothing valid
 
 	fmt.Fprintf(os.Stderr, "[mcp] starting: url=%s\n", apiURL)
 
-	provider := htmcp.NewCachingTokenProvider(
-		&htmcp.DeviceFlowProvider{BaseURL: apiURL},
-		htmcp.RealClock,
+	provider := htclient.NewCachingTokenProvider(
+		&htclient.DeviceFlowProvider{BaseURL: apiURL},
+		htclient.RealClock,
 		apiURL,
 		tc,
 		0.1,

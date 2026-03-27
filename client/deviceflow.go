@@ -1,4 +1,4 @@
-package mcp
+package client
 
 import (
 	"context"
@@ -7,20 +7,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
 
-type tokenCache struct {
-	AccessToken  string    `json:"access_token"`
-	RefreshToken string    `json:"refresh_token"`
-	IssuedAt     time.Time `json:"issued_at"`
-	Expiry       time.Time `json:"expiry"`
-	ServerURL    string    `json:"server_url"`
-}
-
-// DeviceFlow holds the state needed to complete an in-progress device authorization flow.
+// DeviceFlow holds the state for an in-progress OIDC device authorization flow.
 type DeviceFlow struct {
 	VerificationURI         string
 	VerificationURIComplete string
@@ -33,70 +24,9 @@ type DeviceFlow struct {
 	serverURL     string
 }
 
-func cachePath() (string, error) {
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, "hivetrack", "mcp-credentials.json"), nil
-}
-
-func loadCache() (tokenCache, bool) {
-	p, err := cachePath()
-	if err != nil {
-		return tokenCache{}, false
-	}
-	data, err := os.ReadFile(p)
-	if err != nil {
-		return tokenCache{}, false
-	}
-	var c tokenCache
-	if err := json.Unmarshal(data, &c); err != nil {
-		return tokenCache{}, false
-	}
-	return c, true
-}
-
-func saveCache(c tokenCache) error {
-	p, err := cachePath()
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
-		return err
-	}
-	data, err := json.Marshal(c)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(p, data, 0600)
-}
-
-// TryToken returns a valid tokenCache from cache or via token refresh.
-// Returns (tokenCache{}, nil) if no valid token is available and device flow is needed.
-func TryToken(serverURL string) (tokenCache, error) {
-	cached, ok := loadCache()
-	if !ok || cached.ServerURL != serverURL {
-		return tokenCache{}, nil
-	}
-	if time.Now().Before(cached.Expiry) {
-		return cached, nil
-	}
-	if cached.RefreshToken != "" {
-		refreshed, err := tryRefresh(serverURL, cached.RefreshToken)
-		if err == nil {
-			if saveErr := saveCache(refreshed); saveErr != nil {
-				fmt.Fprintf(os.Stderr, "[mcp] warning: failed to save token cache: %v\n", saveErr)
-			}
-			return refreshed, nil
-		}
-		fmt.Fprintf(os.Stderr, "[mcp] token refresh failed, device flow required: %v\n", err)
-	}
-	return tokenCache{}, nil
-}
-
-// InitDeviceFlow starts the OIDC device authorization flow and returns immediately
-// with the verification URL for the user to open. Call WaitForToken to poll for completion.
+// InitDeviceFlow starts the OIDC device authorization flow.
+// Returns immediately with the verification URL for the user to open.
+// Call WaitForToken to poll for completion.
 func InitDeviceFlow(serverURL string) (*DeviceFlow, error) {
 	providerCfg, discovery, err := fetchOIDCEndpoints(serverURL)
 	if err != nil {
@@ -128,15 +58,14 @@ func InitDeviceFlow(serverURL string) (*DeviceFlow, error) {
 	}, nil
 }
 
-// WaitForToken polls the token endpoint until the user completes authentication,
-// then saves the token to the cache and returns the full tokenCache.
+// WaitForToken polls the token endpoint until the user completes authentication.
 // Respects context cancellation.
-func (f *DeviceFlow) WaitForToken(ctx context.Context) (tokenCache, error) {
+func (f *DeviceFlow) WaitForToken(ctx context.Context) (TokenCache, error) {
 	interval := f.interval
 	for {
 		select {
 		case <-ctx.Done():
-			return tokenCache{}, ctx.Err()
+			return TokenCache{}, ctx.Err()
 		case <-time.After(time.Duration(interval) * time.Second):
 		}
 
@@ -146,46 +75,68 @@ func (f *DeviceFlow) WaitForToken(ctx context.Context) (tokenCache, error) {
 			"device_code": {f.deviceCode},
 			"client_id":   {f.clientID},
 		}, &tr); err != nil {
-			return tokenCache{}, fmt.Errorf("polling token endpoint: %w", err)
+			return TokenCache{}, fmt.Errorf("polling token endpoint: %w", err)
 		}
 
 		switch tr.Error {
 		case "":
 			now := time.Now()
-			c := tokenCache{
+			tc := TokenCache{
 				AccessToken:  tr.AccessToken,
 				RefreshToken: tr.RefreshToken,
 				IssuedAt:     now,
 				Expiry:       now.Add(time.Duration(tr.ExpiresIn) * time.Second),
 				ServerURL:    f.serverURL,
 			}
-			if err := saveCache(c); err != nil {
-				fmt.Fprintf(os.Stderr, "[mcp] warning: failed to save token cache: %v\n", err)
-			}
-			return c, nil
+			_ = SaveTokenFile(tc)
+			return tc, nil
 		case "authorization_pending":
 			// keep waiting
 		case "slow_down":
 			interval += 5
 		case "access_denied":
-			return tokenCache{}, fmt.Errorf("device flow: access denied")
+			return TokenCache{}, fmt.Errorf("device flow: access denied")
 		case "expired_token":
-			return tokenCache{}, fmt.Errorf("device flow: device code expired")
+			return TokenCache{}, fmt.Errorf("device flow: device code expired")
 		default:
-			return tokenCache{}, fmt.Errorf("device flow error: %s", tr.Error)
+			return TokenCache{}, fmt.Errorf("device flow error: %s", tr.Error)
 		}
 	}
 }
 
-// Login runs the OIDC device flow interactively, printing the auth URL to stderr.
-// If a valid token already exists, it reports that and returns immediately.
-func Login(serverURL string) error {
-	tc, err := TryToken(serverURL)
+// TryRefresh attempts to refresh a token using the refresh token.
+func TryRefresh(serverURL, refreshTok string) (TokenCache, error) {
+	providerCfg, discovery, err := fetchOIDCEndpoints(serverURL)
 	if err != nil {
-		return err
+		return TokenCache{}, err
 	}
-	if tc.AccessToken != "" {
-		fmt.Fprintln(os.Stderr, "[mcp] already authenticated (token is valid)")
+	var tr tokenResponse
+	if err := postFormJSON(discovery.TokenEndpoint, url.Values{
+		"grant_type":    {"refresh_token"},
+		"refresh_token": {refreshTok},
+		"client_id":     {providerCfg.ClientID},
+	}, &tr); err != nil {
+		return TokenCache{}, err
+	}
+	if tr.Error != "" {
+		return TokenCache{}, fmt.Errorf("token refresh error: %s", tr.Error)
+	}
+	now := time.Now()
+	return TokenCache{
+		AccessToken:  tr.AccessToken,
+		RefreshToken: tr.RefreshToken,
+		IssuedAt:     now,
+		Expiry:       now.Add(time.Duration(tr.ExpiresIn) * time.Second),
+		ServerURL:    serverURL,
+	}, nil
+}
+
+// Login runs the OIDC device flow interactively. If a valid cached token exists,
+// returns immediately. Otherwise prints the auth URL and waits for completion.
+func Login(serverURL string) error {
+	tc, err := LoadTokenFile()
+	if err == nil && tc.ServerURL == serverURL && time.Now().Before(tc.Expiry) {
+		fmt.Fprintf(os.Stderr, "[hivetrack] already authenticated (token is valid)\n")
 		return nil
 	}
 
@@ -203,6 +154,8 @@ func Login(serverURL string) error {
 	_, err = flow.WaitForToken(context.Background())
 	return err
 }
+
+// OIDC types
 
 type oidcProviderConfig struct {
 	Authority string `json:"authority"`
@@ -269,28 +222,3 @@ func fetchOIDCEndpoints(serverURL string) (oidcProviderConfig, oidcDiscovery, er
 	return providerCfg, discovery, nil
 }
 
-func tryRefresh(serverURL, refreshTok string) (tokenCache, error) {
-	providerCfg, discovery, err := fetchOIDCEndpoints(serverURL)
-	if err != nil {
-		return tokenCache{}, err
-	}
-	var tr tokenResponse
-	if err := postFormJSON(discovery.TokenEndpoint, url.Values{
-		"grant_type":    {"refresh_token"},
-		"refresh_token": {refreshTok},
-		"client_id":     {providerCfg.ClientID},
-	}, &tr); err != nil {
-		return tokenCache{}, err
-	}
-	if tr.Error != "" {
-		return tokenCache{}, fmt.Errorf("token refresh error: %s", tr.Error)
-	}
-	now := time.Now()
-	return tokenCache{
-		AccessToken:  tr.AccessToken,
-		RefreshToken: tr.RefreshToken,
-		IssuedAt:     now,
-		Expiry:       now.Add(time.Duration(tr.ExpiresIn) * time.Second),
-		ServerURL:    serverURL,
-	}, nil
-}

@@ -36,7 +36,29 @@ func makeIssue(projectID uuid.UUID, number int, status models.IssueStatus, sprin
 	)
 }
 
-func TestHandleUpdateSprint_Complete_MovesToBacklog(t *testing.T) {
+func TestHandleUpdateSprint_Complete_RejectsWithoutForceWhenOpenIssues(t *testing.T) {
+	db, project, actor := setupSprintTest(t)
+
+	sprint := models.NewSprint(project.GetId(), 1, "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusActive)
+	db.Sprints().Insert(sprint)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	sid := sprint.GetId()
+	openIssue := makeIssue(project.GetId(), 1, models.IssueStatusInProgress, &sid, actor.GetId())
+	db.Issues().Insert(openIssue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	status := models.SprintStatusCompleted
+	_, err := commands.HandleUpdateSprint(ctx, commands.UpdateSprintCommand{
+		SprintID: sprint.GetId(),
+		Status:   &status,
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, models.ErrConflict)
+}
+
+func TestHandleUpdateSprint_Complete_ForceMovesToBacklog(t *testing.T) {
 	db, project, actor := setupSprintTest(t)
 
 	sprint := models.NewSprint(project.GetId(), 1, "Sprint 1", nil, time.Now(), time.Now().Add(14*24*time.Hour), models.SprintStatusActive)
@@ -56,6 +78,7 @@ func TestHandleUpdateSprint_Complete_MovesToBacklog(t *testing.T) {
 	_, err := commands.HandleUpdateSprint(ctx, commands.UpdateSprintCommand{
 		SprintID: sprint.GetId(),
 		Status:   &status,
+		Force:    true,
 	})
 	require.NoError(t, err)
 

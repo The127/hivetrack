@@ -141,3 +141,65 @@ func TestHandleGetIssues_FilterByStatus(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, result.Total)
 }
+
+func TestHandleGetIssues_FilterByLabelID(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+
+	p := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(p)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	labelID := uuid.New()
+	otherLabelID := uuid.New()
+
+	labeled := seedIssue(db, p.GetId(), actor.GetId(), 1, models.IssueStatusTodo, true)
+	labeled.SetLabels([]uuid.UUID{labelID})
+	db.Issues().Update(labeled)
+
+	unlabeled := seedIssue(db, p.GetId(), actor.GetId(), 2, models.IssueStatusTodo, true)
+	unlabeled.SetLabels([]uuid.UUID{otherLabelID})
+	db.Issues().Update(unlabeled)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+
+	// Filter by label
+	result, err := queries.HandleGetIssues(ctx, queries.GetIssuesQuery{
+		ProjectSlug: "p",
+		LabelID:     &labelID,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 1, result.Total)
+	assert.Equal(t, 1, result.Items[0].Number)
+}
+
+func TestHandleGetIssues_ExcludeLabelID(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+
+	p := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(p)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	labelID := uuid.New()
+
+	labeled := seedIssue(db, p.GetId(), actor.GetId(), 1, models.IssueStatusTodo, true)
+	labeled.SetLabels([]uuid.UUID{labelID})
+	db.Issues().Update(labeled)
+	seedIssue(db, p.GetId(), actor.GetId(), 2, models.IssueStatusTodo, true)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+
+	// Exclude by label
+	result, err := queries.HandleGetIssues(ctx, queries.GetIssuesQuery{
+		ProjectSlug:    "p",
+		ExcludeLabelID: &labelID,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 1, result.Total)
+	assert.Equal(t, 2, result.Items[0].Number)
+}

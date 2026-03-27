@@ -101,6 +101,7 @@ func (h *SprintHandler) UpdateSprint(w http.ResponseWriter, r *http.Request) {
 		EndDate                  *time.Time           `json:"end_date"`
 		Status                   *models.SprintStatus `json:"status"`
 		MoveOpenIssuesToSprintID *uuid.UUID           `json:"move_open_issues_to_sprint_id"`
+		Force                    *bool                `json:"force"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		RespondError(w, models.ErrBadRequest)
@@ -115,6 +116,7 @@ func (h *SprintHandler) UpdateSprint(w http.ResponseWriter, r *http.Request) {
 		EndDate:                  body.EndDate,
 		Status:                   body.Status,
 		MoveOpenIssuesToSprintID: body.MoveOpenIssuesToSprintID,
+		Force:                    body.Force != nil && *body.Force,
 	})
 	if err != nil {
 		RespondError(w, err)
