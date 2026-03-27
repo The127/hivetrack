@@ -100,11 +100,11 @@ import Layout from '../../layouts/Layout.astro'
                 <div class="space-y-4">
                   <div class="field">
                     <label for="f-keyline-api-version" class="field-label">Keyline API image tag</label>
-                    <input id="f-keyline-api-version" type="text" value="latest" class="field-input keyline-input" data-field="keylineApiVersion" />
+                    <input id="f-keyline-api-version" type="text" value="v0.2.2" class="field-input keyline-input" data-field="keylineApiVersion" />
                   </div>
                   <div class="field">
                     <label for="f-keyline-ui-version" class="field-label">Keyline UI image tag</label>
-                    <input id="f-keyline-ui-version" type="text" value="latest" class="field-input keyline-input" data-field="keylineUiVersion" />
+                    <input id="f-keyline-ui-version" type="text" value="v0.2.2" class="field-input keyline-input" data-field="keylineUiVersion" />
                   </div>
                   <div class="field">
                     <label for="f-keyline-api-port" class="field-label">Keyline API port</label>
@@ -245,8 +245,8 @@ import Layout from '../../layouts/Layout.astro'
       includeMcp: checked('f-include-mcp'),
       mcpPort: get('mcpPort') || '8080',
       includeKeyline: checked('f-include-keyline'),
-      keylineApiVersion: get('keylineApiVersion') || 'latest',
-      keylineUiVersion: get('keylineUiVersion') || 'latest',
+      keylineApiVersion: get('keylineApiVersion') || 'v0.2.2',
+      keylineUiVersion: get('keylineUiVersion') || 'v0.2.2',
       keylineApiPort: get('keylineApiPort') || '8081',
       keylineUiPort: get('keylineUiPort') || '5177',
       keylineExternalUrl: get('keylineExternalUrl') || 'http://localhost:8081',
@@ -303,7 +303,7 @@ initial_admin:
   function generateKeylineConfig(f: Fields): string {
     const uiUrl = keylineUiExternalUrl(f)
     return `server:
-  host: 0.0.0.0
+  host: "0.0.0.0"
   port: ${f.keylineApiPort}
   externalUrl: ${f.keylineExternalUrl}
   allowedOrigins:
@@ -314,27 +314,46 @@ frontend:
   externalUrl: ${uiUrl}
 
 database:
-  url: postgres://keyline:secret@keyline-db:5432/keyline?sslmode=disable
+  mode: postgres
+  postgres:
+    host: keyline-db
+    port: 5432
+    username: keyline
+    password: secret
+    sslMode: disable
+
+keyStore:
+  mode: directory
+  directory:
+    path: ./keys
 
 cache:
-  type: memory
+  mode: memory
 
 leaderElection:
-  enabled: false
+  mode: none
 
 initialVirtualServer:
-  slug: ${f.keylineVirtualServer}
-  name: Hivetrack
+  enableRegistration: false
+  createAdmin: true
   admin:
-    email: ${f.keylineAdminEmail}
+    username: admin
+    displayName: Admin
+    primaryEmail: ${f.keylineAdminEmail}
     # Default password: hivetrack — change before going public
-    passwordHash: "$2y$12$oOOVAx6u2cZtS0ZqHb4aBurii/qMAAvFxSLmGgzcvbs0SxghjG5dm"
-  application:
-    clientId: hivetrack
-    name: Hivetrack
-    redirectUris:
-      - ${f.externalUrl}/oidc/callback
-      - ${f.externalUrl}`
+    passwordHash: "\\$argon2id\\$v=19\\$m=16,t=2,p=1\\$MTIzNDU2Nzg\\$QWu7e+sjG5knAdNLoKdLDg"
+  projects:
+    - slug: ${f.keylineVirtualServer}
+      name: Hivetrack
+      applications:
+        - name: hivetrack
+          displayName: Hivetrack
+          type: public
+          enableDeviceFlow: true
+          redirectUris:
+            - ${f.externalUrl}/auth/callback
+          postLogoutRedirectUris:
+            - ${f.externalUrl}/logout-callback`
   }
 
   function mcpComposeService(f: Fields): string {
@@ -374,10 +393,12 @@ initialVirtualServer:
   keyline-api:
     image: ghcr.io/the127/keyline:${f.keylineApiVersion}
     restart: unless-stopped
+    command: ["/app/api", "--config", "/app/config.yml"]
     ports:
       - "${f.keylineApiPort}:${f.keylineApiPort}"
     volumes:
-      - ./keyline-config.yaml:/app/config.yaml
+      - ./keyline-config.yaml:/app/config.yml
+      - keyline_keys:/app/keys
     depends_on:
       keyline-db:
         condition: service_healthy
@@ -391,16 +412,17 @@ initialVirtualServer:
     image: ghcr.io/the127/keyline-ui:${f.keylineUiVersion}
     restart: unless-stopped
     ports:
-      - "${f.keylineUiPort}:${f.keylineUiPort}"
+      - "${f.keylineUiPort}:80"
     environment:
       KEYLINE_API_URL: "${f.keylineExternalUrl}"
+      KEYLINE_HOST: "${keylineUiExternalUrl(f)}"
     depends_on:
       - keyline-api`
   }
 
   function generateCompose(f: Fields): string {
     const keylineDep = f.includeKeyline ? `\n      keyline-api:\n        condition: service_healthy` : ''
-    const extraVolumes = f.includeKeyline ? `\n  keyline_data:` : ''
+    const extraVolumes = f.includeKeyline ? `\n  keyline_data:\n  keyline_keys:` : ''
     return `services:
   postgres:
     image: postgres:17-alpine
