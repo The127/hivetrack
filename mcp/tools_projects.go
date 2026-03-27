@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	htclient "github.com/the127/hivetrack/client"
 
@@ -106,14 +107,12 @@ func makeCreateProject(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, name, archetype")), nil
 		}
 
-		body := map[string]any{
-			"slug":      slug,
-			"name":      name,
-			"archetype": archetype,
-		}
-		setOptionalString(body, args, "description")
-
-		_, err := client.post("/api/v1/projects", body)
+		_, err := client.Typed().CreateProject(ctx, htclient.CreateProjectRequest{
+			Slug:        slug,
+			Name:        name,
+			Archetype:   archetype,
+			Description: stringOr(args, "description", ""),
+		})
 		if err != nil {
 			return errResult(err), nil
 		}
@@ -163,28 +162,36 @@ func makeUpdateProject(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("project_id")), nil
 		}
 
-		body := map[string]any{}
-		setOptionalString(body, args, "name")
-		setOptionalString(body, args, "description")
-		if v, ok := args["archived"].(bool); ok {
-			body["archived"] = v
+		req := htclient.UpdateProjectRequest{}
+		hasChanges := false
+		if v, ok := args["name"].(string); ok && v != "" {
+			req.Name = &v
+			hasChanges = true
 		}
-		for _, key := range []string{"wip_limit_in_progress", "wip_limit_in_review"} {
-			if v, ok := args[key].(float64); ok {
-				if v == -1 {
-					body[key] = nil
-				} else {
-					body[key] = int(v)
-				}
-			}
+		if v, ok := args["description"].(string); ok && v != "" {
+			req.Description = &v
+			hasChanges = true
+		}
+		if v, ok := args["archived"].(bool); ok {
+			req.Archived = &v
+			hasChanges = true
+		}
+		if v, ok := args["wip_limit_in_progress"].(float64); ok {
+			n := int(v)
+			req.WipLimitInProgress = &n
+			hasChanges = true
+		}
+		if v, ok := args["wip_limit_in_review"].(float64); ok {
+			n := int(v)
+			req.WipLimitInReview = &n
+			hasChanges = true
 		}
 
-		if len(body) == 0 {
+		if !hasChanges {
 			return errResult(fmt.Errorf("no fields to update")), nil
 		}
 
-		_, err := client.patch("/api/v1/projects/"+projectID, body)
-		if err != nil {
+		if err := client.Typed().UpdateProject(ctx, projectID, req); err != nil {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Project %s updated", projectID)), nil
@@ -213,12 +220,24 @@ func makeGetProject(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug")), nil
 		}
 
-		// get_project returns full JSON — use raw client for now since the response
-		// includes project-specific fields (members, WIP limits) not in ProjectSummary.
-		data, err := client.get("/api/v1/projects/"+slug, nil)
+		project, err := client.Typed().GetProject(ctx, slug)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "%s (%s, %s)\n", project.Name, project.Slug, project.Archetype)
+		fmt.Fprintf(&sb, "ID: %s\n", project.ID)
+		if len(project.Members) > 0 {
+			sb.WriteString("\nMembers:\n")
+			for _, m := range project.Members {
+				name := m.DisplayName
+				if name == "" {
+					name = m.Email
+				}
+				fmt.Fprintf(&sb, "  • %s (%s)\n", name, m.Role)
+			}
+		}
+		return textResult(sb.String()), nil
 	}
 }

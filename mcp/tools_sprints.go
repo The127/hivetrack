@@ -130,32 +130,30 @@ func makeUpdateSprint(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, id")), nil
 		}
 
-		body := map[string]any{}
-		setOptionalString(body, args, "name")
-		setOptionalString(body, args, "goal")
-		setOptionalString(body, args, "start_date")
-		setOptionalString(body, args, "end_date")
-		setOptionalString(body, args, "status")
+		optStr := func(key string) *string {
+			if v, ok := args[key].(string); ok && v != "" {
+				return &v
+			}
+			return nil
+		}
 
-		// Pass force flag to backend (for sprint completion with open issues).
+		req := htclient.UpdateSprintRequest{
+			Name:      optStr("name"),
+			Goal:      optStr("goal"),
+			StartDate: optStr("start_date"),
+			EndDate:   optStr("end_date"),
+			Status:    optStr("status"),
+		}
 		if force, ok := args["force"].(bool); ok && force {
-			body["force"] = true
+			req.Force = true
 		}
-
-		// Map move_to_sprint_id to the backend field name.
 		if moveID, ok := args["move_to_sprint_id"].(string); ok && moveID != "" {
-			body["move_open_issues_to_sprint_id"] = moveID
+			req.MoveOpenIssuesToSprintID = &moveID
 		}
 
-		if len(body) == 0 {
-			return errResult(fmt.Errorf("no fields to update")), nil
-		}
-
-		data, err := client.patch(fmt.Sprintf("/api/v1/projects/%s/sprints/%s", slug, id), body)
-		if err != nil {
+		if err := client.Typed().UpdateSprint(ctx, slug, id, req); err != nil {
 			return errResult(err), nil
 		}
-		_ = data
 		return textResult(formatUpdateSprint(args)), nil
 	}
 }

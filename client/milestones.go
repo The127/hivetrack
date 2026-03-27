@@ -45,14 +45,32 @@ func (c *Client) CreateMilestone(ctx context.Context, slug string, req CreateMil
 
 // UpdateMilestoneRequest contains fields for updating a milestone.
 type UpdateMilestoneRequest struct {
-	Title       *string `json:"title,omitempty"`
-	Description *string `json:"description,omitempty"`
-	TargetDate  *string `json:"target_date,omitempty"`
+	Title       *string
+	Description *string
+	TargetDate  *string
+	Close       *bool // true = close, false = reopen, nil = don't change
+}
+
+func (r UpdateMilestoneRequest) toMap() map[string]any {
+	m := map[string]any{}
+	if r.Title != nil {
+		m["title"] = *r.Title
+	}
+	if r.Description != nil {
+		m["description"] = *r.Description
+	}
+	if r.TargetDate != nil {
+		m["target_date"] = *r.TargetDate
+	}
+	if r.Close != nil {
+		m["close"] = *r.Close
+	}
+	return m
 }
 
 // UpdateMilestone updates an existing milestone.
 func (c *Client) UpdateMilestone(ctx context.Context, slug string, milestoneID string, req UpdateMilestoneRequest) error {
-	_, err := c.patch(ctx, fmt.Sprintf("/api/v1/projects/%s/milestones/%s", slug, milestoneID), req)
+	_, err := c.patch(ctx, fmt.Sprintf("/api/v1/projects/%s/milestones/%s", slug, milestoneID), req.toMap())
 	return err
 }
 

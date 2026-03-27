@@ -36,9 +36,10 @@ func (c *Client) GetProject(ctx context.Context, slug string) (*Project, error) 
 
 // CreateProjectRequest contains the fields for creating a project.
 type CreateProjectRequest struct {
-	Slug      string `json:"slug"`
-	Name      string `json:"name"`
-	Archetype string `json:"archetype"`
+	Slug        string `json:"slug"`
+	Name        string `json:"name"`
+	Archetype   string `json:"archetype"`
+	Description string `json:"description,omitempty"`
 }
 
 // CreateProject creates a new project.
@@ -58,12 +59,44 @@ func (c *Client) CreateProject(ctx context.Context, req CreateProjectRequest) (s
 
 // UpdateProjectRequest contains fields for updating a project.
 type UpdateProjectRequest struct {
-	Name *string `json:"name,omitempty"`
+	Name               *string
+	Description        *string
+	Archived           *bool
+	WipLimitInProgress *int // -1 = clear
+	WipLimitInReview   *int // -1 = clear
+}
+
+func (r UpdateProjectRequest) toMap() map[string]any {
+	m := map[string]any{}
+	if r.Name != nil {
+		m["name"] = *r.Name
+	}
+	if r.Description != nil {
+		m["description"] = *r.Description
+	}
+	if r.Archived != nil {
+		m["archived"] = *r.Archived
+	}
+	if r.WipLimitInProgress != nil {
+		if *r.WipLimitInProgress == -1 {
+			m["wip_limit_in_progress"] = nil
+		} else {
+			m["wip_limit_in_progress"] = *r.WipLimitInProgress
+		}
+	}
+	if r.WipLimitInReview != nil {
+		if *r.WipLimitInReview == -1 {
+			m["wip_limit_in_review"] = nil
+		} else {
+			m["wip_limit_in_review"] = *r.WipLimitInReview
+		}
+	}
+	return m
 }
 
 // UpdateProject updates a project by its ID (UUID).
 func (c *Client) UpdateProject(ctx context.Context, projectID string, req UpdateProjectRequest) error {
-	_, err := c.patch(ctx, "/api/v1/projects/"+projectID, req)
+	_, err := c.patch(ctx, "/api/v1/projects/"+projectID, req.toMap())
 	return err
 }
 

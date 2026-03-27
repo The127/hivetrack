@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -305,94 +304,84 @@ func makeUpdateIssue(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, number")), nil
 		}
 
-		body := map[string]any{}
-		setOptionalString(body, args, "title")
-		setOptionalString(body, args, "description")
-		setOptionalString(body, args, "status")
-		setOptionalString(body, args, "priority")
-		setOptionalString(body, args, "estimate")
-
-		// Handle nullable UUID fields — "null" string clears the field
-		for _, key := range []string{"sprint_id", "milestone_id"} {
-			if v, ok := args[key].(string); ok {
-				if v == "null" {
-					body[key] = nil
-				} else if v != "" {
-					body[key] = v
-				}
+		req := htclient.UpdateIssueRequest{}
+		optStr := func(key string) *string {
+			if v, ok := args[key].(string); ok && v != "" && v != "null" {
+				return &v
 			}
+			return nil
 		}
+		req.Title = optStr("title")
+		req.Description = optStr("description")
+		req.Status = optStr("status")
+		req.Priority = optStr("priority")
+		req.Estimate = optStr("estimate")
 
-		// assignee_ids: comma-separated UUIDs, or "null" to clear
-		if v, ok := args["assignee_ids"].(string); ok {
+		// Nullable UUID fields: "null" = clear
+		if v, ok := args["sprint_id"].(string); ok {
 			if v == "null" {
-				body["assignee_ids"] = []string{}
+				req.ClearSprintID = true
 			} else if v != "" {
-				ids, err := parseUUIDList(args, "assignee_ids")
-				if err != nil {
-					return errResult(fmt.Errorf("invalid assignee_ids: %w", err)), nil
-				}
-				if ids != nil {
-					body["assignee_ids"] = ids
-				}
+				req.SprintID = &v
 			}
 		}
+		req.MilestoneID = optStr("milestone_id")
 
-		// label_ids: comma-separated UUIDs, or "null" to clear
-		if v, ok := args["label_ids"].(string); ok {
-			if v == "null" {
-				body["label_ids"] = []string{}
-			} else if v != "" {
-				ids, err := parseUUIDList(args, "label_ids")
-				if err != nil {
-					return errResult(fmt.Errorf("invalid label_ids: %w", err)), nil
-				}
-				if ids != nil {
-					body["label_ids"] = ids
-				}
-			}
-		}
-
-		// label_names: resolve names to UUIDs (only if label_ids not provided)
-		if _, hasLabelIDs := args["label_ids"]; !hasLabelIDs {
-			if ids, err := resolveLabelNames(client, slug, args, "label_names"); err != nil {
-				return errResult(fmt.Errorf("resolving label names: %w", err)), nil
-			} else if ids != nil {
-				body["label_ids"] = ids
-			}
-		}
-
-		// parent_id: accept issue number (resolve to UUID) or UUID directly
 		if v, ok := args["parent_id"].(string); ok {
 			if v == "null" {
-				body["parent_id"] = nil
+				req.ClearParentID = true
 			} else if v != "" {
 				resolved, err := resolveIssueID(client, slug, v)
 				if err != nil {
 					return errResult(fmt.Errorf("resolving parent_id: %w", err)), nil
 				}
-				body["parent_id"] = resolved
+				req.ParentID = &resolved
 			}
 		}
 
-		// owner_id: UUID or "null" to clear
+		if v, ok := args["assignee_ids"].(string); ok {
+			if v == "null" {
+				req.ClearAssignees = true
+			} else if v != "" {
+				ids, err := parseUUIDList(args, "assignee_ids")
+				if err != nil {
+					return errResult(fmt.Errorf("invalid assignee_ids: %w", err)), nil
+				}
+				req.AssigneeIDs = ids
+			}
+		}
+
+		if v, ok := args["label_ids"].(string); ok {
+			if v == "null" {
+				req.ClearLabels = true
+			} else if v != "" {
+				ids, err := parseUUIDList(args, "label_ids")
+				if err != nil {
+					return errResult(fmt.Errorf("invalid label_ids: %w", err)), nil
+				}
+				req.LabelIDs = ids
+			}
+		}
+		// label_names: resolve names to UUIDs (only if label_ids not provided)
+		if _, hasLabelIDs := args["label_ids"]; !hasLabelIDs && !req.ClearLabels {
+			if ids, err := resolveLabelNames(client, slug, args, "label_names"); err != nil {
+				return errResult(fmt.Errorf("resolving label names: %w", err)), nil
+			} else if ids != nil {
+				req.LabelIDs = ids
+			}
+		}
+
 		if v, ok := args["owner_id"].(string); ok {
 			if v == "null" {
-				body["owner_id"] = nil
+				req.ClearOwnerID = true
 			} else if v != "" {
-				body["owner_id"] = v
+				req.OwnerID = &v
 			}
 		}
 
-		if len(body) == 0 {
-			return errResult(fmt.Errorf("no fields to update")), nil
-		}
-
-		data, err := client.patch(fmt.Sprintf("/api/v1/projects/%s/issues/%d", slug, number), body)
-		if err != nil {
+		if err := client.Typed().UpdateIssue(ctx, slug, number, req); err != nil {
 			return errResult(err), nil
 		}
-		_ = data
 		return textResult(formatUpdateIssue(number, args)), nil
 	}
 }
@@ -440,20 +429,11 @@ func makeAddChecklistItem(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, number, text")), nil
 		}
 
-		data, err := client.post(fmt.Sprintf("/api/v1/projects/%s/issues/%d/checklist", slug, number), map[string]any{
-			"text": text,
-		})
+		id, err := client.Typed().AddChecklistItem(ctx, slug, number, text)
 		if err != nil {
 			return errResult(err), nil
 		}
-
-		var resp struct {
-			ID string `json:"ID"`
-		}
-		if err := json.Unmarshal(data, &resp); err != nil {
-			return textResult(fmt.Sprintf("Added checklist item to #%d: %q", number, text)), nil
-		}
-		return textResult(fmt.Sprintf("Added checklist item to #%d: %q (id: %s)", number, text, resp.ID)), nil
+		return textResult(fmt.Sprintf("Added checklist item to #%d: %q (id: %s)", number, text, id)), nil
 	}
 }
 
@@ -467,32 +447,26 @@ func makeUpdateChecklistItem(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, number, item_id")), nil
 		}
 
-		body := map[string]any{}
-		if text, ok := args["text"].(string); ok && text != "" {
-			body["text"] = text
-		}
-		if done, ok := args["done"].(bool); ok {
-			body["done"] = done
-		}
-		if len(body) == 0 {
-			return errResult(fmt.Errorf("provide text and/or done to update")), nil
-		}
-
-		_, err := client.patch(fmt.Sprintf("/api/v1/projects/%s/issues/%d/checklist/%s", slug, number, itemID), body)
-		if err != nil {
-			return errResult(err), nil
-		}
-
+		req := htclient.UpdateChecklistItemRequest{}
 		var changes []string
-		if text, ok := body["text"].(string); ok {
+		if text, ok := args["text"].(string); ok && text != "" {
+			req.Text = &text
 			changes = append(changes, fmt.Sprintf("text → %q", text))
 		}
-		if done, ok := body["done"].(bool); ok {
+		if done, ok := args["done"].(bool); ok {
+			req.Done = &done
 			if done {
 				changes = append(changes, "☑ done")
 			} else {
 				changes = append(changes, "☐ not done")
 			}
+		}
+		if len(changes) == 0 {
+			return errResult(fmt.Errorf("provide text and/or done to update")), nil
+		}
+
+		if err := client.Typed().UpdateChecklistItem(ctx, slug, number, itemID, req); err != nil {
+			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Updated checklist item on #%d: %s", number, strings.Join(changes, ", "))), nil
 	}
@@ -655,17 +629,21 @@ func makeBatchUpdateIssues(client *Client) server.ToolHandlerFunc {
 			}
 		}
 
-		data, err := client.post("/api/v1/projects/"+slug+"/issues/batch-update", body)
+		result, err := client.Typed().BatchUpdateIssues(ctx, slug, htclient.BatchUpdateIssuesRequest{
+			Numbers:       numbers,
+			Status:        optStrFromMap(body, "status"),
+			Priority:      optStrFromMap(body, "priority"),
+			Estimate:      optStrFromMap(body, "estimate"),
+			SprintID:      optStrFromMap(body, "sprint_id"),
+			ClearSprintID: body["clear_sprint_id"] == true,
+			MilestoneID:   optStrFromMap(body, "milestone_id"),
+			AssigneeIDs:   strSliceFromMap(body, "assignee_ids"),
+			LabelIDs:      strSliceFromMap(body, "label_ids"),
+		})
 		if err != nil {
 			return errResult(err), nil
 		}
-		var resp struct {
-			Updated int `json:"Updated"`
-		}
-		if jsonErr := json.Unmarshal(data, &resp); jsonErr == nil {
-			return textResult(fmt.Sprintf("Updated %d issue(s)", resp.Updated)), nil
-		}
-		return textResult(string(data)), nil
+		return textResult(fmt.Sprintf("Updated %d issue(s)", result.Updated)), nil
 	}
 }
 

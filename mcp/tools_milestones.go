@@ -87,36 +87,46 @@ func makeUpdateMilestone(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, milestone_id")), nil
 		}
 
-		// Milestone update still uses raw client for the close/reopen field
-		// which doesn't map cleanly to the typed UpdateMilestoneRequest.
-		body := map[string]any{}
-		setOptionalString(body, args, "title")
-		setOptionalString(body, args, "description")
-		setOptionalString(body, args, "target_date")
-		if v, ok := args["close"].(string); ok && v != "" {
-			body["close"] = v == "true"
-		}
-		if len(body) == 0 {
-			return errResult(fmt.Errorf("no fields to update")), nil
+		optStr := func(key string) *string {
+			if v, ok := args[key].(string); ok && v != "" {
+				return &v
+			}
+			return nil
 		}
 
-		_, err := client.patch(fmt.Sprintf("/api/v1/projects/%s/milestones/%s", slug, milestoneID), body)
-		if err != nil {
-			return errResult(err), nil
+		req := htclient.UpdateMilestoneRequest{
+			Title:       optStr("title"),
+			Description: optStr("description"),
+			TargetDate:  optStr("target_date"),
+		}
+		if v, ok := args["close"].(string); ok && v != "" {
+			b := v == "true"
+			req.Close = &b
 		}
 
 		var changes []string
-		for _, key := range []string{"title", "description", "target_date"} {
-			if v, ok := body[key].(string); ok {
-				changes = append(changes, fmt.Sprintf("%s → %s", key, v))
-			}
+		if req.Title != nil {
+			changes = append(changes, fmt.Sprintf("title → %s", *req.Title))
 		}
-		if v, ok := body["close"].(bool); ok {
-			if v {
+		if req.Description != nil {
+			changes = append(changes, fmt.Sprintf("description → %s", *req.Description))
+		}
+		if req.TargetDate != nil {
+			changes = append(changes, fmt.Sprintf("target_date → %s", *req.TargetDate))
+		}
+		if req.Close != nil {
+			if *req.Close {
 				changes = append(changes, "closed")
 			} else {
 				changes = append(changes, "reopened")
 			}
+		}
+		if len(changes) == 0 {
+			return errResult(fmt.Errorf("no fields to update")), nil
+		}
+
+		if err := client.Typed().UpdateMilestone(ctx, slug, milestoneID, req); err != nil {
+			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Updated milestone: %s", strings.Join(changes, ", "))), nil
 	}

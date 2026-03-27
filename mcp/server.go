@@ -25,11 +25,6 @@ func NewServer(client *Client) *server.MCPServer {
 	return s
 }
 
-// helper to build a text result from raw JSON
-func jsonResult(data []byte) *mcp.CallToolResult {
-	return mcp.NewToolResultText(string(data))
-}
-
 // helper to build a text result from a formatted string
 func textResult(text string) *mcp.CallToolResult {
 	return mcp.NewToolResultText(text)

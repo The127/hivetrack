@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -61,6 +60,22 @@ func parseUUIDList(args map[string]any, key string) ([]string, error) {
 	return ids, nil
 }
 
+// optStrFromMap extracts a string pointer from a map (for batch update body → typed request).
+func optStrFromMap(m map[string]any, key string) *string {
+	if v, ok := m[key].(string); ok && v != "" {
+		return &v
+	}
+	return nil
+}
+
+// strSliceFromMap extracts a string slice from a map.
+func strSliceFromMap(m map[string]any, key string) []string {
+	if v, ok := m[key].([]string); ok {
+		return v
+	}
+	return nil
+}
+
 // resolveLabelNames fetches project labels and resolves comma-separated names to UUIDs.
 // Returns nil if the key is absent or empty. Uses the typed client library.
 func resolveLabelNames(client *Client, slug string, args map[string]any, key string) ([]string, error) {
@@ -74,23 +89,15 @@ func resolveLabelNames(client *Client, slug string, args map[string]any, key str
 // resolveIssueID takes a value that is either a UUID or an issue number string,
 // and returns the UUID. If it's a number, it fetches the issue to get its ID.
 func resolveIssueID(client *Client, slug, value string) (string, error) {
-	// If it looks like a number, resolve it via the API
 	num, err := strconv.Atoi(value)
 	if err != nil {
 		// Not a number — assume it's already a UUID
 		return value, nil
 	}
 
-	data, err := client.get(fmt.Sprintf("/api/v1/projects/%s/issues/%d", slug, num), nil)
+	issue, err := client.Typed().GetIssue(context.Background(), slug, num)
 	if err != nil {
 		return "", fmt.Errorf("fetching issue #%d: %w", num, err)
-	}
-
-	var issue struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(data, &issue); err != nil {
-		return "", fmt.Errorf("parsing issue response: %w", err)
 	}
 	if issue.ID == "" {
 		return "", fmt.Errorf("issue #%d has no ID", num)
