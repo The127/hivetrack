@@ -23,6 +23,10 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("backlog", mcp.Description("Filter backlog issues with no sprint (true/false)")),
 		mcp.WithString("sprint_id", mcp.Description("Filter by sprint ID (UUID)")),
 		mcp.WithString("assignee_id", mcp.Description("Filter by assignee user ID (UUID)")),
+		mcp.WithString("label_id", mcp.Description("Filter by label ID (UUID)")),
+		mcp.WithString("label_name", mcp.Description("Filter by label name (resolved to ID)")),
+		mcp.WithString("exclude_label_id", mcp.Description("Exclude issues with this label ID (UUID)")),
+		mcp.WithString("exclude_label_name", mcp.Description("Exclude issues with this label name (resolved to ID)")),
 	), makeListIssues(client))
 
 	s.AddTool(mcp.NewTool("get_issue",
@@ -49,6 +53,7 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("parent_id", mcp.Description("Parent epic ID (UUID) — only for tasks")),
 		mcp.WithString("assignee_ids", mcp.Description("Comma-separated user IDs (UUIDs) to assign")),
 		mcp.WithString("label_ids", mcp.Description("Comma-separated label IDs (UUIDs) to attach")),
+		mcp.WithString("label_names", mcp.Description("Comma-separated label names (resolved to IDs). Alternative to label_ids.")),
 	), makeCreateIssue(client))
 
 	s.AddTool(mcp.NewTool("update_issue",
@@ -65,6 +70,7 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("parent_id", mcp.Description("Parent epic ID (UUID), or 'null' to remove parent")),
 		mcp.WithString("assignee_ids", mcp.Description("Comma-separated user IDs (UUIDs) to assign, or 'null' to clear all assignees")),
 		mcp.WithString("label_ids", mcp.Description("Comma-separated label IDs (UUIDs), or 'null' to clear all labels")),
+		mcp.WithString("label_names", mcp.Description("Comma-separated label names (resolved to IDs server-side). Alternative to label_ids.")),
 		mcp.WithString("owner_id", mcp.Description("User ID (UUID) to set as owner, or 'null' to clear")),
 	), makeUpdateIssue(client))
 
@@ -92,12 +98,14 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 	), makeRemoveChecklistItem(client))
 
 	s.AddTool(mcp.NewTool("triage_issue",
-		mcp.WithDescription("Triage an untriaged issue — set its initial status and optionally assign to sprint/milestone"),
+		mcp.WithDescription("Triage an untriaged issue — set its initial status and optionally assign to sprint/milestone, priority, and estimate in a single call"),
 		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
 		mcp.WithNumber("number", mcp.Required(), mcp.Description("Issue number")),
 		mcp.WithString("status", mcp.Required(), mcp.Description("Status to set")),
 		mcp.WithString("sprint_id", mcp.Description("Sprint ID (UUID)")),
 		mcp.WithString("milestone_id", mcp.Description("Milestone ID (UUID)")),
+		mcp.WithString("priority", mcp.Description("Priority: none, low, medium, high, critical")),
+		mcp.WithString("estimate", mcp.Description("T-shirt size estimate: xs, s, m, l, xl")),
 	), makeTriageIssue(client))
 
 	s.AddTool(mcp.NewTool("delete_issue",
@@ -119,6 +127,20 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("titles", mcp.Required(), mcp.Description("Comma-separated titles for the new issues")),
 	), makeSplitIssue(client))
 
+	s.AddTool(mcp.NewTool("batch_update_issues",
+		mcp.WithDescription("Apply the same field changes to multiple issues in one call"),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
+		mcp.WithString("numbers", mcp.Required(), mcp.Description("Comma-separated issue numbers")),
+		mcp.WithString("status", mcp.Description("New status")),
+		mcp.WithString("priority", mcp.Description("New priority")),
+		mcp.WithString("estimate", mcp.Description("New estimate (xs, s, m, l, xl)")),
+		mcp.WithString("sprint_id", mcp.Description("Sprint ID (UUID), or 'null' to move to backlog")),
+		mcp.WithString("milestone_id", mcp.Description("Milestone ID (UUID)")),
+		mcp.WithString("assignee_ids", mcp.Description("Comma-separated user IDs (UUIDs), or 'null' to clear")),
+		mcp.WithString("label_ids", mcp.Description("Comma-separated label IDs (UUIDs), or 'null' to clear")),
+		mcp.WithString("label_names", mcp.Description("Comma-separated label names (resolved to IDs). Alternative to label_ids.")),
+	), makeBatchUpdateIssues(client))
+
 	s.AddTool(mcp.NewTool("add_issue_link",
 		mcp.WithDescription("Add a link between two issues"),
 		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
@@ -137,9 +159,33 @@ func makeListIssues(client *Client) server.ToolHandlerFunc {
 		}
 
 		q := url.Values{}
-		for _, key := range []string{"status", "priority", "type", "text", "triaged", "backlog", "sprint_id", "assignee_id"} {
+		for _, key := range []string{"status", "priority", "type", "text", "triaged", "backlog", "sprint_id", "assignee_id", "label_id", "exclude_label_id"} {
 			if v, ok := args[key].(string); ok && v != "" {
 				q.Set(key, v)
+			}
+		}
+
+		// Resolve label names to IDs if provided.
+		if name, ok := args["label_name"].(string); ok && name != "" {
+			if _, hasID := args["label_id"].(string); !hasID {
+				ids, err := resolveLabelNames(client, slug, map[string]any{"n": name}, "n")
+				if err != nil {
+					return errResult(err), nil
+				}
+				if len(ids) > 0 {
+					q.Set("label_id", ids[0])
+				}
+			}
+		}
+		if name, ok := args["exclude_label_name"].(string); ok && name != "" {
+			if _, hasID := args["exclude_label_id"].(string); !hasID {
+				ids, err := resolveLabelNames(client, slug, map[string]any{"n": name}, "n")
+				if err != nil {
+					return errResult(err), nil
+				}
+				if len(ids) > 0 {
+					q.Set("exclude_label_id", ids[0])
+				}
 			}
 		}
 
@@ -207,6 +253,14 @@ func makeCreateIssue(client *Client) server.ToolHandlerFunc {
 			return errResult(fmt.Errorf("invalid label_ids: %w", err)), nil
 		} else if ids != nil {
 			body["label_ids"] = ids
+		}
+		// label_names: resolve names to UUIDs (only if label_ids not provided)
+		if _, hasLabelIDs := body["label_ids"]; !hasLabelIDs {
+			if ids, err := resolveLabelNames(client, slug, args, "label_names"); err != nil {
+				return errResult(fmt.Errorf("resolving label names: %w", err)), nil
+			} else if ids != nil {
+				body["label_ids"] = ids
+			}
 		}
 
 		data, err := client.post("/api/v1/projects/"+slug+"/issues", body)
@@ -300,6 +354,15 @@ func makeUpdateIssue(client *Client) server.ToolHandlerFunc {
 			}
 		}
 
+		// label_names: resolve names to UUIDs (only if label_ids not provided)
+		if _, hasLabelIDs := args["label_ids"]; !hasLabelIDs {
+			if ids, err := resolveLabelNames(client, slug, args, "label_names"); err != nil {
+				return errResult(fmt.Errorf("resolving label names: %w", err)), nil
+			} else if ids != nil {
+				body["label_ids"] = ids
+			}
+		}
+
 		// parent_id: accept issue number (resolve to UUID) or UUID directly
 		if v, ok := args["parent_id"].(string); ok {
 			if v == "null" {
@@ -350,6 +413,8 @@ func makeTriageIssue(client *Client) server.ToolHandlerFunc {
 		}
 		setOptionalString(body, args, "sprint_id")
 		setOptionalString(body, args, "milestone_id")
+		setOptionalString(body, args, "priority")
+		setOptionalString(body, args, "estimate")
 
 		_, err := client.post(fmt.Sprintf("/api/v1/projects/%s/issues/%d/triage", slug, number), body)
 		if err != nil {
@@ -508,6 +573,101 @@ func makeAddIssueLink(client *Client) server.ToolHandlerFunc {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Added link %s from #%d to #%d", linkType, number, targetNumber)), nil
+	}
+}
+
+func makeBatchUpdateIssues(client *Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := request.GetArguments()
+		slug, _ := args["slug"].(string)
+		numbersStr, _ := args["numbers"].(string)
+		if slug == "" || numbersStr == "" {
+			return errResult(errMissing("slug, numbers")), nil
+		}
+
+		// Parse issue numbers.
+		var numbers []int
+		for _, s := range strings.Split(numbersStr, ",") {
+			s = strings.TrimSpace(s)
+			if s == "" {
+				continue
+			}
+			n := 0
+			for _, c := range s {
+				if c < '0' || c > '9' {
+					return errResult(fmt.Errorf("invalid issue number: %q", s)), nil
+				}
+				n = n*10 + int(c-'0')
+			}
+			numbers = append(numbers, n)
+		}
+		if len(numbers) == 0 {
+			return errResult(fmt.Errorf("no valid issue numbers provided")), nil
+		}
+
+		// Build the batch update body for the backend endpoint.
+		body := map[string]any{
+			"numbers": numbers,
+		}
+		setOptionalString(body, args, "status")
+		setOptionalString(body, args, "priority")
+		setOptionalString(body, args, "estimate")
+
+		// Handle sprint_id: "null" means clear.
+		if v, ok := args["sprint_id"].(string); ok {
+			if v == "null" {
+				body["clear_sprint_id"] = true
+			} else if v != "" {
+				body["sprint_id"] = v
+			}
+		}
+		setOptionalString(body, args, "milestone_id")
+
+		if v, ok := args["assignee_ids"].(string); ok {
+			if v == "null" {
+				body["assignee_ids"] = []string{}
+			} else if v != "" {
+				ids, err := parseUUIDList(args, "assignee_ids")
+				if err != nil {
+					return errResult(fmt.Errorf("invalid assignee_ids: %w", err)), nil
+				}
+				if ids != nil {
+					body["assignee_ids"] = ids
+				}
+			}
+		}
+		if v, ok := args["label_ids"].(string); ok {
+			if v == "null" {
+				body["label_ids"] = []string{}
+			} else if v != "" {
+				ids, err := parseUUIDList(args, "label_ids")
+				if err != nil {
+					return errResult(fmt.Errorf("invalid label_ids: %w", err)), nil
+				}
+				if ids != nil {
+					body["label_ids"] = ids
+				}
+			}
+		}
+		if _, hasLabelIDs := body["label_ids"]; !hasLabelIDs {
+			if ids, err := resolveLabelNames(client, slug, args, "label_names"); err != nil {
+				return errResult(fmt.Errorf("resolving label names: %w", err)), nil
+			} else if ids != nil {
+				body["label_ids"] = ids
+			}
+		}
+
+		data, err := client.post("/api/v1/projects/"+slug+"/issues/batch-update", body)
+		if err != nil {
+			return errResult(err), nil
+		}
+		var resp struct {
+			Updated int `json:"Updated"`
+		}
+		if jsonErr := json.Unmarshal(data, &resp); jsonErr == nil {
+			return textResult(fmt.Sprintf("Updated %d issue(s)", resp.Updated)), nil
+		}
+		return textResult(string(data)), nil
 	}
 }
 

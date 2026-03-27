@@ -24,7 +24,7 @@ func registerSprintTools(s *server.MCPServer, client *Client) {
 	), makeCreateSprint(client))
 
 	s.AddTool(mcp.NewTool("update_sprint",
-		mcp.WithDescription("Update an existing sprint"),
+		mcp.WithDescription("Update an existing sprint. When completing, warns about open issues unless force=true."),
 		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
 		mcp.WithString("id", mcp.Required(), mcp.Description("Sprint ID (UUID)")),
 		mcp.WithString("name", mcp.Description("New sprint name")),
@@ -32,6 +32,8 @@ func registerSprintTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("start_date", mcp.Description("New start date (RFC3339)")),
 		mcp.WithString("end_date", mcp.Description("New end date (RFC3339)")),
 		mcp.WithString("status", mcp.Description("New status: planning, active, completed")),
+		mcp.WithBoolean("force", mcp.Description("Force sprint completion even if open issues remain (they will be moved to backlog)")),
+		mcp.WithString("move_to_sprint_id", mcp.Description("When completing, move open issues to this sprint ID instead of backlog")),
 	), makeUpdateSprint(client))
 
 	s.AddTool(mcp.NewTool("delete_sprint",
@@ -135,6 +137,16 @@ func makeUpdateSprint(client *Client) server.ToolHandlerFunc {
 		setOptionalString(body, args, "start_date")
 		setOptionalString(body, args, "end_date")
 		setOptionalString(body, args, "status")
+
+		// Pass force flag to backend (for sprint completion with open issues).
+		if force, ok := args["force"].(bool); ok && force {
+			body["force"] = true
+		}
+
+		// Map move_to_sprint_id to the backend field name.
+		if moveID, ok := args["move_to_sprint_id"].(string); ok && moveID != "" {
+			body["move_open_issues_to_sprint_id"] = moveID
+		}
 
 		if len(body) == 0 {
 			return errResult(fmt.Errorf("no fields to update")), nil

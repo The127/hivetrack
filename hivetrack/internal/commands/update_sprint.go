@@ -19,6 +19,7 @@ type UpdateSprintCommand struct {
 	EndDate                  *time.Time
 	Status                   *models.SprintStatus
 	MoveOpenIssuesToSprintID *uuid.UUID // only used when completing; nil = backlog
+	Force                    bool       // when completing, allow open issues (they get moved)
 }
 
 type UpdateSprintResult struct{}
@@ -91,6 +92,16 @@ func HandleUpdateSprint(ctx context.Context, cmd UpdateSprintCommand) (*UpdateSp
 			}
 
 			isTerminal := terminalChecker(project.GetArchetype())
+			var openNumbers []int
+			for _, issue := range issues {
+				if !isTerminal(issue) {
+					openNumbers = append(openNumbers, issue.GetNumber())
+				}
+			}
+			if len(openNumbers) > 0 && !cmd.Force && cmd.MoveOpenIssuesToSprintID == nil {
+				return nil, fmt.Errorf("sprint has %d open issue(s): %v — use force or specify move_open_issues_to_sprint_id: %w",
+					len(openNumbers), openNumbers, models.ErrConflict)
+			}
 			for _, issue := range issues {
 				if !isTerminal(issue) {
 					issue.SetSprintID(cmd.MoveOpenIssuesToSprintID)

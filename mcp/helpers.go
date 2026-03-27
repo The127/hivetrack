@@ -60,6 +60,49 @@ func parseUUIDList(args map[string]any, key string) ([]string, error) {
 	return ids, nil
 }
 
+// resolveLabelNames fetches project labels and resolves comma-separated names to UUIDs.
+// Returns nil if the key is absent or empty.
+func resolveLabelNames(client *Client, slug string, args map[string]any, key string) ([]string, error) {
+	v, ok := args[key].(string)
+	if !ok || v == "" {
+		return nil, nil
+	}
+
+	data, err := client.get("/api/v1/projects/"+slug+"/labels", nil)
+	if err != nil {
+		return nil, fmt.Errorf("fetching labels: %w", err)
+	}
+
+	var resp struct {
+		Labels []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"labels"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("parsing labels: %w", err)
+	}
+
+	nameToID := make(map[string]string, len(resp.Labels))
+	for _, l := range resp.Labels {
+		nameToID[strings.ToLower(l.Name)] = l.ID
+	}
+
+	var ids []string
+	for _, name := range strings.Split(v, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		id, found := nameToID[strings.ToLower(name)]
+		if !found {
+			return nil, fmt.Errorf("label %q not found in project %s", name, slug)
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
 // resolveIssueID takes a value that is either a UUID or an issue number string,
 // and returns the UUID. If it's a number, it fetches the issue to get its ID.
 func resolveIssueID(client *Client, slug, value string) (string, error) {

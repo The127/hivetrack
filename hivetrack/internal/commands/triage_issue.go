@@ -16,6 +16,8 @@ type TriageIssueCommand struct {
 	Status      models.IssueStatus
 	SprintID    *uuid.UUID
 	MilestoneID *uuid.UUID
+	Priority    *models.IssuePriority
+	Estimate    *models.IssueEstimate
 }
 
 type TriageIssueResult struct{}
@@ -38,6 +40,12 @@ func HandleTriageIssue(ctx context.Context, cmd TriageIssueCommand) (*TriageIssu
 	}
 	if cmd.MilestoneID != nil {
 		issue.SetMilestoneID(cmd.MilestoneID)
+	}
+	if cmd.Priority != nil {
+		issue.SetPriority(*cmd.Priority)
+	}
+	if cmd.Estimate != nil {
+		issue.SetEstimate(*cmd.Estimate)
 	}
 	issue.SetUpdatedAt(time.Now())
 

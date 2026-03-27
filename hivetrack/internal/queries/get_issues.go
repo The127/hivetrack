@@ -12,20 +12,22 @@ import (
 )
 
 type GetIssuesQuery struct {
-	ProjectSlug string
-	Status      *models.IssueStatus
-	Priority    *models.IssuePriority
-	SprintID    *uuid.UUID
-	InBacklog   *bool
-	AssigneeID  *uuid.UUID
-	Triaged     *bool
-	Refined     *bool
-	Text        *string
-	Type        *models.IssueType
-	ParentID    *uuid.UUID
-	HasNoParent *bool
-	Limit       int
-	Offset      int
+	ProjectSlug    string
+	Status         *models.IssueStatus
+	Priority       *models.IssuePriority
+	SprintID       *uuid.UUID
+	InBacklog      *bool
+	AssigneeID     *uuid.UUID
+	Triaged        *bool
+	Refined        *bool
+	Text           *string
+	Type           *models.IssueType
+	ParentID       *uuid.UUID
+	HasNoParent    *bool
+	LabelID        *uuid.UUID
+	ExcludeLabelID *uuid.UUID
+	Limit          int
+	Offset         int
 }
 
 type IssueSummary struct {
@@ -101,6 +103,12 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 	}
 	if q.HasNoParent != nil && *q.HasNoParent {
 		filter = filter.WithNoParent()
+	}
+	if q.LabelID != nil {
+		filter = filter.ByLabelID(*q.LabelID)
+	}
+	if q.ExcludeLabelID != nil {
+		filter = filter.ExcludeByLabelID(*q.ExcludeLabelID)
 	}
 	if q.Limit > 0 || q.Offset > 0 {
 		filter = filter.WithPagination(q.Limit, q.Offset)

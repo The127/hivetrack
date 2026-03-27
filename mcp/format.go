@@ -43,6 +43,16 @@ func formatTriageIssue(number int, status string, args map[string]any) string {
 	if sprintID, ok := args["sprint_id"].(string); ok && sprintID != "" {
 		msg += " (assigned to sprint)"
 	}
+	var extras []string
+	if p, ok := args["priority"].(string); ok && p != "" {
+		extras = append(extras, "priority="+p)
+	}
+	if e, ok := args["estimate"].(string); ok && e != "" {
+		extras = append(extras, "estimate="+strings.ToUpper(e))
+	}
+	if len(extras) > 0 {
+		msg += ", " + strings.Join(extras, ", ")
+	}
 	return msg
 }
 
@@ -264,7 +274,7 @@ func formatListComments(data json.RawMessage) string {
 		if author == "" {
 			author = "unknown"
 		}
-		sb.WriteString(fmt.Sprintf("— %s (%s):\n%s\n\n", author, c.CreatedAt, c.Body))
+		sb.WriteString(fmt.Sprintf("— %s (%s) [id: %s]:\n%s\n\n", author, c.CreatedAt, c.ID, c.Body))
 	}
 	return sb.String()
 }
@@ -426,6 +436,10 @@ func formatGetIssue(data json.RawMessage) string {
 			Name  string `json:"name"`
 			Color string `json:"color"`
 		} `json:"labels"`
+		Links []struct {
+			LinkType          string `json:"link_type"`
+			LinkedIssueNumber int    `json:"linked_issue_number"`
+		} `json:"links"`
 		Checklist []struct {
 			ID   string `json:"id"`
 			Text string `json:"text"`
@@ -481,6 +495,13 @@ func formatGetIssue(data json.RawMessage) string {
 
 	if issue.Description != "" {
 		sb.WriteString(fmt.Sprintf("\n%s\n", issue.Description))
+	}
+
+	if len(issue.Links) > 0 {
+		sb.WriteString("\nLinks:\n")
+		for _, l := range issue.Links {
+			sb.WriteString(fmt.Sprintf("  %s #%d\n", l.LinkType, l.LinkedIssueNumber))
+		}
 	}
 
 	if len(issue.Checklist) > 0 {
