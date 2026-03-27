@@ -190,6 +190,13 @@ func (s *StaticTokenProvider) ProvideToken(_ context.Context) (TokenCache, error
 	return s.Token, nil
 }
 
+// TokenProviderFunc adapts a function to the TokenProvider interface.
+type TokenProviderFunc func(ctx context.Context) (TokenCache, error)
+
+func (f TokenProviderFunc) ProvideToken(ctx context.Context) (TokenCache, error) {
+	return f(ctx)
+}
+
 // NewWithAuth creates a client using a TokenProvider for authentication.
 // This is the recommended way to create an authenticated client.
 func NewWithAuth(baseURL string, provider TokenProvider) *Client {

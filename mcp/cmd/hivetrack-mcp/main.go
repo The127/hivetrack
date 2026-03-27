@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"os"
-	"time"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/server"
 
@@ -69,15 +71,14 @@ func serveStdio(apiURL string) {
 	}
 }
 
-// serveHTTP runs the MCP server over HTTP (Streamable HTTP transport).
-// Authenticates to the Hivetrack API using a static token (HIVETRACK_MCP_TOKEN).
-func serveHTTP(apiURL string) {
-	token := os.Getenv("HIVETRACK_MCP_TOKEN")
-	if token == "" {
-		fmt.Fprintln(os.Stderr, "[mcp] HIVETRACK_MCP_TOKEN is required in http transport mode")
-		os.Exit(1)
-	}
+// bearerTokenKey is the context key for the caller's Bearer token.
+type bearerTokenKey struct{}
 
+// serveHTTP runs the MCP server over HTTP (Streamable HTTP transport).
+// The caller's OIDC Bearer token is extracted from the incoming HTTP request
+// and passed through to the Hivetrack API. The MCP server itself has no
+// credentials — it's a transparent proxy for authentication.
+func serveHTTP(apiURL string) {
 	listenAddr := os.Getenv("HIVETRACK_MCP_LISTEN")
 	if listenAddr == "" {
 		listenAddr = ":8080"
@@ -85,18 +86,26 @@ func serveHTTP(apiURL string) {
 
 	fmt.Fprintf(os.Stderr, "[mcp] starting: url=%s transport=http listen=%s\n", apiURL, listenAddr)
 
-	provider := &htclient.StaticTokenProvider{
-		Token: htclient.TokenCache{
-			AccessToken: token,
-			Expiry:      time.Now().Add(87600 * time.Hour),
-			ServerURL:   apiURL,
-		},
-	}
-	client := htmcp.NewClient(apiURL, provider)
+	// The token function reads the Bearer token from the request context.
+	// Each MCP request carries the caller's own OIDC token through to the API.
+	client := htmcp.NewClient(apiURL, htclient.TokenProviderFunc(func(ctx context.Context) (htclient.TokenCache, error) {
+		token, ok := ctx.Value(bearerTokenKey{}).(string)
+		if !ok || token == "" {
+			return htclient.TokenCache{}, fmt.Errorf("no bearer token in request — pass Authorization header")
+		}
+		return htclient.TokenCache{AccessToken: token}, nil
+	}))
+
 	s := htmcp.NewServer(client)
 
 	httpServer := server.NewStreamableHTTPServer(s,
 		server.WithEndpointPath("/mcp"),
+		// Extract the caller's Bearer token from the HTTP request into context.
+		server.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
+			auth := r.Header.Get("Authorization")
+			token := strings.TrimPrefix(auth, "Bearer ")
+			return context.WithValue(ctx, bearerTokenKey{}, token)
+		}),
 	)
 
 	fmt.Fprintf(os.Stderr, "[mcp] serving HTTP on %s/mcp\n", listenAddr)
