@@ -150,10 +150,9 @@ func TestBatchUpdateIssues(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	status := "in_progress"
 	result, err := testClient(srv.URL).BatchUpdateIssues(context.Background(), "proj", BatchUpdateIssuesRequest{
 		Numbers: []int{1, 2, 3},
-		Status:  &status,
+		Status:  Set("in_progress"),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

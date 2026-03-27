@@ -165,25 +165,31 @@ func makeUpdateProject(client *Client) server.ToolHandlerFunc {
 		req := htclient.UpdateProjectRequest{}
 		hasChanges := false
 		if v, ok := args["name"].(string); ok && v != "" {
-			req.Name = &v
+			req.Name = htclient.Set(v)
 			hasChanges = true
 		}
 		if v, ok := args["description"].(string); ok && v != "" {
-			req.Description = &v
+			req.Description = htclient.Set(v)
 			hasChanges = true
 		}
 		if v, ok := args["archived"].(bool); ok {
-			req.Archived = &v
+			req.Archived = htclient.Set(v)
 			hasChanges = true
 		}
 		if v, ok := args["wip_limit_in_progress"].(float64); ok {
-			n := int(v)
-			req.WipLimitInProgress = &n
+			if v == -1 {
+				req.WipLimitInProgress = htclient.Null[int]()
+			} else {
+				req.WipLimitInProgress = htclient.Set(int(v))
+			}
 			hasChanges = true
 		}
 		if v, ok := args["wip_limit_in_review"].(float64); ok {
-			n := int(v)
-			req.WipLimitInReview = &n
+			if v == -1 {
+				req.WipLimitInReview = htclient.Null[int]()
+			} else {
+				req.WipLimitInReview = htclient.Set(int(v))
+			}
 			hasChanges = true
 		}
 

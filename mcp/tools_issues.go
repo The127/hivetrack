@@ -305,77 +305,71 @@ func makeUpdateIssue(client *Client) server.ToolHandlerFunc {
 		}
 
 		req := htclient.UpdateIssueRequest{}
-		optStr := func(key string) *string {
-			if v, ok := args[key].(string); ok && v != "" && v != "null" {
-				return &v
-			}
-			return nil
-		}
-		req.Title = optStr("title")
-		req.Description = optStr("description")
-		req.Status = optStr("status")
-		req.Priority = optStr("priority")
-		req.Estimate = optStr("estimate")
 
-		// Nullable UUID fields: "null" = clear
-		if v, ok := args["sprint_id"].(string); ok {
-			if v == "null" {
-				req.ClearSprintID = true
-			} else if v != "" {
-				req.SprintID = &v
+		// Helper: parse string arg as Set or Null field.
+		setOrNull := func(key string) htclient.Field[string] {
+			if v, ok := args[key].(string); ok && v != "" {
+				if v == "null" {
+					return htclient.Null[string]()
+				}
+				return htclient.Set(v)
 			}
+			return htclient.Field[string]{}
 		}
-		req.MilestoneID = optStr("milestone_id")
 
-		if v, ok := args["parent_id"].(string); ok {
+		req.Title = setOrNull("title")
+		req.Description = setOrNull("description")
+		req.Status = setOrNull("status")
+		req.Priority = setOrNull("priority")
+		req.Estimate = setOrNull("estimate")
+		req.SprintID = setOrNull("sprint_id")
+		req.MilestoneID = setOrNull("milestone_id")
+		req.OwnerID = setOrNull("owner_id")
+
+		if v, ok := args["parent_id"].(string); ok && v != "" {
 			if v == "null" {
-				req.ClearParentID = true
-			} else if v != "" {
+				req.ParentID = htclient.Null[string]()
+			} else {
 				resolved, err := resolveIssueID(client, slug, v)
 				if err != nil {
 					return errResult(fmt.Errorf("resolving parent_id: %w", err)), nil
 				}
-				req.ParentID = &resolved
+				req.ParentID = htclient.Set(resolved)
 			}
 		}
 
-		if v, ok := args["assignee_ids"].(string); ok {
+		if v, ok := args["assignee_ids"].(string); ok && v != "" {
 			if v == "null" {
-				req.ClearAssignees = true
-			} else if v != "" {
+				req.AssigneeIDs = htclient.Null[[]string]()
+			} else {
 				ids, err := parseUUIDList(args, "assignee_ids")
 				if err != nil {
 					return errResult(fmt.Errorf("invalid assignee_ids: %w", err)), nil
 				}
-				req.AssigneeIDs = ids
+				if ids != nil {
+					req.AssigneeIDs = htclient.Set(ids)
+				}
 			}
 		}
 
-		if v, ok := args["label_ids"].(string); ok {
+		if v, ok := args["label_ids"].(string); ok && v != "" {
 			if v == "null" {
-				req.ClearLabels = true
-			} else if v != "" {
+				req.LabelIDs = htclient.Null[[]string]()
+			} else {
 				ids, err := parseUUIDList(args, "label_ids")
 				if err != nil {
 					return errResult(fmt.Errorf("invalid label_ids: %w", err)), nil
 				}
-				req.LabelIDs = ids
+				if ids != nil {
+					req.LabelIDs = htclient.Set(ids)
+				}
 			}
 		}
-		// label_names: resolve names to UUIDs (only if label_ids not provided)
-		if _, hasLabelIDs := args["label_ids"]; !hasLabelIDs && !req.ClearLabels {
+		if req.LabelIDs.IsAbsent() {
 			if ids, err := resolveLabelNames(client, slug, args, "label_names"); err != nil {
 				return errResult(fmt.Errorf("resolving label names: %w", err)), nil
 			} else if ids != nil {
-				req.LabelIDs = ids
-			}
-		}
-
-		if v, ok := args["owner_id"].(string); ok {
-			if v == "null" {
-				req.ClearOwnerID = true
-			} else if v != "" {
-				req.OwnerID = &v
+				req.LabelIDs = htclient.Set(ids)
 			}
 		}
 
@@ -629,17 +623,28 @@ func makeBatchUpdateIssues(client *Client) server.ToolHandlerFunc {
 			}
 		}
 
-		result, err := client.Typed().BatchUpdateIssues(ctx, slug, htclient.BatchUpdateIssuesRequest{
-			Numbers:       numbers,
-			Status:        optStrFromMap(body, "status"),
-			Priority:      optStrFromMap(body, "priority"),
-			Estimate:      optStrFromMap(body, "estimate"),
-			SprintID:      optStrFromMap(body, "sprint_id"),
-			ClearSprintID: body["clear_sprint_id"] == true,
-			MilestoneID:   optStrFromMap(body, "milestone_id"),
-			AssigneeIDs:   strSliceFromMap(body, "assignee_ids"),
-			LabelIDs:      strSliceFromMap(body, "label_ids"),
-		})
+		batchReq := htclient.BatchUpdateIssuesRequest{Numbers: numbers}
+		setFromMap := func(m map[string]any, key string) htclient.Field[string] {
+			if v, ok := m[key].(string); ok && v != "" {
+				return htclient.Set(v)
+			}
+			return htclient.Field[string]{}
+		}
+		batchReq.Status = setFromMap(body, "status")
+		batchReq.Priority = setFromMap(body, "priority")
+		batchReq.Estimate = setFromMap(body, "estimate")
+		batchReq.SprintID = setFromMap(body, "sprint_id")
+		batchReq.MilestoneID = setFromMap(body, "milestone_id")
+		if body["clear_sprint_id"] == true {
+			batchReq.ClearSprintID = htclient.Set(true)
+		}
+		if ids, ok := body["assignee_ids"].([]string); ok {
+			batchReq.AssigneeIDs = htclient.Set(ids)
+		}
+		if ids, ok := body["label_ids"].([]string); ok {
+			batchReq.LabelIDs = htclient.Set(ids)
+		}
+		result, err := client.Typed().BatchUpdateIssues(ctx, slug, batchReq)
 		if err != nil {
 			return errResult(err), nil
 		}

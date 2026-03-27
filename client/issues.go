@@ -144,78 +144,24 @@ func (c *Client) CreateIssue(ctx context.Context, slug string, req CreateIssueRe
 }
 
 // UpdateIssueRequest contains fields for updating an issue.
-// Nil pointer fields are not sent. Clear* flags send explicit null to clear a field.
+// Use Set() for values, Null() to clear nullable fields, leave absent to skip.
 type UpdateIssueRequest struct {
-	Title          *string
-	Description    *string
-	Status         *string
-	Priority       *string
-	Estimate       *string
-	SprintID       *string
-	ClearSprintID  bool
-	MilestoneID    *string
-	ParentID       *string
-	ClearParentID  bool
-	AssigneeIDs    []string
-	ClearAssignees bool
-	LabelIDs       []string
-	ClearLabels    bool
-	OwnerID        *string
-	ClearOwnerID   bool
-}
-
-// toMap builds a JSON-serializable map handling nullable fields.
-func (r UpdateIssueRequest) toMap() map[string]any {
-	m := map[string]any{}
-	if r.Title != nil {
-		m["title"] = *r.Title
-	}
-	if r.Description != nil {
-		m["description"] = *r.Description
-	}
-	if r.Status != nil {
-		m["status"] = *r.Status
-	}
-	if r.Priority != nil {
-		m["priority"] = *r.Priority
-	}
-	if r.Estimate != nil {
-		m["estimate"] = *r.Estimate
-	}
-	if r.ClearSprintID {
-		m["sprint_id"] = nil
-	} else if r.SprintID != nil {
-		m["sprint_id"] = *r.SprintID
-	}
-	if r.MilestoneID != nil {
-		m["milestone_id"] = *r.MilestoneID
-	}
-	if r.ClearParentID {
-		m["parent_id"] = nil
-	} else if r.ParentID != nil {
-		m["parent_id"] = *r.ParentID
-	}
-	if r.ClearAssignees {
-		m["assignee_ids"] = []string{}
-	} else if r.AssigneeIDs != nil {
-		m["assignee_ids"] = r.AssigneeIDs
-	}
-	if r.ClearLabels {
-		m["label_ids"] = []string{}
-	} else if r.LabelIDs != nil {
-		m["label_ids"] = r.LabelIDs
-	}
-	if r.ClearOwnerID {
-		m["owner_id"] = nil
-	} else if r.OwnerID != nil {
-		m["owner_id"] = *r.OwnerID
-	}
-	return m
+	Title       Field[string]   `json:"title"`
+	Description Field[string]   `json:"description"`
+	Status      Field[string]   `json:"status"`
+	Priority    Field[string]   `json:"priority"`
+	Estimate    Field[string]   `json:"estimate"`
+	SprintID    Field[string]   `json:"sprint_id"`
+	MilestoneID Field[string]   `json:"milestone_id"`
+	ParentID    Field[string]   `json:"parent_id"`
+	AssigneeIDs Field[[]string] `json:"assignee_ids"`
+	LabelIDs    Field[[]string] `json:"label_ids"`
+	OwnerID     Field[string]   `json:"owner_id"`
 }
 
 // UpdateIssue updates an existing issue.
 func (c *Client) UpdateIssue(ctx context.Context, slug string, number int, req UpdateIssueRequest) error {
-	_, err := c.patch(ctx, fmt.Sprintf("/api/v1/projects/%s/issues/%d", slug, number), req.toMap())
+	_, err := c.patchFields(ctx, fmt.Sprintf("/api/v1/projects/%s/issues/%d", slug, number), req)
 	return err
 }
 
@@ -312,43 +258,15 @@ func (c *Client) RemoveChecklistItem(ctx context.Context, slug string, number in
 
 // BatchUpdateIssuesRequest contains fields for batch updating issues.
 type BatchUpdateIssuesRequest struct {
-	Numbers       []int
-	Status        *string
-	Priority      *string
-	Estimate      *string
-	SprintID      *string
-	ClearSprintID bool
-	MilestoneID   *string
-	AssigneeIDs   []string
-	LabelIDs      []string
-}
-
-func (r BatchUpdateIssuesRequest) toMap() map[string]any {
-	m := map[string]any{"numbers": r.Numbers}
-	if r.Status != nil {
-		m["status"] = *r.Status
-	}
-	if r.Priority != nil {
-		m["priority"] = *r.Priority
-	}
-	if r.Estimate != nil {
-		m["estimate"] = *r.Estimate
-	}
-	if r.ClearSprintID {
-		m["clear_sprint_id"] = true
-	} else if r.SprintID != nil {
-		m["sprint_id"] = *r.SprintID
-	}
-	if r.MilestoneID != nil {
-		m["milestone_id"] = *r.MilestoneID
-	}
-	if r.AssigneeIDs != nil {
-		m["assignee_ids"] = r.AssigneeIDs
-	}
-	if r.LabelIDs != nil {
-		m["label_ids"] = r.LabelIDs
-	}
-	return m
+	Numbers       []int            `json:"numbers"`
+	Status        Field[string]    `json:"status"`
+	Priority      Field[string]    `json:"priority"`
+	Estimate      Field[string]    `json:"estimate"`
+	SprintID      Field[string]    `json:"sprint_id"`
+	ClearSprintID Field[bool]      `json:"clear_sprint_id"`
+	MilestoneID   Field[string]    `json:"milestone_id"`
+	AssigneeIDs   Field[[]string]  `json:"assignee_ids"`
+	LabelIDs      Field[[]string]  `json:"label_ids"`
 }
 
 // BatchUpdateIssuesResult contains the count of updated issues.
@@ -358,7 +276,7 @@ type BatchUpdateIssuesResult struct {
 
 // BatchUpdateIssues applies the same changes to multiple issues atomically.
 func (c *Client) BatchUpdateIssues(ctx context.Context, slug string, req BatchUpdateIssuesRequest) (*BatchUpdateIssuesResult, error) {
-	data, err := c.post(ctx, "/api/v1/projects/"+slug+"/issues/batch-update", req.toMap())
+	data, err := c.postFields(ctx, "/api/v1/projects/"+slug+"/issues/batch-update", req)
 	if err != nil {
 		return nil, err
 	}

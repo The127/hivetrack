@@ -87,35 +87,34 @@ func makeUpdateMilestone(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, milestone_id")), nil
 		}
 
-		optStr := func(key string) *string {
+		setStr := func(key string) htclient.Field[string] {
 			if v, ok := args[key].(string); ok && v != "" {
-				return &v
+				return htclient.Set(v)
 			}
-			return nil
+			return htclient.Field[string]{}
 		}
 
 		req := htclient.UpdateMilestoneRequest{
-			Title:       optStr("title"),
-			Description: optStr("description"),
-			TargetDate:  optStr("target_date"),
+			Title:       setStr("title"),
+			Description: setStr("description"),
+			TargetDate:  setStr("target_date"),
 		}
 		if v, ok := args["close"].(string); ok && v != "" {
-			b := v == "true"
-			req.Close = &b
+			req.Close = htclient.Set(v == "true")
 		}
 
 		var changes []string
-		if req.Title != nil {
-			changes = append(changes, fmt.Sprintf("title → %s", *req.Title))
+		if req.Title.IsSet() {
+			changes = append(changes, fmt.Sprintf("title → %s", req.Title.Value()))
 		}
-		if req.Description != nil {
-			changes = append(changes, fmt.Sprintf("description → %s", *req.Description))
+		if req.Description.IsSet() {
+			changes = append(changes, fmt.Sprintf("description → %s", req.Description.Value()))
 		}
-		if req.TargetDate != nil {
-			changes = append(changes, fmt.Sprintf("target_date → %s", *req.TargetDate))
+		if req.TargetDate.IsSet() {
+			changes = append(changes, fmt.Sprintf("target_date → %s", req.TargetDate.Value()))
 		}
-		if req.Close != nil {
-			if *req.Close {
+		if req.Close.IsSet() {
+			if req.Close.Value() {
 				changes = append(changes, "closed")
 			} else {
 				changes = append(changes, "reopened")

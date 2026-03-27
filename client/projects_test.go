@@ -55,7 +55,7 @@ func TestUpdateProject(t *testing.T) {
 	defer srv.Close()
 
 	err := testClient(srv.URL).UpdateProject(context.Background(), "proj-id", UpdateProjectRequest{
-		Name: ptr("Renamed"),
+		Name: Set("Renamed"),
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -58,45 +58,18 @@ func (c *Client) CreateProject(ctx context.Context, req CreateProjectRequest) (s
 }
 
 // UpdateProjectRequest contains fields for updating a project.
+// WIP limits: use Set(-1) to clear, Set(N) to set, leave absent to skip.
 type UpdateProjectRequest struct {
-	Name               *string
-	Description        *string
-	Archived           *bool
-	WipLimitInProgress *int // -1 = clear
-	WipLimitInReview   *int // -1 = clear
-}
-
-func (r UpdateProjectRequest) toMap() map[string]any {
-	m := map[string]any{}
-	if r.Name != nil {
-		m["name"] = *r.Name
-	}
-	if r.Description != nil {
-		m["description"] = *r.Description
-	}
-	if r.Archived != nil {
-		m["archived"] = *r.Archived
-	}
-	if r.WipLimitInProgress != nil {
-		if *r.WipLimitInProgress == -1 {
-			m["wip_limit_in_progress"] = nil
-		} else {
-			m["wip_limit_in_progress"] = *r.WipLimitInProgress
-		}
-	}
-	if r.WipLimitInReview != nil {
-		if *r.WipLimitInReview == -1 {
-			m["wip_limit_in_review"] = nil
-		} else {
-			m["wip_limit_in_review"] = *r.WipLimitInReview
-		}
-	}
-	return m
+	Name               Field[string] `json:"name"`
+	Description        Field[string] `json:"description"`
+	Archived           Field[bool]   `json:"archived"`
+	WipLimitInProgress Field[int]    `json:"wip_limit_in_progress"`
+	WipLimitInReview   Field[int]    `json:"wip_limit_in_review"`
 }
 
 // UpdateProject updates a project by its ID (UUID).
 func (c *Client) UpdateProject(ctx context.Context, projectID string, req UpdateProjectRequest) error {
-	_, err := c.patch(ctx, "/api/v1/projects/"+projectID, req.toMap())
+	_, err := c.patchFields(ctx, "/api/v1/projects/"+projectID, req)
 	return err
 }
 

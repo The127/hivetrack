@@ -49,8 +49,8 @@ func TestUpdateSprint(t *testing.T) {
 	defer srv.Close()
 
 	err := testClient(srv.URL).UpdateSprint(context.Background(), "proj", "s1", UpdateSprintRequest{
-		Status: ptr("completed"),
-		Force:  true,
+		Status: Set("completed"),
+		Force:  Set(true),
 	})
 	if err != nil {
 		t.Fatal(err)

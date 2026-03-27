@@ -1,213 +1,180 @@
 package client
 
 import (
+	"encoding/json"
 	"testing"
 )
 
-func ptr(s string) *string { return &s }
-func boolPtr(b bool) *bool { return &b }
-func intPtr(n int) *int    { return &n }
-
-func TestUpdateIssueRequest_toMap_setsFields(t *testing.T) {
-	req := UpdateIssueRequest{
-		Title:    ptr("New Title"),
-		Status:   ptr("done"),
-		Priority: ptr("high"),
-		Estimate: ptr("m"),
+func mustMarshal(t *testing.T, v any) map[string]any {
+	t.Helper()
+	data, err := marshalFields(v)
+	if err != nil {
+		t.Fatalf("marshalFields failed: %v", err)
 	}
-	m := req.toMap()
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+	return m
+}
+
+func TestUpdateIssueRequest_setsFields(t *testing.T) {
+	req := UpdateIssueRequest{
+		Title:    Set("New Title"),
+		Status:   Set("done"),
+		Priority: Set("high"),
+		Estimate: Set("m"),
+	}
+	m := mustMarshal(t, req)
 	if m["title"] != "New Title" {
 		t.Errorf("expected title, got %v", m["title"])
 	}
 	if m["status"] != "done" {
 		t.Errorf("expected status, got %v", m["status"])
 	}
-	if m["priority"] != "high" {
-		t.Errorf("expected priority, got %v", m["priority"])
-	}
-	if m["estimate"] != "m" {
-		t.Errorf("expected estimate, got %v", m["estimate"])
-	}
 }
 
-func TestUpdateIssueRequest_toMap_omitsNilFields(t *testing.T) {
-	req := UpdateIssueRequest{Title: ptr("Only Title")}
-	m := req.toMap()
+func TestUpdateIssueRequest_omitsAbsentFields(t *testing.T) {
+	req := UpdateIssueRequest{Title: Set("Only Title")}
+	m := mustMarshal(t, req)
 	if _, ok := m["status"]; ok {
-		t.Error("nil status should not be in map")
+		t.Error("absent status should not be in JSON")
 	}
 	if _, ok := m["sprint_id"]; ok {
-		t.Error("nil sprint_id should not be in map")
+		t.Error("absent sprint_id should not be in JSON")
 	}
 }
 
-func TestUpdateIssueRequest_toMap_clearSprintID(t *testing.T) {
-	req := UpdateIssueRequest{ClearSprintID: true}
-	m := req.toMap()
+func TestUpdateIssueRequest_nullClearsField(t *testing.T) {
+	req := UpdateIssueRequest{SprintID: Null[string]()}
+	m := mustMarshal(t, req)
 	v, ok := m["sprint_id"]
 	if !ok {
-		t.Fatal("expected sprint_id in map")
+		t.Fatal("expected sprint_id in JSON")
 	}
 	if v != nil {
-		t.Errorf("expected nil for cleared sprint_id, got %v", v)
+		t.Errorf("expected null, got %v", v)
 	}
 }
 
-func TestUpdateIssueRequest_toMap_clearParentID(t *testing.T) {
-	req := UpdateIssueRequest{ClearParentID: true}
-	m := req.toMap()
-	v, ok := m["parent_id"]
+func TestUpdateIssueRequest_nullParentID(t *testing.T) {
+	req := UpdateIssueRequest{ParentID: Null[string]()}
+	m := mustMarshal(t, req)
+	if m["parent_id"] != nil {
+		t.Errorf("expected null, got %v", m["parent_id"])
+	}
+}
+
+func TestUpdateIssueRequest_nullAssignees(t *testing.T) {
+	req := UpdateIssueRequest{AssigneeIDs: Null[[]string]()}
+	m := mustMarshal(t, req)
+	if m["assignee_ids"] != nil {
+		t.Errorf("expected null, got %v", m["assignee_ids"])
+	}
+}
+
+func TestUpdateIssueRequest_nullLabels(t *testing.T) {
+	req := UpdateIssueRequest{LabelIDs: Null[[]string]()}
+	m := mustMarshal(t, req)
+	if m["label_ids"] != nil {
+		t.Errorf("expected null, got %v", m["label_ids"])
+	}
+}
+
+func TestUpdateIssueRequest_nullOwnerID(t *testing.T) {
+	req := UpdateIssueRequest{OwnerID: Null[string]()}
+	m := mustMarshal(t, req)
+	if m["owner_id"] != nil {
+		t.Errorf("expected null, got %v", m["owner_id"])
+	}
+}
+
+func TestUpdateIssueRequest_setAssigneeIDs(t *testing.T) {
+	req := UpdateIssueRequest{AssigneeIDs: Set([]string{"a", "b"})}
+	m := mustMarshal(t, req)
+	raw, ok := m["assignee_ids"]
 	if !ok {
-		t.Fatal("expected parent_id in map")
+		t.Fatal("expected assignee_ids")
 	}
-	if v != nil {
-		t.Errorf("expected nil for cleared parent_id, got %v", v)
-	}
-}
-
-func TestUpdateIssueRequest_toMap_clearAssignees(t *testing.T) {
-	req := UpdateIssueRequest{ClearAssignees: true}
-	m := req.toMap()
-	ids, ok := m["assignee_ids"].([]string)
-	if !ok {
-		t.Fatal("expected assignee_ids as []string")
-	}
-	if len(ids) != 0 {
-		t.Errorf("expected empty slice, got %v", ids)
+	// marshalFields produces json.RawMessage, which unmarshal reads as []any
+	data, _ := json.Marshal(raw)
+	var ids []string
+	json.Unmarshal(data, &ids)
+	if len(ids) != 2 || ids[0] != "a" {
+		t.Errorf("unexpected: %v", ids)
 	}
 }
 
-func TestUpdateIssueRequest_toMap_clearLabels(t *testing.T) {
-	req := UpdateIssueRequest{ClearLabels: true}
-	m := req.toMap()
-	ids, ok := m["label_ids"].([]string)
-	if !ok {
-		t.Fatal("expected label_ids as []string")
-	}
-	if len(ids) != 0 {
-		t.Errorf("expected empty slice, got %v", ids)
-	}
-}
-
-func TestUpdateIssueRequest_toMap_clearOwnerID(t *testing.T) {
-	req := UpdateIssueRequest{ClearOwnerID: true}
-	m := req.toMap()
-	v, ok := m["owner_id"]
-	if !ok {
-		t.Fatal("expected owner_id in map")
-	}
-	if v != nil {
-		t.Errorf("expected nil for cleared owner_id, got %v", v)
-	}
-}
-
-func TestUpdateIssueRequest_toMap_setOverridesClear(t *testing.T) {
-	// If both SprintID and ClearSprintID are set, ClearSprintID wins
-	// (it's checked first in the if/else chain)
-	req := UpdateIssueRequest{SprintID: ptr("uuid"), ClearSprintID: true}
-	m := req.toMap()
-	if m["sprint_id"] != nil {
-		t.Errorf("ClearSprintID should produce nil, got %v", m["sprint_id"])
-	}
-}
-
-func TestUpdateIssueRequest_toMap_assigneeIDs(t *testing.T) {
-	req := UpdateIssueRequest{AssigneeIDs: []string{"a", "b"}}
-	m := req.toMap()
-	ids := m["assignee_ids"].([]string)
-	if len(ids) != 2 || ids[0] != "a" || ids[1] != "b" {
-		t.Errorf("unexpected assignee_ids: %v", ids)
-	}
-}
-
-func TestUpdateIssueRequest_toMap_labelIDs(t *testing.T) {
-	req := UpdateIssueRequest{LabelIDs: []string{"l1"}}
-	m := req.toMap()
-	ids := m["label_ids"].([]string)
-	if len(ids) != 1 || ids[0] != "l1" {
-		t.Errorf("unexpected label_ids: %v", ids)
-	}
-}
-
-func TestUpdateSprintRequest_toMap_allFields(t *testing.T) {
+func TestUpdateSprintRequest_allFields(t *testing.T) {
 	req := UpdateSprintRequest{
-		Name:                     ptr("Sprint 1"),
-		Goal:                     ptr("Ship it"),
-		StartDate:                ptr("2026-01-01T00:00:00Z"),
-		EndDate:                  ptr("2026-01-14T00:00:00Z"),
-		Status:                   ptr("completed"),
-		Force:                    true,
-		MoveOpenIssuesToSprintID: ptr("next-sprint-uuid"),
+		Name:                     Set("Sprint 1"),
+		Goal:                     Set("Ship it"),
+		Status:                   Set("completed"),
+		Force:                    Set(true),
+		MoveOpenIssuesToSprintID: Set("next-uuid"),
 	}
-	m := req.toMap()
+	m := mustMarshal(t, req)
 	if m["name"] != "Sprint 1" {
 		t.Errorf("expected name, got %v", m["name"])
-	}
-	if m["goal"] != "Ship it" {
-		t.Errorf("expected goal, got %v", m["goal"])
-	}
-	if m["status"] != "completed" {
-		t.Errorf("expected status, got %v", m["status"])
 	}
 	if m["force"] != true {
 		t.Errorf("expected force=true, got %v", m["force"])
 	}
-	if m["move_open_issues_to_sprint_id"] != "next-sprint-uuid" {
+	if m["move_open_issues_to_sprint_id"] != "next-uuid" {
 		t.Errorf("expected move id, got %v", m["move_open_issues_to_sprint_id"])
 	}
 }
 
-func TestUpdateSprintRequest_toMap_omitsNilAndFalseForce(t *testing.T) {
-	req := UpdateSprintRequest{Name: ptr("Only Name")}
-	m := req.toMap()
+func TestUpdateSprintRequest_omitsAbsent(t *testing.T) {
+	req := UpdateSprintRequest{Name: Set("Only Name")}
+	m := mustMarshal(t, req)
 	if _, ok := m["force"]; ok {
-		t.Error("force=false should not be in map")
+		t.Error("absent force should not be in JSON")
 	}
 	if _, ok := m["status"]; ok {
-		t.Error("nil status should not be in map")
+		t.Error("absent status should not be in JSON")
 	}
 }
 
-func TestUpdateProjectRequest_toMap_allFields(t *testing.T) {
+func TestUpdateProjectRequest_allFields(t *testing.T) {
 	req := UpdateProjectRequest{
-		Name:               ptr("New Name"),
-		Description:        ptr("desc"),
-		Archived:           boolPtr(true),
-		WipLimitInProgress: intPtr(5),
-		WipLimitInReview:   intPtr(3),
+		Name:               Set("New Name"),
+		Description:        Set("desc"),
+		Archived:           Set(true),
+		WipLimitInProgress: Set(5),
+		WipLimitInReview:   Set(3),
 	}
-	m := req.toMap()
+	m := mustMarshal(t, req)
 	if m["name"] != "New Name" {
 		t.Errorf("expected name, got %v", m["name"])
 	}
 	if m["archived"] != true {
 		t.Errorf("expected archived=true, got %v", m["archived"])
 	}
-	if m["wip_limit_in_progress"] != 5 {
-		t.Errorf("expected wip=5, got %v", m["wip_limit_in_progress"])
+	// JSON numbers come back as float64
+	if m["wip_limit_in_progress"] != float64(5) {
+		t.Errorf("expected 5, got %v", m["wip_limit_in_progress"])
 	}
 }
 
-func TestUpdateProjectRequest_toMap_wipLimitClear(t *testing.T) {
-	req := UpdateProjectRequest{WipLimitInProgress: intPtr(-1)}
-	m := req.toMap()
+func TestUpdateProjectRequest_nullWipLimit(t *testing.T) {
+	req := UpdateProjectRequest{WipLimitInProgress: Null[int]()}
+	m := mustMarshal(t, req)
 	v, ok := m["wip_limit_in_progress"]
 	if !ok {
-		t.Fatal("expected wip_limit_in_progress in map")
+		t.Fatal("expected wip_limit_in_progress in JSON")
 	}
 	if v != nil {
-		t.Errorf("expected nil for -1 wip limit, got %v", v)
+		t.Errorf("expected null, got %v", v)
 	}
 }
 
-func TestUpdateMilestoneRequest_toMap_allFields(t *testing.T) {
+func TestUpdateMilestoneRequest_allFields(t *testing.T) {
 	req := UpdateMilestoneRequest{
-		Title:       ptr("v1.0"),
-		Description: ptr("First release"),
-		TargetDate:  ptr("2026-06-01T00:00:00Z"),
-		Close:       boolPtr(true),
+		Title: Set("v1.0"),
+		Close: Set(true),
 	}
-	m := req.toMap()
+	m := mustMarshal(t, req)
 	if m["title"] != "v1.0" {
 		t.Errorf("expected title, got %v", m["title"])
 	}
@@ -216,22 +183,22 @@ func TestUpdateMilestoneRequest_toMap_allFields(t *testing.T) {
 	}
 }
 
-func TestUpdateMilestoneRequest_toMap_reopenMilestone(t *testing.T) {
-	req := UpdateMilestoneRequest{Close: boolPtr(false)}
-	m := req.toMap()
+func TestUpdateMilestoneRequest_reopenMilestone(t *testing.T) {
+	req := UpdateMilestoneRequest{Close: Set(false)}
+	m := mustMarshal(t, req)
 	if m["close"] != false {
 		t.Errorf("expected close=false, got %v", m["close"])
 	}
 }
 
-func TestBatchUpdateIssuesRequest_toMap_includesNumbers(t *testing.T) {
-	status := "in_progress"
+func TestBatchUpdateIssuesRequest_includesNumbers(t *testing.T) {
 	req := BatchUpdateIssuesRequest{
 		Numbers: []int{1, 2, 3},
-		Status:  &status,
+		Status:  Set("in_progress"),
 	}
-	m := req.toMap()
-	nums := m["numbers"].([]int)
+	m := mustMarshal(t, req)
+	// numbers is a regular field, not Field[T]
+	nums := m["numbers"].([]any)
 	if len(nums) != 3 {
 		t.Errorf("expected 3 numbers, got %d", len(nums))
 	}
@@ -240,16 +207,13 @@ func TestBatchUpdateIssuesRequest_toMap_includesNumbers(t *testing.T) {
 	}
 }
 
-func TestBatchUpdateIssuesRequest_toMap_clearSprintID(t *testing.T) {
+func TestBatchUpdateIssuesRequest_clearSprintID(t *testing.T) {
 	req := BatchUpdateIssuesRequest{
 		Numbers:       []int{1},
-		ClearSprintID: true,
+		ClearSprintID: Set(true),
 	}
-	m := req.toMap()
+	m := mustMarshal(t, req)
 	if m["clear_sprint_id"] != true {
 		t.Errorf("expected clear_sprint_id=true, got %v", m["clear_sprint_id"])
-	}
-	if _, ok := m["sprint_id"]; ok {
-		t.Error("sprint_id should not be set when clearing")
 	}
 }

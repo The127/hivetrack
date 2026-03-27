@@ -46,44 +46,18 @@ func (c *Client) CreateSprint(ctx context.Context, slug string, req CreateSprint
 
 // UpdateSprintRequest contains fields for updating a sprint.
 type UpdateSprintRequest struct {
-	Name                     *string
-	Goal                     *string
-	StartDate                *string
-	EndDate                  *string
-	Status                   *string
-	Force                    bool
-	MoveOpenIssuesToSprintID *string
-}
-
-func (r UpdateSprintRequest) toMap() map[string]any {
-	m := map[string]any{}
-	if r.Name != nil {
-		m["name"] = *r.Name
-	}
-	if r.Goal != nil {
-		m["goal"] = *r.Goal
-	}
-	if r.StartDate != nil {
-		m["start_date"] = *r.StartDate
-	}
-	if r.EndDate != nil {
-		m["end_date"] = *r.EndDate
-	}
-	if r.Status != nil {
-		m["status"] = *r.Status
-	}
-	if r.Force {
-		m["force"] = true
-	}
-	if r.MoveOpenIssuesToSprintID != nil {
-		m["move_open_issues_to_sprint_id"] = *r.MoveOpenIssuesToSprintID
-	}
-	return m
+	Name                     Field[string] `json:"name"`
+	Goal                     Field[string] `json:"goal"`
+	StartDate                Field[string] `json:"start_date"`
+	EndDate                  Field[string] `json:"end_date"`
+	Status                   Field[string] `json:"status"`
+	Force                    Field[bool]   `json:"force"`
+	MoveOpenIssuesToSprintID Field[string] `json:"move_open_issues_to_sprint_id"`
 }
 
 // UpdateSprint updates an existing sprint.
 func (c *Client) UpdateSprint(ctx context.Context, slug string, sprintID string, req UpdateSprintRequest) error {
-	_, err := c.patch(ctx, fmt.Sprintf("/api/v1/projects/%s/sprints/%s", slug, sprintID), req.toMap())
+	_, err := c.patchFields(ctx, fmt.Sprintf("/api/v1/projects/%s/sprints/%s", slug, sprintID), req)
 	return err
 }
 

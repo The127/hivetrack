@@ -120,3 +120,67 @@ func (c *Client) patch(ctx context.Context, path string, body any) (json.RawMess
 func (c *Client) delete(ctx context.Context, path string) (json.RawMessage, error) {
 	return c.do(ctx, http.MethodDelete, path, nil, nil)
 }
+
+// patchFields sends a PATCH with a struct containing Field[T] values,
+// omitting absent fields and sending null for cleared fields.
+func (c *Client) patchFields(ctx context.Context, path string, fields any) (json.RawMessage, error) {
+	return c.doRaw(ctx, http.MethodPatch, path, nil, fields)
+}
+
+// postFields sends a POST with a struct containing Field[T] values.
+func (c *Client) postFields(ctx context.Context, path string, fields any) (json.RawMessage, error) {
+	return c.doRaw(ctx, http.MethodPost, path, nil, fields)
+}
+
+func (c *Client) doRaw(ctx context.Context, method, path string, query url.Values, body any) (json.RawMessage, error) {
+	u := c.baseURL + path
+	if len(query) > 0 {
+		u += "?" + query.Encode()
+	}
+
+	var bodyReader io.Reader
+	if body != nil {
+		data, err := marshalFields(body)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling request: %w", err)
+		}
+		bodyReader = bytes.NewReader(data)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, u, bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	if c.tokenFunc != nil {
+		token, err := c.tokenFunc(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("getting token: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("executing request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading response: %w", err)
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, &APIError{StatusCode: resp.StatusCode, Body: string(respBody)}
+	}
+
+	if resp.StatusCode == http.StatusNoContent || len(respBody) == 0 {
+		return json.RawMessage(`{}`), nil
+	}
+
+	return respBody, nil
+}

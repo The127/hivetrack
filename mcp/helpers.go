@@ -60,22 +60,6 @@ func parseUUIDList(args map[string]any, key string) ([]string, error) {
 	return ids, nil
 }
 
-// optStrFromMap extracts a string pointer from a map (for batch update body → typed request).
-func optStrFromMap(m map[string]any, key string) *string {
-	if v, ok := m[key].(string); ok && v != "" {
-		return &v
-	}
-	return nil
-}
-
-// strSliceFromMap extracts a string slice from a map.
-func strSliceFromMap(m map[string]any, key string) []string {
-	if v, ok := m[key].([]string); ok {
-		return v
-	}
-	return nil
-}
-
 // resolveLabelNames fetches project labels and resolves comma-separated names to UUIDs.
 // Returns nil if the key is absent or empty. Uses the typed client library.
 func resolveLabelNames(client *Client, slug string, args map[string]any, key string) ([]string, error) {

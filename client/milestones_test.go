@@ -49,7 +49,7 @@ func TestUpdateMilestone(t *testing.T) {
 	defer srv.Close()
 
 	err := testClient(srv.URL).UpdateMilestone(context.Background(), "proj", "m1", UpdateMilestoneRequest{
-		Close: boolPtr(true),
+		Close: Set(true),
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -72,8 +72,8 @@ func TestUpdateIssue_sendsCorrectBody(t *testing.T) {
 	defer srv.Close()
 
 	err := testClient(srv.URL).UpdateIssue(context.Background(), "proj", 5, UpdateIssueRequest{
-		Title:         ptr("Updated"),
-		ClearSprintID: true,
+		Title:    Set("Updated"),
+		SprintID: Null[string](),
 	})
 	if err != nil {
 		t.Fatal(err)
