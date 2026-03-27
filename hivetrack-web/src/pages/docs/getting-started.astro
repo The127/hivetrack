@@ -155,9 +155,25 @@ const configTable = [
         <!-- Quick start -->
         <h2 id="quick-start">Quick start</h2>
 
-        <p>
-          <a href="/docs/deploy">Use the interactive config generator &rarr;</a> to produce a ready-to-use Docker Compose or Kubernetes manifest with your values pre-filled.
-        </p>
+        <div class="not-prose my-6">
+          <a
+            href="/docs/deploy"
+            class="block bg-blue-50 border border-blue-200 rounded-xl p-5 hover:bg-blue-100 hover:border-blue-300 transition-all group"
+          >
+            <div class="flex items-center gap-3">
+              <div class="size-10 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              </div>
+              <div>
+                <div class="font-semibold text-blue-900 group-hover:text-blue-700 flex items-center gap-2">
+                  Interactive config generator
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-hover:translate-x-0.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </div>
+                <div class="text-sm text-blue-700 mt-0.5">Generate Docker Compose, Docker CLI, or Kubernetes manifests with your values pre-filled. Includes optional Keyline OIDC provider and MCP server add-ons.</div>
+              </div>
+            </div>
+          </a>
+        </div>
 
         <h3>1. Create a <code>config.yaml</code></h3>
         <p>
