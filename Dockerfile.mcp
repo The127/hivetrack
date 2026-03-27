@@ -1,7 +1,13 @@
 # ─── Stage 1: Build ────────────────────────────────────────────────────────
 FROM golang:1.25-alpine AS builder
 WORKDIR /build
-COPY mcp/go.mod mcp/go.sum ./
+
+# Copy client library first (MCP depends on it via replace directive)
+COPY client/ ./client/
+
+# Copy MCP module and download dependencies
+COPY mcp/go.mod mcp/go.sum ./mcp/
+WORKDIR /build/mcp
 RUN go mod download
 COPY mcp/ ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o /hivetrack-mcp ./cmd/hivetrack-mcp
