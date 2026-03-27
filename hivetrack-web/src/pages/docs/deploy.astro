@@ -74,6 +74,19 @@ import Layout from '../../layouts/Layout.astro'
               <label for="f-smtp-host" class="field-label">SMTP host <span class="text-slate-400 font-normal">(optional)</span></label>
               <input id="f-smtp-host" type="text" placeholder="smtp.example.com" class="field-input" data-field="smtpHost" />
             </div>
+            <div class="border-t border-slate-200 pt-4 mt-2">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input id="f-include-mcp" type="checkbox" class="rounded border-slate-300" data-field="includeMcp" />
+                <span class="text-sm font-medium text-slate-700">Include MCP server</span>
+                <span class="text-xs text-slate-400">(AI agent access)</span>
+              </label>
+            </div>
+            <div id="mcp-fields" class="space-y-4 hidden">
+              <div class="field">
+                <label for="f-mcp-port" class="field-label">MCP server port</label>
+                <input id="f-mcp-port" type="number" value="8080" class="field-input" data-field="mcpPort" />
+              </div>
+            </div>
           </div>
 
           <!-- Kubernetes-only fields -->
@@ -269,6 +282,8 @@ import Layout from '../../layouts/Layout.astro'
     oidcClientSecret: string
     adminEmail: string
     smtpHost: string
+    includeMcp: boolean
+    mcpPort: string
     namespace: string
     replicas: string
     ingressHost: string
@@ -296,6 +311,8 @@ import Layout from '../../layouts/Layout.astro'
       oidcClientSecret: get('oidcClientSecret'),
       adminEmail: get('adminEmail') || 'admin@example.com',
       smtpHost: get('smtpHost'),
+      includeMcp: (document.getElementById('f-include-mcp') as HTMLInputElement)?.checked ?? false,
+      mcpPort: get('mcpPort') || '8080',
       namespace: get('namespace') || 'hivetrack',
       replicas: get('replicas') || '1',
       ingressHost: get('ingressHost'),
@@ -341,6 +358,18 @@ initial_admin:
   }
 
   function generateCompose(f: Fields): string {
+    const mcp = f.includeMcp ? `
+
+  hivetrack-mcp:
+    image: ghcr.io/the127/hivetrack-mcp:${f.version}
+    restart: unless-stopped
+    ports:
+      - "${f.mcpPort}:8080"
+    environment:
+      HIVETRACK_URL: http://hivetrack:${f.port}
+    depends_on:
+      - hivetrack` : ''
+
     return `services:
   postgres:
     image: postgres:17-alpine
@@ -366,7 +395,7 @@ initial_admin:
       - ./config.yaml:/app/config.yaml
     depends_on:
       postgres:
-        condition: service_healthy
+        condition: service_healthy${mcp}
 
 volumes:
   postgres_data:
@@ -444,7 +473,17 @@ volumes:
     environment:
       KEYLINE_API_URL: "${f.keylineExternalUrl}"
     depends_on:
-      - keyline-api
+      - keyline-api${f.includeMcp ? `
+
+  hivetrack-mcp:
+    image: ghcr.io/the127/hivetrack-mcp:${f.version}
+    restart: unless-stopped
+    ports:
+      - "${f.mcpPort}:8080"
+    environment:
+      HIVETRACK_URL: http://hivetrack:${f.port}
+    depends_on:
+      - hivetrack` : ''}
 
 volumes:
   postgres_data:
@@ -495,13 +534,23 @@ initialVirtualServer:
   }
 
   function generateDocker(f: Fields): string {
+    const mcp = f.includeMcp ? `
+
+# MCP server (AI agent access)
+docker run -d \\
+  --name hivetrack-mcp \\
+  --restart unless-stopped \\
+  -p ${f.mcpPort}:8080 \\
+  -e HIVETRACK_URL=http://hivetrack:${f.port} \\
+  ghcr.io/the127/hivetrack-mcp:${f.version}` : ''
+
     return `# First create config.yaml (see config tab below), then:
 docker run -d \\
   --name hivetrack \\
   --restart unless-stopped \\
   -p ${f.port}:${f.port} \\
   -v ./config.yaml:/app/config.yaml \\
-  ghcr.io/the127/hivetrack:${f.version}`
+  ghcr.io/the127/hivetrack:${f.version}${mcp}`
   }
 
   function generateK8s(f: Fields): string {
@@ -585,7 +634,43 @@ spec:
     app: hivetrack
   ports:
     - port: ${f.port}
-      targetPort: ${f.port}${ingress}`
+      targetPort: ${f.port}${ingress}${f.includeMcp ? `
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hivetrack-mcp
+  namespace: ${ns}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hivetrack-mcp
+  template:
+    metadata:
+      labels:
+        app: hivetrack-mcp
+    spec:
+      containers:
+        - name: hivetrack-mcp
+          image: ghcr.io/the127/hivetrack-mcp:${f.version}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: HIVETRACK_URL
+              value: "http://hivetrack:${f.port}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hivetrack-mcp
+  namespace: ${ns}
+spec:
+  selector:
+    app: hivetrack-mcp
+  ports:
+    - port: 8080
+      targetPort: 8080` : ''}`
   }
 
   function render() {
@@ -642,6 +727,13 @@ spec:
   // Live update on input
   document.querySelectorAll<HTMLInputElement>('.field-input').forEach(input => {
     input.addEventListener('input', render)
+  })
+
+  // Toggle MCP fields visibility and re-render
+  document.getElementById('f-include-mcp')?.addEventListener('change', () => {
+    const checked = (document.getElementById('f-include-mcp') as HTMLInputElement).checked
+    document.getElementById('mcp-fields')!.classList.toggle('hidden', !checked)
+    render()
   })
 
   // Sync OIDC authority when keyline fields change
