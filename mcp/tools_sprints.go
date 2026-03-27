@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	htclient "github.com/the127/hivetrack/client"
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -56,11 +58,11 @@ func makeListSprints(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug")), nil
 		}
 
-		data, err := client.get("/api/v1/projects/"+slug+"/sprints", nil)
+		sprints, err := client.Typed().ListSprints(ctx, slug)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatListSprints(data)), nil
+		return textResult(formatListSprints(sprints)), nil
 	}
 }
 
@@ -73,18 +75,16 @@ func makeCreateSprint(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, name")), nil
 		}
 
-		body := map[string]any{
-			"name": name,
-		}
-		setOptionalString(body, args, "goal")
-		setOptionalString(body, args, "start_date")
-		setOptionalString(body, args, "end_date")
-
-		data, err := client.post("/api/v1/projects/"+slug+"/sprints", body)
+		id, err := client.Typed().CreateSprint(ctx, slug, htclient.CreateSprintRequest{
+			Name:      name,
+			Goal:      stringOr(args, "goal", ""),
+			StartDate: stringOr(args, "start_date", ""),
+			EndDate:   stringOr(args, "end_date", ""),
+		})
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatCreateSprint(data, name)), nil
+		return textResult(formatCreateSprint(id, name)), nil
 	}
 }
 
@@ -97,8 +97,7 @@ func makeDeleteSprint(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, sprint_id")), nil
 		}
 
-		_, err := client.delete(fmt.Sprintf("/api/v1/projects/%s/sprints/%s", slug, sprintID))
-		if err != nil {
+		if err := client.Typed().DeleteSprint(ctx, slug, sprintID); err != nil {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Sprint %s deleted", sprintID)), nil
@@ -114,11 +113,11 @@ func makeGetSprintBurndown(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, sprint_id")), nil
 		}
 
-		data, err := client.get(fmt.Sprintf("/api/v1/projects/%s/sprints/%s/burndown", slug, sprintID), nil)
+		burndown, err := client.Typed().GetSprintBurndown(ctx, slug, sprintID)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatSprintBurndown(data)), nil
+		return textResult(formatSprintBurndown(burndown)), nil
 	}
 }
 

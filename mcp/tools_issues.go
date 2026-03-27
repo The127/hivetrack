@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"strings"
 
 	htclient "github.com/the127/hivetrack/client"
@@ -160,42 +159,50 @@ func makeListIssues(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug")), nil
 		}
 
-		q := url.Values{}
-		for _, key := range []string{"status", "priority", "type", "text", "triaged", "backlog", "sprint_id", "assignee_id", "label_id", "exclude_label_id"} {
-			if v, ok := args[key].(string); ok && v != "" {
-				q.Set(key, v)
-			}
+		opts := htclient.ListIssuesOptions{
+			Status:         stringOr(args, "status", ""),
+			Priority:       stringOr(args, "priority", ""),
+			Type:           stringOr(args, "type", ""),
+			Text:           stringOr(args, "text", ""),
+			SprintID:       stringOr(args, "sprint_id", ""),
+			AssigneeID:     stringOr(args, "assignee_id", ""),
+			LabelID:        stringOr(args, "label_id", ""),
+			ExcludeLabelID: stringOr(args, "exclude_label_id", ""),
+		}
+		if v, ok := args["triaged"].(string); ok && v != "" {
+			b := v == "true"
+			opts.Triaged = &b
+		}
+		if v, ok := args["backlog"].(string); ok && v != "" {
+			b := v == "true"
+			opts.Backlog = &b
 		}
 
 		// Resolve label names to IDs if provided.
-		if name, ok := args["label_name"].(string); ok && name != "" {
-			if _, hasID := args["label_id"].(string); !hasID {
-				ids, err := resolveLabelNames(client, slug, map[string]any{"n": name}, "n")
-				if err != nil {
-					return errResult(err), nil
-				}
-				if len(ids) > 0 {
-					q.Set("label_id", ids[0])
-				}
+		if name, ok := args["label_name"].(string); ok && name != "" && opts.LabelID == "" {
+			ids, err := client.Typed().ResolveLabelNames(ctx, slug, name)
+			if err != nil {
+				return errResult(err), nil
+			}
+			if len(ids) > 0 {
+				opts.LabelID = ids[0]
 			}
 		}
-		if name, ok := args["exclude_label_name"].(string); ok && name != "" {
-			if _, hasID := args["exclude_label_id"].(string); !hasID {
-				ids, err := resolveLabelNames(client, slug, map[string]any{"n": name}, "n")
-				if err != nil {
-					return errResult(err), nil
-				}
-				if len(ids) > 0 {
-					q.Set("exclude_label_id", ids[0])
-				}
+		if name, ok := args["exclude_label_name"].(string); ok && name != "" && opts.ExcludeLabelID == "" {
+			ids, err := client.Typed().ResolveLabelNames(ctx, slug, name)
+			if err != nil {
+				return errResult(err), nil
+			}
+			if len(ids) > 0 {
+				opts.ExcludeLabelID = ids[0]
 			}
 		}
 
-		data, err := client.get("/api/v1/projects/"+slug+"/issues", q)
+		items, total, err := client.Typed().ListIssues(ctx, slug, opts)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatListIssues(data)), nil
+		return textResult(formatListIssues(items, total)), nil
 	}
 }
 
@@ -208,21 +215,21 @@ func makeGetIssue(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, number")), nil
 		}
 
-		data, err := client.get(fmt.Sprintf("/api/v1/projects/%s/issues/%d", slug, number), nil)
+		issue, err := client.Typed().GetIssue(ctx, slug, number)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatGetIssue(data)), nil
+		return textResult(formatGetIssue(issue)), nil
 	}
 }
 
 func makeGetMyIssues(client *Client) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		data, err := client.get("/api/v1/me/issues", nil)
+		items, err := client.Typed().GetMyIssues(ctx)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatListIssues(data)), nil
+		return textResult(formatListIssues(items, len(items))), nil
 	}
 }
 
@@ -235,63 +242,53 @@ func makeCreateIssue(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, title")), nil
 		}
 
-		body := map[string]any{
-			"title": title,
-			"type":  stringOr(args, "type", "task"),
+		req := htclient.CreateIssueRequest{
+			Title:       title,
+			Type:        stringOr(args, "type", "task"),
+			Priority:    stringOr(args, "priority", ""),
+			Description: stringOr(args, "description", ""),
+			Status:      stringOr(args, "status", ""),
+			Estimate:    stringOr(args, "estimate", ""),
+			SprintID:    stringOr(args, "sprint_id", ""),
+			MilestoneID: stringOr(args, "milestone_id", ""),
+			ParentID:    stringOr(args, "parent_id", ""),
 		}
-		setOptionalString(body, args, "priority")
-		setOptionalString(body, args, "description")
-		setOptionalString(body, args, "status")
-		setOptionalString(body, args, "estimate")
-		setOptionalString(body, args, "sprint_id")
-		setOptionalString(body, args, "milestone_id")
-		setOptionalString(body, args, "parent_id")
 		if ids, err := parseUUIDList(args, "assignee_ids"); err != nil {
 			return errResult(fmt.Errorf("invalid assignee_ids: %w", err)), nil
 		} else if ids != nil {
-			body["assignee_ids"] = ids
+			req.AssigneeIDs = ids
 		}
 		if ids, err := parseUUIDList(args, "label_ids"); err != nil {
 			return errResult(fmt.Errorf("invalid label_ids: %w", err)), nil
 		} else if ids != nil {
-			body["label_ids"] = ids
+			req.LabelIDs = ids
 		}
-		// label_names: resolve names to UUIDs (only if label_ids not provided)
-		if _, hasLabelIDs := body["label_ids"]; !hasLabelIDs {
+		if req.LabelIDs == nil {
 			if ids, err := resolveLabelNames(client, slug, args, "label_names"); err != nil {
 				return errResult(fmt.Errorf("resolving label names: %w", err)), nil
 			} else if ids != nil {
-				body["label_ids"] = ids
+				req.LabelIDs = ids
 			}
 		}
 
-		data, err := client.post("/api/v1/projects/"+slug+"/issues", body)
+		created, err := client.Typed().CreateIssue(ctx, slug, req)
 		if err != nil {
 			return errResult(err), nil
 		}
 
-		result := formatCreateIssue(data, args)
+		result := formatCreateIssue(created, args)
 
 		// Auto-triage when sprint_id is provided — assigning to a sprint implies triage.
 		if sprintID, ok := args["sprint_id"].(string); ok && sprintID != "" {
-			var created struct {
-				Number int `json:"Number"`
+			triageReq := htclient.TriageIssueRequest{Status: stringOr(args, "status", "todo")}
+			triageReq.SprintID = &sprintID
+			if milestoneID, ok := args["milestone_id"].(string); ok && milestoneID != "" {
+				triageReq.MilestoneID = &milestoneID
 			}
-			if err := json.Unmarshal(data, &created); err == nil && created.Number > 0 {
-				triageBody := map[string]any{"status": stringOr(args, "status", "todo")}
-				triageBody["sprint_id"] = sprintID
-				if milestoneID, ok := args["milestone_id"].(string); ok && milestoneID != "" {
-					triageBody["milestone_id"] = milestoneID
-				}
-				_, triageErr := client.post(
-					fmt.Sprintf("/api/v1/projects/%s/issues/%d/triage", slug, created.Number),
-					triageBody,
-				)
-				if triageErr != nil {
-					result += fmt.Sprintf("\n⚠ Auto-triage failed: %v", triageErr)
-				} else {
-					result += " ✓ triaged"
-				}
+			if triageErr := client.Typed().TriageIssue(ctx, slug, created.Number, triageReq); triageErr != nil {
+				result += fmt.Sprintf("\n⚠ Auto-triage failed: %v", triageErr)
+			} else {
+				result += " ✓ triaged"
 			}
 		}
 
@@ -551,13 +548,11 @@ func makeSplitIssue(client *Client) server.ToolHandlerFunc {
 			}
 		}
 
-		data, err := client.post(fmt.Sprintf("/api/v1/projects/%s/issues/%d/split", slug, number), map[string]any{
-			"titles": titles,
-		})
+		result, err := client.Typed().SplitIssue(ctx, slug, number, titles)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatSplitIssue(data)), nil
+		return textResult(formatSplitIssue(result)), nil
 	}
 }
 

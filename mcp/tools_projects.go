@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	htclient "github.com/the127/hivetrack/client"
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -86,11 +88,11 @@ func registerProjectTools(s *server.MCPServer, client *Client) {
 
 func makeListProjects(client *Client) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		data, err := client.get("/api/v1/projects", nil)
+		projects, err := client.Typed().ListProjects(ctx)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatListProjects(data)), nil
+		return textResult(formatListProjects(projects)), nil
 	}
 }
 
@@ -111,11 +113,11 @@ func makeCreateProject(client *Client) server.ToolHandlerFunc {
 		}
 		setOptionalString(body, args, "description")
 
-		data, err := client.post("/api/v1/projects", body)
+		_, err := client.post("/api/v1/projects", body)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatCreateProject(data, slug, name, archetype)), nil
+		return textResult(formatCreateProject(slug, name, archetype)), nil
 	}
 }
 
@@ -129,16 +131,11 @@ func makeAddProjectMember(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, user_id, role")), nil
 		}
 
-		body := map[string]any{
-			"user_id": userID,
-			"role":    role,
-		}
-
-		data, err := client.post("/api/v1/projects/"+slug+"/members", body)
-		if err != nil {
+		htRole := htclient.ProjectRole(role)
+		if err := client.Typed().AddProjectMember(ctx, slug, userID, htRole); err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+		return textResult(fmt.Sprintf("Added %s to project %s as %s", userID, slug, role)), nil
 	}
 }
 
@@ -151,11 +148,10 @@ func makeRemoveProjectMember(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, user_id")), nil
 		}
 
-		data, err := client.delete("/api/v1/projects/" + slug + "/members/" + userID)
-		if err != nil {
+		if err := client.Typed().RemoveProjectMember(ctx, slug, userID); err != nil {
 			return errResult(err), nil
 		}
-		return jsonResult(data), nil
+		return textResult(fmt.Sprintf("Removed %s from project %s", userID, slug)), nil
 	}
 }
 
@@ -203,8 +199,7 @@ func makeDeleteProject(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("project_id")), nil
 		}
 
-		_, err := client.delete("/api/v1/projects/" + projectID)
-		if err != nil {
+		if err := client.Typed().DeleteProject(ctx, projectID); err != nil {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Project %s deleted", projectID)), nil
@@ -218,6 +213,8 @@ func makeGetProject(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug")), nil
 		}
 
+		// get_project returns full JSON — use raw client for now since the response
+		// includes project-specific fields (members, WIP limits) not in ProjectSummary.
 		data, err := client.get("/api/v1/projects/"+slug, nil)
 		if err != nil {
 			return errResult(err), nil

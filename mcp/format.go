@@ -1,21 +1,14 @@
 package mcp
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
+
+	htclient "github.com/the127/hivetrack/client"
 )
 
-// formatCreateIssue formats a create_issue response for human readability.
-func formatCreateIssue(data json.RawMessage, args map[string]any) string {
-	var resp struct {
-		ID     string `json:"ID"`
-		Number int    `json:"Number"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return string(data)
-	}
-
+// formatCreateIssue formats a create_issue result for human readability.
+func formatCreateIssue(result *htclient.CreateIssueResult, args map[string]any) string {
 	issueType := stringOr(args, "type", "task")
 	title, _ := args["title"].(string)
 	priority := stringOr(args, "priority", "")
@@ -34,7 +27,7 @@ func formatCreateIssue(data json.RawMessage, args map[string]any) string {
 		meta = ", " + strings.Join(parts, ", ")
 	}
 
-	return fmt.Sprintf("Created %s #%d: %q (%s%s)", issueType, resp.Number, title, issueType, meta)
+	return fmt.Sprintf("Created %s #%d: %q (%s%s)", issueType, result.Number, title, issueType, meta)
 }
 
 // formatTriageIssue formats a triage response.
@@ -90,17 +83,6 @@ func formatUpdateIssue(number int, args map[string]any) string {
 	return fmt.Sprintf("Updated #%d: %s", number, strings.Join(changes, ", "))
 }
 
-// formatCreateSprint formats a create_sprint response.
-func formatCreateSprint(data json.RawMessage, name string) string {
-	var resp struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return string(data)
-	}
-	return fmt.Sprintf("Created sprint %q (id: %s)", name, resp.ID)
-}
-
 // formatUpdateSprint formats an update_sprint response.
 func formatUpdateSprint(args map[string]any) string {
 	var changes []string
@@ -112,56 +94,26 @@ func formatUpdateSprint(args map[string]any) string {
 	return fmt.Sprintf("Updated sprint: %s", strings.Join(changes, ", "))
 }
 
-// formatCreateProject formats a create_project response.
-func formatCreateProject(data json.RawMessage, slug, name, archetype string) string {
-	return fmt.Sprintf("Created project %q (%s, %s)", name, slug, archetype)
-}
-
-// formatListIssues formats a list_issues response as a compact table.
-func formatListIssues(data json.RawMessage) string {
-	var resp struct {
-		Items []struct {
-			Number    int      `json:"number"`
-			Type      string   `json:"type"`
-			Title     string   `json:"title"`
-			Status    string   `json:"status"`
-			Priority  string   `json:"priority"`
-			Estimate  string   `json:"estimate"`
-			Triaged   bool     `json:"triaged"`
-			ParentID  *string  `json:"parent_id"`
-			SprintID  *string  `json:"sprint_id"`
-			OnHold bool `json:"on_hold"`
-			Labels []struct {
-				Name string `json:"name"`
-			} `json:"labels"`
-			Assignees []struct {
-				DisplayName string `json:"display_name"`
-			} `json:"assignees"`
-		} `json:"items"`
-		Total int `json:"total"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return string(data)
-	}
-
-	if len(resp.Items) == 0 {
+// formatListIssues formats issue summaries as a compact table.
+func formatListIssues(items []htclient.IssueSummary, total int) string {
+	if len(items) == 0 {
 		return "No issues found."
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d issue(s):\n\n", resp.Total))
-	for _, item := range resp.Items {
+	fmt.Fprintf(&sb, "%d issue(s):\n\n", total)
+	for _, item := range items {
 		marker := "  "
-		if item.Type == "epic" {
+		if item.Type == htclient.IssueTypeEpic {
 			marker = "◆ "
 		}
 
-		meta := []string{item.Status}
-		if item.Priority != "" && item.Priority != "none" {
-			meta = append(meta, item.Priority)
+		meta := []string{string(item.Status)}
+		if item.Priority != "" && item.Priority != htclient.IssuePriorityNone {
+			meta = append(meta, string(item.Priority))
 		}
-		if item.Estimate != "" && item.Estimate != "none" {
-			meta = append(meta, strings.ToUpper(item.Estimate))
+		if item.Estimate != "" && item.Estimate != htclient.IssueEstimateNone {
+			meta = append(meta, strings.ToUpper(string(item.Estimate)))
 		}
 		if !item.Triaged {
 			meta = append(meta, "untriaged")
@@ -188,286 +140,31 @@ func formatListIssues(data json.RawMessage) string {
 			labelStr = " [" + strings.Join(labelNames, ", ") + "]"
 		}
 
-		sb.WriteString(fmt.Sprintf("%s#%-4d %-50s (%s)%s%s\n", marker, item.Number, item.Title, strings.Join(meta, ", "), assigneeStr, labelStr))
+		fmt.Fprintf(&sb, "%s#%-4d %-50s (%s)%s%s\n", marker, item.Number, item.Title, strings.Join(meta, ", "), assigneeStr, labelStr)
 	}
 	return sb.String()
 }
 
-// formatListSprints formats a list_sprints response.
-func formatListSprints(data json.RawMessage) string {
-	var resp struct {
-		Sprints []struct {
-			ID        string `json:"id"`
-			Name      string `json:"name"`
-			Goal      string `json:"goal"`
-			Status    string `json:"status"`
-			StartDate string `json:"start_date"`
-			EndDate   string `json:"end_date"`
-		} `json:"sprints"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return string(data)
-	}
-
-	if len(resp.Sprints) == 0 {
-		return "No sprints found."
-	}
-
+// formatGetIssue formats an issue detail with full information.
+func formatGetIssue(issue *htclient.IssueDetail) string {
 	var sb strings.Builder
-	for _, s := range resp.Sprints {
-		sb.WriteString(fmt.Sprintf("• %s [%s] — %s\n  id: %s\n", s.Name, s.Status, s.Goal, s.ID))
-	}
-	return sb.String()
-}
-
-// formatListProjects formats a list_projects response.
-func formatListProjects(data json.RawMessage) string {
-	var resp struct {
-		Items []struct {
-			Slug      string `json:"slug"`
-			Name      string `json:"name"`
-			Archetype string `json:"archetype"`
-		} `json:"items"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return string(data)
-	}
-
-	if len(resp.Items) == 0 {
-		return "No projects found."
-	}
-
-	var sb strings.Builder
-	for _, p := range resp.Items {
-		sb.WriteString(fmt.Sprintf("• %s (%s, %s)\n", p.Name, p.Slug, p.Archetype))
-	}
-	return sb.String()
-}
-
-// formatListComments formats a list_comments response.
-func formatListComments(data json.RawMessage) string {
-	var resp struct {
-		Items []struct {
-			ID          string `json:"id"`
-			AuthorName  string `json:"author_name"`
-			AuthorEmail string `json:"author_email"`
-			Body        string `json:"body"`
-			CreatedAt   string `json:"created_at"`
-		} `json:"items"`
-		Total int `json:"total"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return string(data)
-	}
-
-	if len(resp.Items) == 0 {
-		return "No comments."
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d comment(s):\n\n", resp.Total))
-	for _, c := range resp.Items {
-		author := c.AuthorName
-		if author == "" {
-			author = c.AuthorEmail
-		}
-		if author == "" {
-			author = "unknown"
-		}
-		sb.WriteString(fmt.Sprintf("— %s (%s) [id: %s]:\n%s\n\n", author, c.CreatedAt, c.ID, c.Body))
-	}
-	return sb.String()
-}
-
-// formatListLabels formats a list_labels response.
-func formatListLabels(data json.RawMessage) string {
-	var resp struct {
-		Labels []struct {
-			ID    string `json:"id"`
-			Name  string `json:"name"`
-			Color string `json:"color"`
-		} `json:"labels"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return string(data)
-	}
-
-	if len(resp.Labels) == 0 {
-		return "No labels found."
-	}
-
-	var sb strings.Builder
-	for _, l := range resp.Labels {
-		sb.WriteString(fmt.Sprintf("• %s (%s) id: %s\n", l.Name, l.Color, l.ID))
-	}
-	return sb.String()
-}
-
-// formatCreateLabel formats a create_label response.
-func formatCreateLabel(data json.RawMessage, name, color string) string {
-	var resp struct {
-		ID string `json:"ID"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return string(data)
-	}
-	return fmt.Sprintf("Created label %q (%s, id: %s)", name, color, resp.ID)
-}
-
-// formatListMilestones formats a list_milestones response.
-func formatListMilestones(data json.RawMessage) string {
-	var resp struct {
-		Milestones []struct {
-			ID               string  `json:"id"`
-			Title            string  `json:"title"`
-			TargetDate       *string `json:"target_date"`
-			ClosedAt         *string `json:"closed_at"`
-			IssueCount       int     `json:"issue_count"`
-			ClosedIssueCount int     `json:"closed_issue_count"`
-		} `json:"milestones"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return string(data)
-	}
-
-	if len(resp.Milestones) == 0 {
-		return "No milestones found."
-	}
-
-	var sb strings.Builder
-	for _, m := range resp.Milestones {
-		status := "open"
-		if m.ClosedAt != nil {
-			status = "closed"
-		}
-
-		progress := fmt.Sprintf("%d/%d issues done", m.ClosedIssueCount, m.IssueCount)
-
-		target := ""
-		if m.TargetDate != nil {
-			target = fmt.Sprintf(", target: %s", (*m.TargetDate)[:10])
-		}
-
-		sb.WriteString(fmt.Sprintf("• %s [%s%s] — %s\n  id: %s\n", m.Title, status, target, progress, m.ID))
-	}
-	return sb.String()
-}
-
-// formatCurrentUser formats a get_current_user response.
-func formatCurrentUser(data json.RawMessage) string {
-	var user struct {
-		ID      string `json:"id"`
-		Email   string `json:"email"`
-		IsAdmin bool   `json:"is_admin"`
-	}
-	if err := json.Unmarshal(data, &user); err != nil {
-		return string(data)
-	}
-	adminStr := ""
-	if user.IsAdmin {
-		adminStr = " [admin]"
-	}
-	return fmt.Sprintf("%s (%s)%s", user.Email, user.ID, adminStr)
-}
-
-// formatSplitIssue formats a split_issue response.
-func formatSplitIssue(data json.RawMessage) string {
-	var resp struct {
-		NewIssues []struct {
-			ID     string `json:"id"`
-			Number int    `json:"number"`
-		} `json:"new_issues"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return string(data)
-	}
-	nums := make([]string, 0, len(resp.NewIssues))
-	for _, issue := range resp.NewIssues {
-		nums = append(nums, fmt.Sprintf("#%d", issue.Number))
-	}
-	return fmt.Sprintf("Split into %d issues: %s", len(resp.NewIssues), strings.Join(nums, ", "))
-}
-
-// formatSprintBurndown formats a get_sprint_burndown response as a table.
-func formatSprintBurndown(data json.RawMessage) string {
-	var resp struct {
-		Total          int `json:"total"`
-		StartRemaining int `json:"start_remaining"`
-		EndRemaining   int `json:"end_remaining"`
-		Points         []struct {
-			Date      string `json:"date"`
-			Remaining int    `json:"remaining"`
-		} `json:"points"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return string(data)
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Total: %d | Start: %d | End: %d\n\n", resp.Total, resp.StartRemaining, resp.EndRemaining))
-	sb.WriteString("Date        | Remaining\n")
-	sb.WriteString("------------|----------\n")
-	for _, p := range resp.Points {
-		sb.WriteString(fmt.Sprintf("%-12s| %d\n", p.Date, p.Remaining))
-	}
-	return sb.String()
-}
-
-// formatGetIssue formats a get_issue response with full details.
-func formatGetIssue(data json.RawMessage) string {
-	var issue struct {
-		ID          string  `json:"id"`
-		Number      int     `json:"number"`
-		Type        string  `json:"type"`
-		Title       string  `json:"title"`
-		Status      string  `json:"status"`
-		Priority    string  `json:"priority"`
-		Estimate    string  `json:"estimate"`
-		Description string  `json:"description"`
-		Triaged     bool    `json:"triaged"`
-		OnHold      bool    `json:"on_hold"`
-		ParentID    *string `json:"parent_id"`
-		SprintID    *string `json:"sprint_id"`
-		Assignees []struct {
-			DisplayName string `json:"display_name"`
-			Email       string `json:"email"`
-		} `json:"assignees"`
-		Labels []struct {
-			Name  string `json:"name"`
-			Color string `json:"color"`
-		} `json:"labels"`
-		Links []struct {
-			LinkType          string `json:"link_type"`
-			LinkedIssueNumber int    `json:"linked_issue_number"`
-		} `json:"links"`
-		Checklist []struct {
-			ID   string `json:"id"`
-			Text string `json:"text"`
-			Done bool   `json:"done"`
-		} `json:"checklist"`
-	}
-	if err := json.Unmarshal(data, &issue); err != nil {
-		return string(data)
-	}
-
-	var sb strings.Builder
-	typeLabel := issue.Type
-	if issue.Type == "epic" {
+	typeLabel := string(issue.Type)
+	if issue.Type == htclient.IssueTypeEpic {
 		typeLabel = "◆ epic"
 	}
-	sb.WriteString(fmt.Sprintf("#%d %s [%s]\n", issue.Number, issue.Title, typeLabel))
-	sb.WriteString(fmt.Sprintf("ID: %s\n", issue.ID))
-	sb.WriteString(fmt.Sprintf("Status: %s", issue.Status))
+	fmt.Fprintf(&sb, "#%d %s [%s]\n", issue.Number, issue.Title, typeLabel)
+	fmt.Fprintf(&sb, "ID: %s\n", issue.ID)
+	fmt.Fprintf(&sb, "Status: %s", issue.Status)
 	if issue.OnHold {
 		sb.WriteString(" (ON HOLD)")
 	}
 	sb.WriteString("\n")
 
-	if issue.Priority != "" && issue.Priority != "none" {
-		sb.WriteString(fmt.Sprintf("Priority: %s\n", issue.Priority))
+	if issue.Priority != "" && issue.Priority != htclient.IssuePriorityNone {
+		fmt.Fprintf(&sb, "Priority: %s\n", issue.Priority)
 	}
-	if issue.Estimate != "" && issue.Estimate != "none" {
-		sb.WriteString(fmt.Sprintf("Estimate: %s\n", strings.ToUpper(issue.Estimate)))
+	if issue.Estimate != "" && issue.Estimate != htclient.IssueEstimateNone {
+		fmt.Fprintf(&sb, "Estimate: %s\n", strings.ToUpper(string(issue.Estimate)))
 	}
 	if !issue.Triaged {
 		sb.WriteString("⚠ Untriaged\n")
@@ -482,7 +179,7 @@ func formatGetIssue(data json.RawMessage) string {
 				names = append(names, a.Email)
 			}
 		}
-		sb.WriteString(fmt.Sprintf("Assignees: %s\n", strings.Join(names, ", ")))
+		fmt.Fprintf(&sb, "Assignees: %s\n", strings.Join(names, ", "))
 	}
 
 	if len(issue.Labels) > 0 {
@@ -490,17 +187,17 @@ func formatGetIssue(data json.RawMessage) string {
 		for _, l := range issue.Labels {
 			labelNames = append(labelNames, l.Name)
 		}
-		sb.WriteString(fmt.Sprintf("Labels: %s\n", strings.Join(labelNames, ", ")))
+		fmt.Fprintf(&sb, "Labels: %s\n", strings.Join(labelNames, ", "))
 	}
 
-	if issue.Description != "" {
-		sb.WriteString(fmt.Sprintf("\n%s\n", issue.Description))
+	if issue.Description != nil && *issue.Description != "" {
+		fmt.Fprintf(&sb, "\n%s\n", *issue.Description)
 	}
 
 	if len(issue.Links) > 0 {
 		sb.WriteString("\nLinks:\n")
 		for _, l := range issue.Links {
-			sb.WriteString(fmt.Sprintf("  %s #%d\n", l.LinkType, l.LinkedIssueNumber))
+			fmt.Fprintf(&sb, "  %s #%d\n", l.LinkType, l.LinkedIssueNumber)
 		}
 	}
 
@@ -511,9 +208,143 @@ func formatGetIssue(data json.RawMessage) string {
 			if item.Done {
 				check = "☑"
 			}
-			sb.WriteString(fmt.Sprintf("  %s %s  (id: %s)\n", check, item.Text, item.ID))
+			fmt.Fprintf(&sb, "  %s %s  (id: %s)\n", check, item.Text, item.ID)
 		}
 	}
 
 	return sb.String()
+}
+
+// formatListSprints formats sprint summaries.
+func formatListSprints(sprints []htclient.Sprint) string {
+	if len(sprints) == 0 {
+		return "No sprints found."
+	}
+
+	var sb strings.Builder
+	for _, s := range sprints {
+		fmt.Fprintf(&sb, "• %s [%s] — %s\n  id: %s\n", s.Name, s.Status, s.Goal, s.ID)
+	}
+	return sb.String()
+}
+
+// formatListProjects formats project summaries.
+func formatListProjects(projects []htclient.ProjectSummary) string {
+	if len(projects) == 0 {
+		return "No projects found."
+	}
+
+	var sb strings.Builder
+	for _, p := range projects {
+		fmt.Fprintf(&sb, "• %s (%s, %s)\n", p.Name, p.Slug, p.Archetype)
+	}
+	return sb.String()
+}
+
+// formatListComments formats comment list.
+func formatListComments(comments []htclient.Comment, total int) string {
+	if len(comments) == 0 {
+		return "No comments."
+	}
+
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d comment(s):\n\n", total)
+	for _, c := range comments {
+		author := c.AuthorName
+		if author == "" {
+			author = c.AuthorEmail
+		}
+		if author == "" {
+			author = "unknown"
+		}
+		fmt.Fprintf(&sb, "— %s (%s) [id: %s]:\n%s\n\n", author, c.CreatedAt, c.ID, c.Body)
+	}
+	return sb.String()
+}
+
+// formatListLabels formats label list.
+func formatListLabels(labels []htclient.LabelInfo) string {
+	if len(labels) == 0 {
+		return "No labels found."
+	}
+
+	var sb strings.Builder
+	for _, l := range labels {
+		fmt.Fprintf(&sb, "• %s (%s) id: %s\n", l.Name, l.Color, l.ID)
+	}
+	return sb.String()
+}
+
+// formatListMilestones formats milestone list.
+func formatListMilestones(milestones []htclient.Milestone) string {
+	if len(milestones) == 0 {
+		return "No milestones found."
+	}
+
+	var sb strings.Builder
+	for _, m := range milestones {
+		status := "open"
+		if m.ClosedAt != nil {
+			status = "closed"
+		}
+
+		progress := fmt.Sprintf("%d/%d issues done", m.ClosedIssueCount, m.IssueCount)
+
+		target := ""
+		if m.TargetDate != nil {
+			td := *m.TargetDate
+			if len(td) > 10 {
+				td = td[:10]
+			}
+			target = fmt.Sprintf(", target: %s", td)
+		}
+
+		fmt.Fprintf(&sb, "• %s [%s%s] — %s\n  id: %s\n", m.Title, status, target, progress, m.ID)
+	}
+	return sb.String()
+}
+
+// formatCurrentUser formats a user response.
+func formatCurrentUser(user *htclient.User) string {
+	adminStr := ""
+	if user.IsAdmin {
+		adminStr = " [admin]"
+	}
+	return fmt.Sprintf("%s (%s)%s", user.Email, user.ID, adminStr)
+}
+
+// formatSplitIssue formats a split result.
+func formatSplitIssue(result *htclient.SplitIssueResult) string {
+	nums := make([]string, 0, len(result.NewIssues))
+	for _, issue := range result.NewIssues {
+		nums = append(nums, fmt.Sprintf("#%d", issue.Number))
+	}
+	return fmt.Sprintf("Split into %d issues: %s", len(result.NewIssues), strings.Join(nums, ", "))
+}
+
+// formatSprintBurndown formats burndown chart data as a table.
+func formatSprintBurndown(data *htclient.BurndownData) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Total: %d | Start: %d | End: %d\n\n", data.Total, data.StartRemaining, data.EndRemaining)
+	sb.WriteString("Date        | Remaining\n")
+	sb.WriteString("------------|----------\n")
+	for _, p := range data.Points {
+		fmt.Fprintf(&sb, "%-12s| %d\n", p.Date, p.Remaining)
+	}
+	return sb.String()
+}
+
+// formatCreateSprint formats a create sprint confirmation.
+func formatCreateSprint(id, name string) string {
+	return fmt.Sprintf("Created sprint %q (id: %s)", name, id)
+}
+
+// formatCreateLabel formats a create label confirmation.
+func formatCreateLabel(id, name, color string) string {
+	return fmt.Sprintf("Created label %q (%s, id: %s)", name, color, id)
+}
+
+// formatCreateProject formats a create project confirmation.
+func formatCreateProject(slug, name, archetype string) string {
+	return fmt.Sprintf("Created project %q (%s, %s)", name, slug, archetype)
 }

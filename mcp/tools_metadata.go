@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	htclient "github.com/the127/hivetrack/client"
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -45,11 +47,11 @@ func makeListLabels(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug")), nil
 		}
 
-		data, err := client.get("/api/v1/projects/"+slug+"/labels", nil)
+		labels, err := client.Typed().ListLabels(ctx, slug)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatListLabels(data)), nil
+		return textResult(formatListLabels(labels)), nil
 	}
 }
 
@@ -63,14 +65,11 @@ func makeCreateLabel(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, name, color")), nil
 		}
 
-		data, err := client.post("/api/v1/projects/"+slug+"/labels", map[string]any{
-			"name":  name,
-			"color": color,
-		})
+		id, err := client.Typed().CreateLabel(ctx, slug, name, color)
 		if err != nil {
 			return errResult(err), nil
 		}
-		return textResult(formatCreateLabel(data, name, color)), nil
+		return textResult(formatCreateLabel(id, name, color)), nil
 	}
 }
 
@@ -83,24 +82,22 @@ func makeUpdateLabel(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, label_id")), nil
 		}
 
-		body := map[string]any{}
-		setOptionalString(body, args, "name")
-		setOptionalString(body, args, "color")
-		if len(body) == 0 {
+		req := htclient.UpdateLabelRequest{}
+		var changes []string
+		if v, ok := args["name"].(string); ok && v != "" {
+			req.Name = &v
+			changes = append(changes, fmt.Sprintf("name → %s", v))
+		}
+		if v, ok := args["color"].(string); ok && v != "" {
+			req.Color = &v
+			changes = append(changes, fmt.Sprintf("color → %s", v))
+		}
+		if len(changes) == 0 {
 			return errResult(fmt.Errorf("no fields to update")), nil
 		}
 
-		_, err := client.patch(fmt.Sprintf("/api/v1/projects/%s/labels/%s", slug, labelID), body)
-		if err != nil {
+		if err := client.Typed().UpdateLabel(ctx, slug, labelID, req); err != nil {
 			return errResult(err), nil
-		}
-
-		var changes []string
-		if v, ok := body["name"].(string); ok {
-			changes = append(changes, fmt.Sprintf("name → %s", v))
-		}
-		if v, ok := body["color"].(string); ok {
-			changes = append(changes, fmt.Sprintf("color → %s", v))
 		}
 		return textResult(fmt.Sprintf("Updated label: %s", strings.Join(changes, ", "))), nil
 	}
@@ -115,8 +112,7 @@ func makeDeleteLabel(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, label_id")), nil
 		}
 
-		_, err := client.delete(fmt.Sprintf("/api/v1/projects/%s/labels/%s", slug, labelID))
-		if err != nil {
+		if err := client.Typed().DeleteLabel(ctx, slug, labelID); err != nil {
 			return errResult(err), nil
 		}
 		return textResult("Deleted label"), nil
