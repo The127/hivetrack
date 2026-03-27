@@ -268,10 +268,38 @@ const configTable = [
         <!-- MCP server -->
         <h2 id="mcp">MCP server</h2>
         <p>
-          Hivetrack ships with an <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">MCP server</a> that lets AI agents (Claude, etc.) interact with your issues, sprints, and projects. It authenticates via OIDC device flow.
+          Hivetrack ships with an <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">MCP server</a> that lets AI agents (Claude, etc.) interact with your issues, sprints, and projects. There are two ways to run it: locally for development, or self-hosted alongside Hivetrack.
         </p>
-        <h3>Install</h3>
-        <p>Download the binary for your platform from the <a href="https://github.com/The127/hivetrack/releases" target="_blank" rel="noopener">latest release</a>, or install via Homebrew:</p>
+
+        <h3>Option A: Self-hosted (recommended for teams)</h3>
+        <p>
+          Add the MCP container to your Docker Compose stack. It connects to the Hivetrack API internally and serves the MCP protocol over HTTP. Auth is pass-through — each caller's OIDC Bearer token flows straight through to the Hivetrack API.
+        </p>
+        <div class="relative group not-prose my-4">
+          <div class="rounded-lg overflow-hidden border border-slate-200">
+            <div class="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
+              <span class="text-xs text-slate-400 font-mono">docker-compose.yml (add to existing)</span>
+            </div>
+            <Code code={`  hivetrack-mcp:
+    image: ghcr.io/the127/hivetrack-mcp:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      HIVETRACK_URL: http://hivetrack:8086
+    depends_on:
+      - hivetrack`} lang="yaml" theme="github-dark" />
+          </div>
+        </div>
+        <p>
+          AI tools connect to <code>http://your-host:8080/mcp</code> using the MCP Streamable HTTP transport, passing their OIDC Bearer token in the <code>Authorization</code> header. No secrets or service accounts needed — the MCP server has zero credentials of its own.
+        </p>
+        <p>
+          Use the <a href="/docs/deploy">deployment config generator</a> and check "Include MCP server" to get a complete Compose file.
+        </p>
+
+        <h3>Option B: Local binary (for individual developers)</h3>
+        <p>Download the binary from the <a href="https://github.com/The127/hivetrack/releases" target="_blank" rel="noopener">latest release</a>, or install via Homebrew:</p>
         <div class="relative group not-prose my-4">
           <div class="rounded-lg overflow-hidden border border-slate-200">
             <div class="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
@@ -280,7 +308,6 @@ const configTable = [
             <Code code="brew install The127/tap/hivetrack-mcp" lang="bash" theme="github-dark" />
           </div>
         </div>
-        <h3>Configure in Claude Code</h3>
         <p>Add to your <code>.claude/settings.json</code>:</p>
         <div class="relative group not-prose my-4">
           <div class="rounded-lg overflow-hidden border border-slate-200">
@@ -300,8 +327,12 @@ const configTable = [
           </div>
         </div>
         <p>
-          On first use, the MCP server will prompt you to authenticate via your OIDC provider's device flow.
-          A typed Go client library is also available at <code>github.com/the127/hivetrack/client</code> for building custom integrations.
+          On first use, the MCP server prompts you to authenticate via your OIDC provider's device flow. The local binary uses stdio transport and runs as your user.
+        </p>
+
+        <h3>Go client library</h3>
+        <p>
+          A typed Go client library is also available at <code>github.com/the127/hivetrack/client</code> for building custom integrations programmatically.
         </p>
 
       </article>
