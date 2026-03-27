@@ -6,7 +6,33 @@ const sections = [
   { id: 'prerequisites',  label: 'Prerequisites' },
   { id: 'quick-start',    label: 'Quick start' },
   { id: 'config',         label: 'Configuration reference' },
+  { id: 'mcp',            label: 'MCP server' },
 ]
+
+const configYaml = `server:
+  host: 0.0.0.0
+  port: 8086
+  external_url: https://hivetrack.example.com
+  allowed_origins:
+    - https://hivetrack.example.com
+
+database:
+  url: postgres://hivetrack:changeme@postgres:5432/hivetrack?sslmode=disable
+
+oidc:
+  authority: https://your-oidc-provider.example.com
+  client_id: hivetrack
+
+initial_admin:
+  email: admin@example.com
+
+# Optional: email notifications
+# email:
+#   smtp_host: smtp.example.com
+#   smtp_port: 587
+#   smtp_user: noreply@example.com
+#   smtp_password: secret
+#   from_address: "Hivetrack <noreply@example.com>"`
 
 const composeYaml = `services:
   postgres:
@@ -29,12 +55,8 @@ const composeYaml = `services:
     restart: unless-stopped
     ports:
       - "8086:8086"
-    environment:
-      HIVETRACK_DATABASE_URL: postgres://hivetrack:changeme@postgres:5432/hivetrack?sslmode=disable
-      HIVETRACK_SERVER_EXTERNAL_URL: https://hivetrack.example.com
-      HIVETRACK_OIDC_AUTHORITY: https://your-oidc-provider.example.com
-      HIVETRACK_OIDC_CLIENT_ID: hivetrack
-      HIVETRACK_INITIAL_ADMIN_EMAIL: admin@example.com
+    volumes:
+      - ./config.yaml:/app/config.yaml
     depends_on:
       postgres:
         condition: service_healthy
@@ -42,115 +64,25 @@ const composeYaml = `services:
 volumes:
   postgres_data:`
 
-const envTable = [
-  {
-    var: 'HIVETRACK_DATABASE_URL',
-    description: 'PostgreSQL connection string',
-    example: 'postgres://hivetrack:secret@localhost:5432/hivetrack?sslmode=disable',
-    required: true,
-  },
-  {
-    var: 'HIVETRACK_SERVER_EXTERNAL_URL',
-    description: 'Publicly reachable URL of this instance (used in email links)',
-    example: 'https://hivetrack.example.com',
-    required: true,
-  },
-  {
-    var: 'HIVETRACK_SERVER_PORT',
-    description: 'HTTP port to listen on',
-    example: '8086',
-    required: false,
-    default: '8086',
-  },
-  {
-    var: 'HIVETRACK_SERVER_HOST',
-    description: 'Interface to bind to',
-    example: '0.0.0.0',
-    required: false,
-    default: '0.0.0.0',
-  },
-  {
-    var: 'HIVETRACK_SERVER_ALLOWED_ORIGINS',
-    description: 'Comma-separated list of CORS allowed origins',
-    example: 'https://hivetrack.example.com',
-    required: false,
-    default: '(same as EXTERNAL_URL)',
-  },
-  {
-    var: 'HIVETRACK_OIDC_AUTHORITY',
-    description: 'OIDC provider authority URL (issuer)',
-    example: 'https://auth.example.com/realms/myrealm',
-    required: true,
-  },
-  {
-    var: 'HIVETRACK_OIDC_CLIENT_ID',
-    description: 'OIDC client ID registered for this Hivetrack instance',
-    example: 'hivetrack',
-    required: true,
-  },
-  {
-    var: 'HIVETRACK_INITIAL_ADMIN_EMAIL',
-    description: 'Email address of the first user to sign in — they receive instance_admin role',
-    example: 'admin@example.com',
-    required: true,
-  },
-  {
-    var: 'HIVETRACK_EMAIL_SMTP_HOST',
-    description: 'SMTP server hostname (leave empty to disable email)',
-    example: 'smtp.example.com',
-    required: false,
-  },
-  {
-    var: 'HIVETRACK_EMAIL_SMTP_PORT',
-    description: 'SMTP server port',
-    example: '587',
-    required: false,
-    default: '587',
-  },
-  {
-    var: 'HIVETRACK_EMAIL_SMTP_USER',
-    description: 'SMTP username',
-    example: 'noreply@example.com',
-    required: false,
-  },
-  {
-    var: 'HIVETRACK_EMAIL_SMTP_PASSWORD',
-    description: 'SMTP password',
-    example: 'smtp-password',
-    required: false,
-  },
-  {
-    var: 'HIVETRACK_EMAIL_FROM_ADDRESS',
-    description: 'Sender name and address for outgoing emails',
-    example: 'Hivetrack <noreply@example.com>',
-    required: false,
-  },
-  {
-    var: 'HIVETRACK_AI_ENABLED',
-    description: 'Enable AI features (MCP server, sprint planning)',
-    example: 'true',
-    required: false,
-    default: 'false',
-  },
-  {
-    var: 'HIVETRACK_AI_PROVIDER',
-    description: 'AI provider',
-    example: 'anthropic',
-    required: false,
-    default: 'anthropic',
-  },
-  {
-    var: 'HIVETRACK_AI_MODEL',
-    description: 'AI model to use',
-    example: 'claude-sonnet-4-6',
-    required: false,
-  },
-  {
-    var: 'HIVETRACK_AI_API_KEY',
-    description: 'API key for the AI provider',
-    example: 'sk-ant-...',
-    required: false,
-  },
+const configTable = [
+  { path: 'server.host',             description: 'Interface to bind to',                            default: '0.0.0.0' },
+  { path: 'server.port',             description: 'HTTP port to listen on',                          default: '8086' },
+  { path: 'server.external_url',     description: 'Publicly reachable URL (used in email links)',    default: '', required: true },
+  { path: 'server.allowed_origins',  description: 'CORS allowed origins (list)',                     default: '(same as external_url)' },
+  { path: 'database.url',            description: 'PostgreSQL connection string',                    default: '', required: true },
+  { path: 'oidc.authority',          description: 'OIDC provider authority URL (issuer)',             default: '', required: true },
+  { path: 'oidc.client_id',          description: 'OIDC client ID for this Hivetrack instance',      default: '', required: true },
+  { path: 'oidc.claim_mappings.email', description: 'JWT claim for user email',                      default: 'email' },
+  { path: 'oidc.claim_mappings.name',  description: 'JWT claim for display name',                    default: 'name' },
+  { path: 'oidc.claim_mappings.avatar', description: 'JWT claim for avatar URL',                     default: 'picture' },
+  { path: 'initial_admin.email',     description: 'First user with this email gets instance_admin',  default: '', required: true },
+  { path: 'email.smtp_host',         description: 'SMTP server hostname (leave empty to disable)',   default: '' },
+  { path: 'email.smtp_port',         description: 'SMTP server port',                                default: '587' },
+  { path: 'email.smtp_user',         description: 'SMTP username',                                   default: '' },
+  { path: 'email.smtp_password',     description: 'SMTP password',                                   default: '' },
+  { path: 'email.from_address',      description: 'Sender address for outgoing emails',              default: '' },
+  { path: 'mcp.api_token',           description: 'Static API token for MCP server auth',            default: '' },
+  { path: 'mcp.user_email',          description: 'Email to associate with MCP server actions',      default: '' },
 ]
 ---
 
@@ -165,7 +97,7 @@ const envTable = [
         class="w-full text-sm text-slate-700 border border-slate-200 rounded-md px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         onchange="document.getElementById(this.value)?.scrollIntoView({behavior:'smooth', block:'start'})"
       >
-        <option value="">Jump to section…</option>
+        <option value="">Jump to section...</option>
         {sections.map(s => <option value={s.id}>{s.label}</option>)}
       </select>
     </div>
@@ -216,7 +148,7 @@ const envTable = [
             <a href="https://zitadel.com" target="_blank" rel="noopener">Zitadel</a>,
             <a href="https://auth0.com" target="_blank" rel="noopener">Auth0</a>,
             <a href="https://github.com/The127/keyline" target="_blank" rel="noopener">Keyline</a>, or any other.
-            You will need to create a client with the Authorization Code + PKCE flow enabled and set the redirect URI to <code>https://your-hivetrack-url/callback</code>.
+            You need a client with Authorization Code + PKCE flow enabled and the redirect URI set to <code>https://your-hivetrack-url/oidc/callback</code>.
           </li>
         </ul>
 
@@ -224,11 +156,32 @@ const envTable = [
         <h2 id="quick-start">Quick start</h2>
 
         <p>
-          <a href="/docs/deploy">Use the interactive config generator →</a> to produce a ready-to-use Docker Compose, Docker CLI, or Kubernetes manifest with your values pre-filled.
+          <a href="/docs/deploy">Use the interactive config generator &rarr;</a> to produce a ready-to-use Docker Compose or Kubernetes manifest with your values pre-filled.
         </p>
 
-        <h3>1. Create a <code>docker-compose.yml</code></h3>
-        <p>Copy the following file. Update the environment variables for your setup — at minimum the OIDC authority, client ID, and admin email.</p>
+        <h3>1. Create a <code>config.yaml</code></h3>
+        <p>
+          Hivetrack is configured via a YAML file. Create <code>config.yaml</code> in the same directory as your <code>docker-compose.yml</code> and fill in your values.
+        </p>
+
+        <div class="relative group not-prose my-4">
+          <div class="rounded-lg overflow-hidden border border-slate-200">
+            <div class="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
+              <span class="text-xs text-slate-400 font-mono">config.yaml</span>
+              <button
+                class="copy-btn text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1.5"
+                data-code={configYaml}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </button>
+            </div>
+            <Code code={configYaml} lang="yaml" theme="github-dark" />
+          </div>
+        </div>
+
+        <h3>2. Create a <code>docker-compose.yml</code></h3>
+        <p>The compose file mounts your config into the container.</p>
 
         <div class="relative group not-prose my-4">
           <div class="rounded-lg overflow-hidden border border-slate-200">
@@ -245,16 +198,6 @@ const envTable = [
             <Code code={composeYaml} lang="yaml" theme="github-dark" />
           </div>
         </div>
-
-        <h3>2. Set required environment variables</h3>
-        <p>See the <a href="#config">configuration reference</a> below for the full list. The minimum required variables are:</p>
-        <ul>
-          <li><code>HIVETRACK_DATABASE_URL</code></li>
-          <li><code>HIVETRACK_SERVER_EXTERNAL_URL</code></li>
-          <li><code>HIVETRACK_OIDC_AUTHORITY</code></li>
-          <li><code>HIVETRACK_OIDC_CLIENT_ID</code></li>
-          <li><code>HIVETRACK_INITIAL_ADMIN_EMAIL</code></li>
-        </ul>
 
         <h3>3. Start the stack</h3>
         <div class="relative group not-prose my-4">
@@ -273,7 +216,7 @@ const envTable = [
         <h3>4. Open Hivetrack</h3>
         <p>
           Navigate to <code>http://localhost:8086</code> (or your configured external URL).
-          Sign in via your OIDC provider. The first user whose email matches <code>HIVETRACK_INITIAL_ADMIN_EMAIL</code> automatically receives the <code>instance_admin</code> role.
+          Sign in via your OIDC provider. The first user whose email matches <code>initial_admin.email</code> automatically receives the <code>instance_admin</code> role.
         </p>
 
         <h3>5. Create your first project</h3>
@@ -288,41 +231,79 @@ const envTable = [
         <!-- Config reference -->
         <h2 id="config">Configuration reference</h2>
         <p>
-          All configuration can be set via environment variables using the <code>HIVETRACK_</code> prefix with <code>_</code>-separated keys (e.g. <code>server.port</code> → <code>HIVETRACK_SERVER_PORT</code>).
-          You can also use a <code>config.yaml</code> file mounted at <code>/app/config.yaml</code> inside the container.
+          All configuration is set via a <code>config.yaml</code> file mounted at <code>/app/config.yaml</code> inside the container.
         </p>
+        <div class="not-prose p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 my-4">
+          <strong>Note on environment variables:</strong> Hivetrack supports env var overrides using the <code>HIVETRACK_</code> prefix, where underscores replace dots (e.g. <code>server.port</code> &rarr; <code>HIVETRACK_SERVER_PORT</code>). However, config keys that themselves contain underscores (like <code>external_url</code>, <code>client_id</code>, <code>smtp_host</code>) <strong>cannot be set via env vars</strong> because the underscore in the key collides with the nesting separator. Use <code>config.yaml</code> for these fields.
+        </div>
 
         <div class="not-prose overflow-x-auto my-6">
           <table class="w-full text-sm border-collapse">
             <thead>
               <tr class="border-b border-slate-200">
-                <th class="text-left py-2.5 pr-4 font-semibold text-slate-700 whitespace-nowrap">Variable</th>
+                <th class="text-left py-2.5 pr-4 font-semibold text-slate-700 whitespace-nowrap">Config path</th>
                 <th class="text-left py-2.5 pr-4 font-semibold text-slate-700">Description</th>
-                <th class="text-left py-2.5 pr-4 font-semibold text-slate-700 whitespace-nowrap">Default</th>
-                <th class="text-left py-2.5 font-semibold text-slate-700">Example</th>
+                <th class="text-left py-2.5 font-semibold text-slate-700 whitespace-nowrap">Default</th>
               </tr>
             </thead>
             <tbody>
-              {envTable.map(row => (
+              {configTable.map(row => (
                 <tr class="border-b border-slate-100 hover:bg-slate-50">
                   <td class="py-2.5 pr-4 align-top">
                     <code class="text-[12px] font-mono bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded whitespace-nowrap">
-                      {row.var}
+                      {row.path}
                     </code>
                     {row.required && (
                       <span class="ml-1.5 text-[10px] font-semibold text-red-600 bg-red-50 px-1 py-0.5 rounded uppercase tracking-wide">required</span>
                     )}
                   </td>
                   <td class="py-2.5 pr-4 align-top text-slate-600">{row.description}</td>
-                  <td class="py-2.5 pr-4 align-top text-slate-400 font-mono text-[12px]">{row.default ?? '—'}</td>
-                  <td class="py-2.5 align-top">
-                    <code class="text-[12px] font-mono text-slate-500">{row.example}</code>
-                  </td>
+                  <td class="py-2.5 align-top text-slate-400 font-mono text-[12px]">{row.default || '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+
+        <!-- MCP server -->
+        <h2 id="mcp">MCP server</h2>
+        <p>
+          Hivetrack ships with an <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">MCP server</a> that lets AI agents (Claude, etc.) interact with your issues, sprints, and projects. It authenticates via OIDC device flow.
+        </p>
+        <h3>Install</h3>
+        <p>Download the binary for your platform from the <a href="https://github.com/The127/hivetrack/releases" target="_blank" rel="noopener">latest release</a>, or install via Homebrew:</p>
+        <div class="relative group not-prose my-4">
+          <div class="rounded-lg overflow-hidden border border-slate-200">
+            <div class="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
+              <span class="text-xs text-slate-400 font-mono">shell</span>
+            </div>
+            <Code code="brew install The127/tap/hivetrack-mcp" lang="bash" theme="github-dark" />
+          </div>
+        </div>
+        <h3>Configure in Claude Code</h3>
+        <p>Add to your <code>.claude/settings.json</code>:</p>
+        <div class="relative group not-prose my-4">
+          <div class="rounded-lg overflow-hidden border border-slate-200">
+            <div class="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
+              <span class="text-xs text-slate-400 font-mono">settings.json</span>
+            </div>
+            <Code code={`{
+  "mcpServers": {
+    "hivetrack": {
+      "command": "hivetrack-mcp",
+      "env": {
+        "HIVETRACK_URL": "https://your-hivetrack-url"
+      }
+    }
+  }
+}`} lang="json" theme="github-dark" />
+          </div>
+        </div>
+        <p>
+          On first use, the MCP server will prompt you to authenticate via your OIDC provider's device flow.
+          A typed Go client library is also available at <code>github.com/the127/hivetrack/client</code> for building custom integrations.
+        </p>
+
       </article>
     </div>
   </div>
