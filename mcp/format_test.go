@@ -187,6 +187,25 @@ func TestFormatTriageIssue_withExtras(t *testing.T) {
 	}
 }
 
+func TestFormatUpdateIssue_OnHold(t *testing.T) {
+	result := formatUpdateIssue(7, map[string]any{
+		"on_hold":     "true",
+		"hold_reason": "waiting_on_customer",
+	})
+	if !contains(result, "on hold") || !contains(result, "waiting_on_customer") {
+		t.Errorf("unexpected: %s", result)
+	}
+}
+
+func TestFormatUpdateIssue_ClearHold(t *testing.T) {
+	result := formatUpdateIssue(7, map[string]any{
+		"on_hold": "false",
+	})
+	if !contains(result, "hold cleared") {
+		t.Errorf("unexpected: %s", result)
+	}
+}
+
 func TestFormatCreateIssue(t *testing.T) {
 	result := formatCreateIssue(&htclient.CreateIssueResult{Number: 42}, map[string]any{
 		"title":    "New Thing",

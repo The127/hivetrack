@@ -175,6 +175,48 @@ func TestHandleGetIssues_FilterByLabelID(t *testing.T) {
 	assert.Equal(t, 1, result.Items[0].Number)
 }
 
+func TestHandleGetIssues_FilterByOnHold(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+
+	p := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(p)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	normal := seedIssue(db, p.GetId(), actor.GetId(), 1, models.IssueStatusTodo, true)
+	held := seedIssue(db, p.GetId(), actor.GetId(), 2, models.IssueStatusInProgress, true)
+	reason := models.HoldReasonWaitingOnExternal
+	now := held.GetUpdatedAt()
+	held.SetHold(true, &reason, &now, nil)
+	db.Issues().Update(held)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+
+	// Filter on_hold=true
+	onHold := true
+	result, err := queries.HandleGetIssues(ctx, queries.GetIssuesQuery{
+		ProjectSlug: "p",
+		OnHold:      &onHold,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 1, result.Total)
+	assert.Equal(t, 2, result.Items[0].Number)
+
+	// Filter on_hold=false
+	notOnHold := false
+	result, err = queries.HandleGetIssues(ctx, queries.GetIssuesQuery{
+		ProjectSlug: "p",
+		OnHold:      &notOnHold,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 1, result.Total)
+	assert.Equal(t, 1, result.Items[0].Number)
+
+	_ = normal // used above
+}
+
 func TestHandleGetIssues_ExcludeLabelID(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")

@@ -131,6 +131,7 @@ type IssueFilter struct {
 	HasNoParent    *bool
 	LabelID        *uuid.UUID
 	ExcludeLabelID *uuid.UUID
+	OnHold         *bool
 	Limit          int
 	Offset         int
 }
@@ -213,6 +214,11 @@ func (f *IssueFilter) ByLabelID(id uuid.UUID) *IssueFilter {
 
 func (f *IssueFilter) ExcludeByLabelID(id uuid.UUID) *IssueFilter {
 	f.ExcludeLabelID = &id
+	return f
+}
+
+func (f *IssueFilter) ByOnHold(v bool) *IssueFilter {
+	f.OnHold = &v
 	return f
 }
 

@@ -19,6 +19,7 @@ type ListIssuesOptions struct {
 	AssigneeID     string
 	LabelID        string
 	ExcludeLabelID string
+	OnHold         *bool
 	Limit          int
 	Offset         int
 }
@@ -62,6 +63,9 @@ func (c *Client) ListIssues(ctx context.Context, slug string, opts ListIssuesOpt
 	}
 	if opts.ExcludeLabelID != "" {
 		q.Set("exclude_label_id", opts.ExcludeLabelID)
+	}
+	if opts.OnHold != nil {
+		q.Set("on_hold", fmt.Sprintf("%t", *opts.OnHold))
 	}
 	if opts.Limit > 0 {
 		q.Set("limit", fmt.Sprintf("%d", opts.Limit))
@@ -157,6 +161,9 @@ type UpdateIssueRequest struct {
 	AssigneeIDs Field[[]string] `json:"assignee_ids"`
 	LabelIDs    Field[[]string] `json:"label_ids"`
 	OwnerID     Field[string]   `json:"owner_id"`
+	OnHold      Field[bool]     `json:"on_hold"`
+	HoldReason  Field[string]   `json:"hold_reason"`
+	HoldNote    Field[string]   `json:"hold_note"`
 }
 
 // UpdateIssue updates an existing issue.
@@ -267,6 +274,9 @@ type BatchUpdateIssuesRequest struct {
 	MilestoneID   Field[string]    `json:"milestone_id"`
 	AssigneeIDs   Field[[]string]  `json:"assignee_ids"`
 	LabelIDs      Field[[]string]  `json:"label_ids"`
+	OnHold        Field[bool]      `json:"on_hold"`
+	HoldReason    Field[string]    `json:"hold_reason"`
+	HoldNote      Field[string]    `json:"hold_note"`
 }
 
 // BatchUpdateIssuesResult contains the count of updated issues.

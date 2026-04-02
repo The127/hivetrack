@@ -353,6 +353,11 @@ func (r *IssueRepository) List(ctx context.Context, filter *repositories.IssueFi
 	if filter.ExcludeLabelID != nil {
 		baseQuery += fmt.Sprintf(` AND NOT EXISTS (SELECT 1 FROM issue_labels il WHERE il.issue_id = i.id AND il.label_id=$%d)`, argIdx)
 		args = append(args, *filter.ExcludeLabelID)
+		argIdx++
+	}
+	if filter.OnHold != nil {
+		baseQuery += fmt.Sprintf(` AND i.on_hold=$%d`, argIdx)
+		args = append(args, *filter.OnHold)
 	}
 
 	// Count total
