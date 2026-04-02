@@ -304,7 +304,7 @@ function priorityBorder(priority) {
           </div>
         </div>
 
-        <div v-if="loadingIssues" class="flex justify-center py-8">
+        <div v-if="loadingIssues" class="h-32 flex items-center justify-center">
           <Spinner class="size-5 text-slate-400" />
         </div>
 
@@ -473,7 +473,7 @@ function priorityBorder(priority) {
           </button>
         </div>
 
-        <div v-if="loadingProjects" class="flex justify-center py-8">
+        <div v-if="loadingProjects" class="h-32 flex items-center justify-center">
           <Spinner class="size-5 text-slate-400" />
         </div>
 
