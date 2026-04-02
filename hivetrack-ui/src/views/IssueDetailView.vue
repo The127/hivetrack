@@ -30,7 +30,7 @@ import MarkdownEditor from "@/components/ui/MarkdownEditor.vue";
 import RelativeTime from "@/components/ui/RelativeTime.vue";
 import SplitIssueModal from "@/components/issue/SplitIssueModal.vue";
 import Modal from "@/components/ui/Modal.vue";
-import { fetchIssue, updateIssue } from "@/api/issues";
+import { fetchIssue, updateIssue, createIssueLink } from "@/api/issues";
 import { fetchProject } from "@/api/projects";
 import { fetchSprints } from "@/api/sprints";
 import { useTheme } from "@/composables/useTheme";
@@ -114,6 +114,30 @@ function updateStatus(status) {
 
 function confirmCancel() {
   doUpdateStatus({ status: "cancelled", cancelReason: cancelReasonDraft.value.trim() || undefined });
+}
+
+// ── Link mutation ─────────────────────────────────────────────────────────────
+
+const showLinkForm = ref(false);
+const linkTypeDraft = ref("blocks");
+const linkTargetDraft = ref("");
+
+const { mutate: doAddLink, isPending: linkPending } = useMutation({
+  mutationFn: (payload) => createIssueLink(slug.value, number.value, payload),
+  onSuccess: () => {
+    showLinkForm.value = false;
+    linkTypeDraft.value = "blocks";
+    linkTargetDraft.value = "";
+    queryClient.invalidateQueries({
+      queryKey: ["issue", slug.value, number.value],
+    });
+  },
+});
+
+function confirmLink() {
+  const target = parseInt(linkTargetDraft.value, 10);
+  if (!target) return;
+  doAddLink({ link_type: linkTypeDraft.value, target_number: target });
 }
 
 // ── Hold mutation ─────────────────────────────────────────────────────────────
@@ -616,12 +640,19 @@ const { mutate: updateMilestone } = useMutation({
           </div>
 
           <!-- Links -->
-          <div v-if="issue.links?.length" class="space-y-2">
-            <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <LinkIcon class="size-3.5" />
-              Linked issues
-            </h2>
-            <div class="space-y-1">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <LinkIcon class="size-3.5" />
+                Linked issues
+              </h2>
+              <button
+                v-if="!showLinkForm"
+                class="text-xs text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+                @click="showLinkForm = true"
+              >Add link</button>
+            </div>
+            <div v-if="issue.links?.length" class="space-y-1">
               <div
                 v-for="link in issue.links"
                 :key="link.id"
@@ -638,6 +669,32 @@ const { mutate: updateMilestone } = useMutation({
                 </RouterLink>
               </div>
             </div>
+            <div v-if="showLinkForm" class="flex items-center gap-2">
+              <select
+                v-model="linkTypeDraft"
+                class="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                <option value="blocks">blocks</option>
+                <option value="is_blocked_by">is blocked by</option>
+                <option value="relates_to">relates to</option>
+                <option value="duplicates">duplicates</option>
+              </select>
+              <span class="text-xs text-slate-400">#</span>
+              <input
+                v-model="linkTargetDraft"
+                type="number"
+                min="1"
+                placeholder="issue number"
+                class="w-24 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                @keydown.enter="confirmLink"
+              />
+              <Button size="xs" variant="primary" :loading="linkPending" @click="confirmLink">Add</Button>
+              <button
+                class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                @click="showLinkForm = false"
+              >Cancel</button>
+            </div>
+            <p v-if="!issue.links?.length && !showLinkForm" class="text-xs text-slate-400 dark:text-slate-500">No links</p>
           </div>
 
           <!-- Dates -->
