@@ -75,11 +75,12 @@ func serveStdio(apiURL string) {
 type bearerTokenKey struct{}
 
 // serveHTTP runs the MCP server over HTTP (Streamable HTTP transport).
-// Authentication uses per-session OIDC device flow: the first tool call
-// returns an activation URL, the user authenticates in a browser, and
-// subsequent calls use the cached token. Callers that already have a
+// Authentication is handled by an OAuth 2.1 proxy that redirects to the
+// real OIDC provider's authorization code flow. MCP clients discover the
+// proxy via /.well-known/oauth-authorization-server and authenticate
+// through a standard browser redirect. Callers that already have a
 // Bearer token (CI, service accounts) can pass it via the Authorization
-// header to skip device flow entirely.
+// header to skip the OAuth flow entirely.
 func serveHTTP(apiURL string) {
 	listenAddr := os.Getenv("HIVETRACK_MCP_LISTEN")
 	if listenAddr == "" {

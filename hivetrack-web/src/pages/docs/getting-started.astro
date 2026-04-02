@@ -289,7 +289,7 @@ const configTable = [
 
         <h3>Option A: Self-hosted (recommended for teams)</h3>
         <p>
-          Add the MCP container to your Docker Compose stack. It connects to the Hivetrack API internally and serves the MCP protocol over HTTP. Auth is pass-through — each caller's OIDC Bearer token flows straight through to the Hivetrack API.
+          Add the MCP container to your Docker Compose stack. It connects to the Hivetrack API internally and serves the MCP protocol over HTTP. The server includes an OAuth proxy — MCP clients authenticate through a browser redirect to your OIDC provider, no manual token management needed.
         </p>
         <div class="relative group not-prose my-4">
           <div class="rounded-lg overflow-hidden border border-slate-200">
@@ -303,12 +303,14 @@ const configTable = [
       - "8080:8080"
     environment:
       HIVETRACK_URL: http://hivetrack:8086
+      HIVETRACK_MCP_TRANSPORT: http
+      HIVETRACK_MCP_EXTERNAL_URL: https://your-mcp-url
     depends_on:
       - hivetrack`} lang="yaml" theme="github-dark" />
           </div>
         </div>
         <p>
-          AI tools connect to <code>http://your-host:8080/mcp</code> using the MCP Streamable HTTP transport, passing their OIDC Bearer token in the <code>Authorization</code> header. No secrets or service accounts needed — the MCP server has zero credentials of its own.
+          AI tools connect to <code>https://your-mcp-url/mcp</code> using the MCP Streamable HTTP transport. The server handles OAuth automatically — clients are redirected to your OIDC provider to authenticate in the browser. Callers with an existing Bearer token (CI, service accounts) can also pass it directly via the <code>Authorization</code> header.
         </p>
         <p>
           Use the <a href="/docs/deploy">deployment config generator</a> and check "Include MCP server" to get a complete Compose file.
@@ -343,7 +345,7 @@ const configTable = [
           </div>
         </div>
         <p>
-          On first use, the MCP server prompts you to authenticate via your OIDC provider's device flow. The local binary uses stdio transport and runs as your user.
+          On first use, the MCP server prompts you to authenticate via your OIDC provider (device flow). The local binary uses stdio transport and runs as your user.
         </p>
 
         <h3>Go client library</h3>

@@ -11,9 +11,10 @@ import (
 	htclient "github.com/the127/hivetrack/client"
 )
 
-// sessionAuthManager implements TokenProvider with per-MCP-session device flow.
-// Each session gets its own OIDC device flow and cached token.
-// If the caller provides a Bearer token via context, it is used directly.
+// sessionAuthManager implements TokenProvider with per-MCP-session auth.
+// In HTTP mode the OAuth proxy handles authentication for most clients.
+// This manager provides fallback device flow for sessions without a token
+// and Bearer passthrough for callers that supply their own token.
 type sessionAuthManager struct {
 	apiURL   string
 	sessions sync.Map // map[string]*sessionState
@@ -39,7 +40,7 @@ type sessionState struct {
 }
 
 // ProvideToken returns a token for the current request.
-// Priority: Bearer from HTTP header > cached session token > device flow.
+// Priority: Bearer from HTTP header (incl. OAuth proxy tokens) > cached session token > device flow.
 func (m *sessionAuthManager) ProvideToken(ctx context.Context) (htclient.TokenCache, error) {
 	// 1. Bearer passthrough: if caller sent an Authorization header, use it.
 	if token, ok := ctx.Value(bearerTokenKey{}).(string); ok && token != "" {

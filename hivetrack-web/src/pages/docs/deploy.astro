@@ -91,6 +91,11 @@ import Layout from '../../layouts/Layout.astro'
                 <label for="f-mcp-port" class="field-label">MCP server port</label>
                 <input id="f-mcp-port" type="number" value="8080" class="field-input" data-field="mcpPort" />
               </div>
+              <div class="field">
+                <label for="f-mcp-external-url" class="field-label">MCP external URL</label>
+                <input id="f-mcp-external-url" type="text" placeholder="https://mcp.example.com" class="field-input" data-field="mcpExternalUrl" />
+                <p class="text-xs text-slate-400 mt-1">Public URL where the MCP server is reachable (for OAuth redirects)</p>
+              </div>
             </div>
 
             <!-- Keyline fields -->
@@ -215,6 +220,7 @@ import Layout from '../../layouts/Layout.astro'
     smtpHost: string
     includeMcp: boolean
     mcpPort: string
+    mcpExternalUrl: string
     includeKeyline: boolean
     keylineApiVersion: string
     keylineUiVersion: string
@@ -244,6 +250,7 @@ import Layout from '../../layouts/Layout.astro'
       smtpHost: get('smtpHost'),
       includeMcp: checked('f-include-mcp'),
       mcpPort: get('mcpPort') || '8080',
+      mcpExternalUrl: get('mcpExternalUrl') || 'https://mcp.example.com',
       includeKeyline: checked('f-include-keyline'),
       keylineApiVersion: get('keylineApiVersion') || 'v0.2.2',
       keylineUiVersion: get('keylineUiVersion') || 'v0.2.2',
@@ -351,7 +358,8 @@ initialVirtualServer:
           type: public
           enableDeviceFlow: true
           redirectUris:
-            - ${f.externalUrl}/auth/callback
+            - ${f.externalUrl}/auth/callback${f.includeMcp ? `
+            - ${f.mcpExternalUrl}/oauth/callback` : ''}
           postLogoutRedirectUris:
             - ${f.externalUrl}/logout-callback`
   }
@@ -367,6 +375,8 @@ initialVirtualServer:
       - "${f.mcpPort}:8080"
     environment:
       HIVETRACK_URL: http://hivetrack:${f.port}
+      HIVETRACK_MCP_TRANSPORT: http
+      HIVETRACK_MCP_EXTERNAL_URL: ${f.mcpExternalUrl}
     depends_on:
       - hivetrack`
   }
@@ -457,12 +467,14 @@ volumes:
   function generateDocker(f: Fields): string {
     const mcp = f.includeMcp ? `
 
-# MCP server (AI agent access — pass-through OIDC auth)
+# MCP server (AI agent access — OAuth proxy to OIDC provider)
 docker run -d \\
   --name hivetrack-mcp \\
   --restart unless-stopped \\
   -p ${f.mcpPort}:8080 \\
   -e HIVETRACK_URL=http://hivetrack:${f.port} \\
+  -e HIVETRACK_MCP_TRANSPORT=http \\
+  -e HIVETRACK_MCP_EXTERNAL_URL=${f.mcpExternalUrl} \\
   ghcr.io/the127/hivetrack-mcp:${f.version}` : ''
 
     return `# Create config.yaml (shown below), then run:
@@ -521,6 +533,10 @@ spec:
           env:
             - name: HIVETRACK_URL
               value: "http://hivetrack:${f.port}"
+            - name: HIVETRACK_MCP_TRANSPORT
+              value: "http"
+            - name: HIVETRACK_MCP_EXTERNAL_URL
+              value: "${f.mcpExternalUrl}"
 ---
 apiVersion: v1
 kind: Service

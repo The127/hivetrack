@@ -52,7 +52,7 @@ just install-hooks    # install git pre-push hook
 
 ## MCP (AI integration)
 
-Hivetrack ships an MCP server so AI assistants (Claude, Cursor, etc.) can read and write issues directly. Auth is handled automatically on first use.
+Hivetrack ships an MCP server so AI assistants (Claude, Cursor, etc.) can read and write issues directly. Auth is handled automatically — the HTTP transport includes an OAuth proxy that redirects to your OIDC provider, and the local binary uses device flow.
 
 **Claude Code** — one command installs and registers the server:
 
