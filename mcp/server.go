@@ -6,12 +6,15 @@ import (
 )
 
 // NewServer creates a configured MCP server with all Hivetrack tools registered.
-func NewServer(client *Client) *server.MCPServer {
+func NewServer(client *Client, opts ...server.ServerOption) *server.MCPServer {
+	defaults := []server.ServerOption{
+		server.WithToolCapabilities(false),
+		server.WithLogging(),
+	}
 	s := server.NewMCPServer(
 		"Hivetrack",
 		"1.0.0",
-		server.WithToolCapabilities(false),
-		server.WithLogging(),
+		append(defaults, opts...)...,
 	)
 
 	registerUserTools(s, client)
