@@ -22,7 +22,7 @@ const THEME_OPTIONS = [
   <MainLayout>
     <div class="max-w-2xl mx-auto px-6 py-8">
       <h1 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-6">
-        Instance Settings
+        User Settings
       </h1>
 
       <!-- Appearance -->
