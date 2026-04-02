@@ -214,7 +214,7 @@ function formatDateRange(start, end) {
 <template>
   <MainLayout>
     <!-- Loading -->
-    <div v-if="loadingProject" class="flex justify-center items-center h-40">
+    <div v-if="loadingProject" class="h-32 flex items-center justify-center">
       <Spinner class="size-5 text-slate-400" />
     </div>
 

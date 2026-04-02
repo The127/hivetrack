@@ -70,7 +70,7 @@ const archivedProjects = computed(() =>
       </div>
 
       <!-- Loading -->
-      <div v-if="isLoading" class="flex justify-center py-16">
+      <div v-if="isLoading" class="h-32 flex items-center justify-center">
         <Spinner class="size-5 text-slate-400" />
       </div>
 
