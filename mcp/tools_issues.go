@@ -27,6 +27,7 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("label_name", mcp.Description("Filter by label name (resolved to ID)")),
 		mcp.WithString("exclude_label_id", mcp.Description("Exclude issues with this label ID (UUID)")),
 		mcp.WithString("exclude_label_name", mcp.Description("Exclude issues with this label name (resolved to ID)")),
+		mcp.WithString("on_hold", mcp.Description("Filter by on-hold status (true/false)")),
 	), makeListIssues(client))
 
 	s.AddTool(mcp.NewTool("get_issue",
@@ -72,6 +73,9 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("label_ids", mcp.Description("Comma-separated label IDs (UUIDs), or 'null' to clear all labels")),
 		mcp.WithString("label_names", mcp.Description("Comma-separated label names (resolved to IDs server-side). Alternative to label_ids.")),
 		mcp.WithString("owner_id", mcp.Description("User ID (UUID) to set as owner, or 'null' to clear")),
+		mcp.WithString("on_hold", mcp.Description("Set on-hold status: 'true' or 'false'")),
+		mcp.WithString("hold_reason", mcp.Description("Hold reason: waiting_on_customer, waiting_on_external, blocked_by_issue")),
+		mcp.WithString("hold_note", mcp.Description("Optional note about why the issue is on hold")),
 	), makeUpdateIssue(client))
 
 	s.AddTool(mcp.NewTool("add_checklist_item",
@@ -139,6 +143,9 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithString("assignee_ids", mcp.Description("Comma-separated user IDs (UUIDs), or 'null' to clear")),
 		mcp.WithString("label_ids", mcp.Description("Comma-separated label IDs (UUIDs), or 'null' to clear")),
 		mcp.WithString("label_names", mcp.Description("Comma-separated label names (resolved to IDs). Alternative to label_ids.")),
+		mcp.WithString("on_hold", mcp.Description("Set on-hold: 'true' or 'false'")),
+		mcp.WithString("hold_reason", mcp.Description("Hold reason: waiting_on_customer, waiting_on_external, blocked_by_issue")),
+		mcp.WithString("hold_note", mcp.Description("Optional hold note")),
 	), makeBatchUpdateIssues(client))
 
 	s.AddTool(mcp.NewTool("add_issue_link",
@@ -175,6 +182,10 @@ func makeListIssues(client *Client) server.ToolHandlerFunc {
 		if v, ok := args["backlog"].(string); ok && v != "" {
 			b := v == "true"
 			opts.Backlog = &b
+		}
+		if v, ok := args["on_hold"].(string); ok && v != "" {
+			b := v == "true"
+			opts.OnHold = &b
 		}
 
 		// Resolve label names to IDs if provided.
@@ -372,6 +383,12 @@ func makeUpdateIssue(client *Client) server.ToolHandlerFunc {
 				req.LabelIDs = htclient.Set(ids)
 			}
 		}
+
+		if v, ok := args["on_hold"].(string); ok && v != "" {
+			req.OnHold = htclient.Set(v == "true")
+		}
+		req.HoldReason = setOrNull("hold_reason")
+		req.HoldNote = setOrNull("hold_note")
 
 		if err := client.Typed().UpdateIssue(ctx, slug, number, req); err != nil {
 			return errResult(err), nil
@@ -644,6 +661,11 @@ func makeBatchUpdateIssues(client *Client) server.ToolHandlerFunc {
 		if ids, ok := body["label_ids"].([]string); ok {
 			batchReq.LabelIDs = htclient.Set(ids)
 		}
+		if v, ok := args["on_hold"].(string); ok && v != "" {
+			batchReq.OnHold = htclient.Set(v == "true")
+		}
+		batchReq.HoldReason = setFromMap(body, "hold_reason")
+		batchReq.HoldNote = setFromMap(body, "hold_note")
 		result, err := client.Typed().BatchUpdateIssues(ctx, slug, batchReq)
 		if err != nil {
 			return errResult(err), nil

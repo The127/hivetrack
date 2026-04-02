@@ -496,3 +496,93 @@ func TestHandleUpdateIssue_RefinedRejectedForEpic(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, unchanged.GetRefined())
 }
+
+func TestHandleUpdateIssue_TerminalStatusClearsHoldOnBlockedIssue(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	blocker := newTestIssue(project.GetId(), actor.GetId(), 1)
+	blocker.SetStatus(models.IssueStatusInProgress)
+	blocked := newTestIssue(project.GetId(), actor.GetId(), 2)
+	db.Issues().Insert(blocker)
+	db.Issues().Insert(blocked)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	// Create blocks link + auto-hold
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	_, err := commands.HandleCreateIssueLink(ctx, commands.CreateIssueLinkCommand{
+		SourceIssueID: blocker.GetId(),
+		TargetIssueID: blocked.GetId(),
+		LinkType:      models.LinkTypeBlocks,
+	})
+	require.NoError(t, err)
+
+	// Verify blocked is on hold
+	held, _ := db.Issues().GetByID(context.Background(), blocked.GetId())
+	require.True(t, held.GetOnHold())
+
+	// Resolve blocker
+	done := models.IssueStatusDone
+	_, err = commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID: blocker.GetId(),
+		Status:  &done,
+	})
+	require.NoError(t, err)
+
+	// Verify hold is cleared
+	updated, _ := db.Issues().GetByID(context.Background(), blocked.GetId())
+	assert.False(t, updated.GetOnHold())
+}
+
+func TestHandleUpdateIssue_TerminalStatusDoesNotClearIfOtherBlockersRemain(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	blockerA := newTestIssue(project.GetId(), actor.GetId(), 1)
+	blockerA.SetStatus(models.IssueStatusInProgress)
+	blockerB := newTestIssue(project.GetId(), actor.GetId(), 2)
+	blockerB.SetStatus(models.IssueStatusInProgress)
+	blocked := newTestIssue(project.GetId(), actor.GetId(), 3)
+	db.Issues().Insert(blockerA)
+	db.Issues().Insert(blockerB)
+	db.Issues().Insert(blocked)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+
+	// A blocks target
+	_, err := commands.HandleCreateIssueLink(ctx, commands.CreateIssueLinkCommand{
+		SourceIssueID: blockerA.GetId(),
+		TargetIssueID: blocked.GetId(),
+		LinkType:      models.LinkTypeBlocks,
+	})
+	require.NoError(t, err)
+
+	// B blocks target (already on hold, so won't overwrite)
+	_, err = commands.HandleCreateIssueLink(ctx, commands.CreateIssueLinkCommand{
+		SourceIssueID: blockerB.GetId(),
+		TargetIssueID: blocked.GetId(),
+		LinkType:      models.LinkTypeBlocks,
+	})
+	require.NoError(t, err)
+
+	// Resolve only A
+	done := models.IssueStatusDone
+	_, err = commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID: blockerA.GetId(),
+		Status:  &done,
+	})
+	require.NoError(t, err)
+
+	// B is still active, so hold should remain
+	updated, _ := db.Issues().GetByID(context.Background(), blocked.GetId())
+	assert.True(t, updated.GetOnHold())
+}

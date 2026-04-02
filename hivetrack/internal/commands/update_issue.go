@@ -160,6 +160,13 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 		}
 	}
 
+	// Auto-clear holds on blocked issues when this issue reaches a terminal status.
+	if cmd.Status != nil && isTerminalStatus(*cmd.Status) {
+		if err := autoClearBlockedHolds(ctx, db, issue); err != nil {
+			return nil, err
+		}
+	}
+
 	issue.SetUpdatedAt(time.Now())
 
 	db.Issues().Update(issue)
@@ -194,4 +201,64 @@ func actorIsViewerOnProject(ctx context.Context, db repositories.DbContext, proj
 		return false, fmt.Errorf("getting project member: %w", err)
 	}
 	return member != nil && member.Role == models.ProjectRoleViewer, nil
+}
+
+func isTerminalStatus(s models.IssueStatus) bool {
+	return s == models.IssueStatusDone || s == models.IssueStatusCancelled ||
+		s == models.IssueStatusResolved || s == models.IssueStatusClosed
+}
+
+// autoClearBlockedHolds clears on_hold on issues blocked by this one,
+// but only if all other blockers are also in a terminal state.
+func autoClearBlockedHolds(ctx context.Context, db repositories.DbContext, issue *models.Issue) error {
+	links, err := db.Issues().ListLinks(ctx, issue.GetId())
+	if err != nil {
+		return fmt.Errorf("listing links for auto-clear: %w", err)
+	}
+	for _, link := range links {
+		if link.LinkType != models.LinkTypeBlocks || link.SourceIssueID != issue.GetId() {
+			continue
+		}
+		blockedIssue, err := db.Issues().GetByID(ctx, link.TargetIssueID)
+		if err != nil {
+			return fmt.Errorf("getting blocked issue: %w", err)
+		}
+		if blockedIssue == nil || !blockedIssue.GetOnHold() {
+			continue
+		}
+		reason := blockedIssue.GetHoldReason()
+		if reason != nil && *reason != models.HoldReasonBlockedByIssue {
+			continue
+		}
+		hasActiveBlockers, err := hasOtherActiveBlockers(ctx, db, blockedIssue.GetId(), issue.GetId())
+		if err != nil {
+			return err
+		}
+		if !hasActiveBlockers {
+			blockedIssue.SetHold(false, nil, nil, nil)
+			blockedIssue.SetUpdatedAt(time.Now())
+			db.Issues().Update(blockedIssue)
+		}
+	}
+	return nil
+}
+
+func hasOtherActiveBlockers(ctx context.Context, db repositories.DbContext, blockedID, resolvedBlockerID uuid.UUID) (bool, error) {
+	links, err := db.Issues().ListLinks(ctx, blockedID)
+	if err != nil {
+		return false, fmt.Errorf("listing blocked issue links: %w", err)
+	}
+	for _, link := range links {
+		if link.LinkType != models.LinkTypeBlocks || link.TargetIssueID != blockedID || link.SourceIssueID == resolvedBlockerID {
+			continue
+		}
+		blocker, err := db.Issues().GetByID(ctx, link.SourceIssueID)
+		if err != nil {
+			return false, fmt.Errorf("getting blocker: %w", err)
+		}
+		if blocker != nil && !isTerminalStatus(blocker.GetStatus()) {
+			return true, nil
+		}
+	}
+	return false, nil
 }

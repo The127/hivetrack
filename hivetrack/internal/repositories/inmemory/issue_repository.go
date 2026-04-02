@@ -174,5 +174,8 @@ func matchesIssueFilter(issue *models.Issue, filter *repositories.IssueFilter) b
 			}
 		}
 	}
+	if filter.OnHold != nil && issue.GetOnHold() != *filter.OnHold {
+		return false
+	}
 	return true
 }

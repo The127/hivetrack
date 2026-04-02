@@ -91,6 +91,84 @@ func TestHandleBatchUpdateIssues_ClearSprintID(t *testing.T) {
 	assert.Nil(t, updated.GetSprintID())
 }
 
+func TestHandleBatchUpdateIssues_SetOnHold(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	reporterID := actor.GetId()
+	issue := models.NewIssue(
+		project.GetId(), 1, models.IssueTypeTask, "Issue 1",
+		models.IssueStatusTodo, models.IssuePriorityNone, models.IssueEstimateNone,
+		&reporterID, true, models.IssueVisibilityNormal,
+		nil, nil, nil, nil, nil,
+	)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	onHold := true
+	reason := models.HoldReasonWaitingOnCustomer
+	_, err := commands.HandleBatchUpdateIssues(ctx, commands.BatchUpdateIssuesCommand{
+		ProjectID:    project.GetId(),
+		IssueNumbers: []int{1},
+		OnHold:       &onHold,
+		HoldReason:   &reason,
+	})
+	require.NoError(t, err)
+
+	updated, _ := db.Issues().GetByID(context.Background(), issue.GetId())
+	assert.True(t, updated.GetOnHold())
+	assert.Equal(t, models.HoldReasonWaitingOnCustomer, *updated.GetHoldReason())
+}
+
+func TestHandleBatchUpdateIssues_ClearOnHold(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	reporterID := actor.GetId()
+	issue := models.NewIssue(
+		project.GetId(), 1, models.IssueTypeTask, "Issue 1",
+		models.IssueStatusTodo, models.IssuePriorityNone, models.IssueEstimateNone,
+		&reporterID, true, models.IssueVisibilityNormal,
+		nil, nil, nil, nil, nil,
+	)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	// Put on hold first
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	onHold := true
+	reason := models.HoldReasonWaitingOnExternal
+	_, err := commands.HandleBatchUpdateIssues(ctx, commands.BatchUpdateIssuesCommand{
+		ProjectID:    project.GetId(),
+		IssueNumbers: []int{1},
+		OnHold:       &onHold,
+		HoldReason:   &reason,
+	})
+	require.NoError(t, err)
+
+	// Clear hold
+	offHold := false
+	_, err = commands.HandleBatchUpdateIssues(ctx, commands.BatchUpdateIssuesCommand{
+		ProjectID:    project.GetId(),
+		IssueNumbers: []int{1},
+		OnHold:       &offHold,
+	})
+	require.NoError(t, err)
+
+	updated, _ := db.Issues().GetByID(context.Background(), issue.GetId())
+	assert.False(t, updated.GetOnHold())
+	assert.Nil(t, updated.GetHoldReason())
+}
+
 func TestHandleBatchUpdateIssues_UnknownIssueReturnsError(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")

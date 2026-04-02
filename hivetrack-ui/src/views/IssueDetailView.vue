@@ -116,6 +116,37 @@ function confirmCancel() {
   doUpdateStatus({ status: "cancelled", cancelReason: cancelReasonDraft.value.trim() || undefined });
 }
 
+// ── Hold mutation ─────────────────────────────────────────────────────────────
+
+const showHoldModal = ref(false);
+const holdReasonDraft = ref("waiting_on_external");
+const holdNoteDraft = ref("");
+
+const { mutate: doToggleHold, isPending: holdPending } = useMutation({
+  mutationFn: (payload) => updateIssue(slug.value, number.value, payload),
+  onSuccess: () => {
+    showHoldModal.value = false;
+    holdReasonDraft.value = "waiting_on_external";
+    holdNoteDraft.value = "";
+    queryClient.invalidateQueries({
+      queryKey: ["issue", slug.value, number.value],
+    });
+    queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
+  },
+});
+
+function confirmHold() {
+  doToggleHold({
+    on_hold: true,
+    hold_reason: holdReasonDraft.value,
+    hold_note: holdNoteDraft.value.trim() || undefined,
+  });
+}
+
+function clearHold() {
+  doToggleHold({ on_hold: false });
+}
+
 // ── Priority mutation ─────────────────────────────────────────────────────────
 
 const { mutate: updatePriority } = useMutation({
@@ -474,17 +505,28 @@ const { mutate: updateMilestone } = useMutation({
             </div>
 
             <!-- On hold -->
-            <div v-if="issue.on_hold" class="space-y-1">
-              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">On Hold</span>
-              <div class="flex items-center gap-2">
+            <div class="space-y-1">
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Hold</span>
+              <div v-if="issue.on_hold" class="flex items-center gap-2">
                 <Badge color-scheme="amber" compact>{{
-                  issue.hold_reason ?? "on hold"
+                  issue.hold_reason?.replace(/_/g, ' ') ?? "on hold"
                 }}</Badge>
                 <span
                   v-if="issue.hold_note"
-                  class="text-xs text-slate-500 dark:text-slate-400 italic"
+                  class="text-xs text-slate-500 dark:text-slate-400 italic truncate max-w-[160px]"
+                  :title="issue.hold_note"
                   >{{ issue.hold_note }}</span
                 >
+                <button
+                  class="text-xs text-amber-600 dark:text-amber-400 hover:underline"
+                  @click="clearHold"
+                >clear</button>
+              </div>
+              <div v-else class="pt-1">
+                <button
+                  class="text-xs text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline"
+                  @click="showHoldModal = true"
+                >Put on hold</button>
               </div>
             </div>
 
@@ -626,6 +668,45 @@ const { mutate: updateMilestone } = useMutation({
       @close="showSplitModal = false"
       @split="showSplitModal = false"
     />
+
+    <!-- Put on hold dialog -->
+    <Modal
+      :open="showHoldModal"
+      title="Put issue on hold"
+      description="This issue will be marked as on hold and shown with a visual indicator."
+      @close="showHoldModal = false"
+    >
+      <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-700 dark:text-slate-300" for="hold-reason">Reason</label>
+          <select
+            id="hold-reason"
+            v-model="holdReasonDraft"
+            class="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <option value="waiting_on_customer">Waiting on customer</option>
+            <option value="waiting_on_external">Waiting on external</option>
+            <option value="blocked_by_issue">Blocked by issue</option>
+          </select>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-700 dark:text-slate-300" for="hold-note">
+            Note <span class="font-normal text-slate-400 dark:text-slate-500">(optional)</span>
+          </label>
+          <textarea
+            id="hold-note"
+            v-model="holdNoteDraft"
+            rows="2"
+            placeholder="Additional context..."
+            class="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <Button variant="secondary" :disabled="holdPending" @click="showHoldModal = false">Cancel</Button>
+        <Button variant="primary" :loading="holdPending" @click="confirmHold">Put on hold</Button>
+      </template>
+    </Modal>
 
     <!-- Cancel issue dialog (with optional reason) -->
     <Modal

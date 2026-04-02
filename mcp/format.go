@@ -80,6 +80,18 @@ func formatUpdateIssue(number int, args map[string]any) string {
 			changes = append(changes, "labels updated")
 		}
 	}
+	if v, ok := args["on_hold"].(string); ok && v != "" {
+		if v == "true" {
+			reason, _ := args["hold_reason"].(string)
+			if reason != "" {
+				changes = append(changes, "on hold ("+reason+")")
+			} else {
+				changes = append(changes, "on hold")
+			}
+		} else {
+			changes = append(changes, "hold cleared")
+		}
+	}
 	return fmt.Sprintf("Updated #%d: %s", number, strings.Join(changes, ", "))
 }
 

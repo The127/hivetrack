@@ -26,6 +26,7 @@ type GetIssuesQuery struct {
 	HasNoParent    *bool
 	LabelID        *uuid.UUID
 	ExcludeLabelID *uuid.UUID
+	OnHold         *bool
 	Limit          int
 	Offset         int
 }
@@ -109,6 +110,9 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 	}
 	if q.ExcludeLabelID != nil {
 		filter = filter.ExcludeByLabelID(*q.ExcludeLabelID)
+	}
+	if q.OnHold != nil {
+		filter = filter.ByOnHold(*q.OnHold)
 	}
 	if q.Limit > 0 || q.Offset > 0 {
 		filter = filter.WithPagination(q.Limit, q.Offset)

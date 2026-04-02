@@ -85,6 +85,10 @@ func (h *IssueHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
 			q.ExcludeLabelID = &excludeLabelID
 		}
 	}
+	if oh := r.URL.Query().Get("on_hold"); oh != "" {
+		onHold := oh == "true"
+		q.OnHold = &onHold
+	}
 	if l := r.URL.Query().Get("limit"); l != "" {
 		limit, _ := strconv.Atoi(l)
 		q.Limit = limit
@@ -649,6 +653,9 @@ func (h *IssueHandler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request)
 		SprintID      *uuid.UUID            `json:"sprint_id"`
 		ClearSprintID bool                  `json:"clear_sprint_id"`
 		MilestoneID   *uuid.UUID            `json:"milestone_id"`
+		OnHold        *bool                 `json:"on_hold"`
+		HoldReason    *models.HoldReason    `json:"hold_reason"`
+		HoldNote      *string               `json:"hold_note"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		RespondError(w, models.ErrBadRequest)
@@ -666,6 +673,9 @@ func (h *IssueHandler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request)
 		SprintID:      body.SprintID,
 		ClearSprintID: body.ClearSprintID,
 		MilestoneID:   body.MilestoneID,
+		OnHold:        body.OnHold,
+		HoldReason:    body.HoldReason,
+		HoldNote:      body.HoldNote,
 	})
 	if err != nil {
 		RespondError(w, err)
