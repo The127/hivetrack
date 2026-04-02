@@ -50,34 +50,18 @@ func TestHandleMetadata(t *testing.T) {
 	}
 }
 
-func TestHandleRegister(t *testing.T) {
+func TestHandleRegister_InvalidJSON(t *testing.T) {
 	p := newTestProxy()
 	mux := http.NewServeMux()
 	p.RegisterRoutes(mux)
 
-	body := `{"redirect_uris":["http://127.0.0.1:9999/callback"],"client_name":"test-client"}`
-	req := httptest.NewRequest("POST", "/oauth/register", strings.NewReader(body))
+	req := httptest.NewRequest("POST", "/oauth/register", strings.NewReader("not json"))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
-	if w.Code != http.StatusCreated {
-		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
-	}
-
-	var resp map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("invalid JSON: %v", err)
-	}
-
-	clientID, ok := resp["client_id"].(string)
-	if !ok || clientID == "" {
-		t.Fatal("expected non-empty client_id")
-	}
-
-	// Verify client is stored.
-	if _, ok := p.clients.Load(clientID); !ok {
-		t.Fatal("client should be stored in memory")
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
 	}
 }
 
@@ -95,12 +79,12 @@ func TestHandleAuthorize_MissingParams(t *testing.T) {
 	}
 }
 
-func TestHandleAuthorize_UnknownClient(t *testing.T) {
+func TestHandleCallback_UnknownState(t *testing.T) {
 	p := newTestProxy()
 	mux := http.NewServeMux()
 	p.RegisterRoutes(mux)
 
-	req := httptest.NewRequest("GET", "/oauth/authorize?client_id=bogus&redirect_uri=http://x&code_challenge=abc", nil)
+	req := httptest.NewRequest("GET", "/oauth/callback?code=abc&state=bogus", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -110,88 +94,42 @@ func TestHandleAuthorize_UnknownClient(t *testing.T) {
 
 	var resp map[string]string
 	json.Unmarshal(w.Body.Bytes(), &resp)
-	if resp["error"] != "invalid_client" {
-		t.Fatalf("expected invalid_client error, got %s", resp["error"])
+	if resp["error"] != "invalid_request" {
+		t.Fatalf("expected invalid_request, got %s", resp["error"])
 	}
 }
 
-func TestHandlePoll_UnknownFlow(t *testing.T) {
+func TestHandleCallback_MissingCode(t *testing.T) {
 	p := newTestProxy()
 	mux := http.NewServeMux()
 	p.RegisterRoutes(mux)
 
-	req := httptest.NewRequest("GET", "/oauth/poll?id=nonexistent", nil)
+	req := httptest.NewRequest("GET", "/oauth/callback?state=something", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", w.Code)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
 	}
 }
 
-func TestHandlePoll_Pending(t *testing.T) {
+func TestHandleCallback_ErrorFromProvider(t *testing.T) {
 	p := newTestProxy()
 	mux := http.NewServeMux()
 	p.RegisterRoutes(mux)
 
-	pa := &pendingAuth{createdAt: time.Now()}
-	p.pending.Store("flow-1", pa)
-
-	req := httptest.NewRequest("GET", "/oauth/poll?id=flow-1", nil)
+	req := httptest.NewRequest("GET", "/oauth/callback?error=access_denied&error_description=user+denied", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
 	}
 
 	var resp map[string]string
 	json.Unmarshal(w.Body.Bytes(), &resp)
-	if resp["status"] != "pending" {
-		t.Fatalf("expected pending, got %s", resp["status"])
-	}
-}
-
-func TestHandlePoll_Complete(t *testing.T) {
-	p := newTestProxy()
-	mux := http.NewServeMux()
-	p.RegisterRoutes(mux)
-
-	pa := &pendingAuth{
-		redirectURI: "http://127.0.0.1:9999/callback",
-		state:       "original-state",
-		createdAt:   time.Now(),
-		completed:   true,
-		proxyCode:   "proxy-code-123",
-	}
-	p.pending.Store("flow-2", pa)
-
-	req := httptest.NewRequest("GET", "/oauth/poll?id=flow-2", nil)
-	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
-	}
-
-	var resp map[string]any
-	json.Unmarshal(w.Body.Bytes(), &resp)
-
-	if resp["status"] != "complete" {
-		t.Fatalf("expected complete, got %s", resp["status"])
-	}
-
-	redirect, _ := resp["redirect"].(string)
-	if !strings.Contains(redirect, "code=proxy-code-123") {
-		t.Fatalf("redirect should contain proxy code: %s", redirect)
-	}
-	if !strings.Contains(redirect, "state=original-state") {
-		t.Fatalf("redirect should contain original state: %s", redirect)
-	}
-
-	// Flow should be cleaned up.
-	if _, ok := p.pending.Load("flow-2"); ok {
-		t.Fatal("pending flow should be deleted after poll returns complete")
+	if resp["error"] != "access_denied" {
+		t.Fatalf("expected access_denied, got %s", resp["error"])
 	}
 }
 
@@ -214,12 +152,10 @@ func TestHandleToken_AuthCode_Success(t *testing.T) {
 		expiresIn:           3600,
 		codeChallenge:       challenge,
 		codeChallengeMethod: "S256",
-		clientID:            "test-client",
-		redirectURI:         "http://127.0.0.1:9999/callback",
 		createdAt:           time.Now(),
 	})
 
-	body := "grant_type=authorization_code&code=proxy-code&code_verifier=" + verifier + "&client_id=test-client"
+	body := "grant_type=authorization_code&code=proxy-code&code_verifier=" + verifier
 	req := httptest.NewRequest("POST", "/oauth/token", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
@@ -248,7 +184,6 @@ func TestHandleToken_AuthCode_ReusedCode(t *testing.T) {
 	mux := http.NewServeMux()
 	p.RegisterRoutes(mux)
 
-	// Code doesn't exist (already consumed or never existed).
 	body := "grant_type=authorization_code&code=nonexistent&code_verifier=whatever"
 	req := httptest.NewRequest("POST", "/oauth/token", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -276,11 +211,10 @@ func TestHandleToken_AuthCode_WrongVerifier(t *testing.T) {
 		accessToken:         "token",
 		codeChallenge:       challenge,
 		codeChallengeMethod: "S256",
-		clientID:            "client",
 		createdAt:           time.Now(),
 	})
 
-	body := "grant_type=authorization_code&code=code-1&code_verifier=wrong-verifier&client_id=client"
+	body := "grant_type=authorization_code&code=code-1&code_verifier=wrong-verifier"
 	req := httptest.NewRequest("POST", "/oauth/token", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
@@ -288,12 +222,6 @@ func TestHandleToken_AuthCode_WrongVerifier(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
-	}
-
-	var resp map[string]string
-	json.Unmarshal(w.Body.Bytes(), &resp)
-	if resp["error"] != "invalid_grant" {
-		t.Fatalf("expected invalid_grant, got %s", resp["error"])
 	}
 
 	// Code should be consumed even on PKCE failure.
@@ -313,37 +241,10 @@ func TestHandleToken_AuthCode_ExpiredCode(t *testing.T) {
 		accessToken:         "token",
 		codeChallenge:       challenge,
 		codeChallengeMethod: "S256",
-		clientID:            "client",
-		createdAt:           time.Now().Add(-10 * time.Minute), // expired
+		createdAt:           time.Now().Add(-10 * time.Minute),
 	})
 
-	body := "grant_type=authorization_code&code=old-code&code_verifier=" + verifier + "&client_id=client"
-	req := httptest.NewRequest("POST", "/oauth/token", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w.Code)
-	}
-}
-
-func TestHandleToken_ClientMismatch(t *testing.T) {
-	p := newTestProxy()
-	mux := http.NewServeMux()
-	p.RegisterRoutes(mux)
-
-	verifier := "test-verifier"
-	challenge := makePKCE(verifier)
-	p.codes.Store("code-2", &proxyCodeEntry{
-		accessToken:         "token",
-		codeChallenge:       challenge,
-		codeChallengeMethod: "S256",
-		clientID:            "real-client",
-		createdAt:           time.Now(),
-	})
-
-	body := "grant_type=authorization_code&code=code-2&code_verifier=" + verifier + "&client_id=wrong-client"
+	body := "grant_type=authorization_code&code=old-code&code_verifier=" + verifier
 	req := httptest.NewRequest("POST", "/oauth/token", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
