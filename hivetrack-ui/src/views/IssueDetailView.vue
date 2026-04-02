@@ -641,17 +641,10 @@ const { mutate: updateMilestone } = useMutation({
 
           <!-- Links -->
           <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <LinkIcon class="size-3.5" />
-                Linked issues
-              </h2>
-              <button
-                v-if="!showLinkForm"
-                class="text-xs text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
-                @click="showLinkForm = true"
-              >Add link</button>
-            </div>
+            <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <LinkIcon class="size-3.5" />
+              Linked issues
+            </h2>
             <div v-if="issue.links?.length" class="space-y-1">
               <div
                 v-for="link in issue.links"
@@ -669,32 +662,41 @@ const { mutate: updateMilestone } = useMutation({
                 </RouterLink>
               </div>
             </div>
-            <div v-if="showLinkForm" class="flex items-center gap-2">
-              <select
-                v-model="linkTypeDraft"
-                class="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              >
-                <option value="blocks">blocks</option>
-                <option value="is_blocked_by">is blocked by</option>
-                <option value="relates_to">relates to</option>
-                <option value="duplicates">duplicates</option>
-              </select>
-              <span class="text-xs text-slate-400">#</span>
-              <input
-                v-model="linkTargetDraft"
-                type="number"
-                min="1"
-                placeholder="issue number"
-                class="w-24 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                @keydown.enter="confirmLink"
-              />
-              <Button size="xs" variant="primary" :loading="linkPending" @click="confirmLink">Add</Button>
-              <button
-                class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                @click="showLinkForm = false"
-              >Cancel</button>
+            <div v-if="showLinkForm" class="rounded-md border border-slate-200 dark:border-slate-700 p-3 space-y-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500 dark:text-slate-400">This issue</span>
+                <select
+                  v-model="linkTypeDraft"
+                  class="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                >
+                  <option value="blocks">blocks</option>
+                  <option value="is_blocked_by">is blocked by</option>
+                  <option value="relates_to">relates to</option>
+                  <option value="duplicates">duplicates</option>
+                </select>
+                <span class="text-xs text-slate-500 dark:text-slate-400">#</span>
+                <input
+                  v-model="linkTargetDraft"
+                  type="number"
+                  min="1"
+                  placeholder="number"
+                  class="w-20 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  @keydown.enter="confirmLink"
+                />
+              </div>
+              <div class="flex items-center gap-2">
+                <Button size="xs" variant="primary" :loading="linkPending" @click="confirmLink">Add link</Button>
+                <button
+                  class="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                  @click="showLinkForm = false"
+                >Cancel</button>
+              </div>
             </div>
-            <p v-if="!issue.links?.length && !showLinkForm" class="text-xs text-slate-400 dark:text-slate-500">No links</p>
+            <button
+              v-if="!showLinkForm"
+              class="text-xs text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
+              @click="showLinkForm = true"
+            >+ Add link</button>
           </div>
 
           <!-- Dates -->
