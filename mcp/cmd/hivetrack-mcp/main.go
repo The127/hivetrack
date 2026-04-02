@@ -75,9 +75,11 @@ func serveStdio(apiURL string) {
 type bearerTokenKey struct{}
 
 // serveHTTP runs the MCP server over HTTP (Streamable HTTP transport).
-// The caller's OIDC Bearer token is extracted from the incoming HTTP request
-// and passed through to the Hivetrack API. The MCP server itself has no
-// credentials — it's a transparent proxy for authentication.
+// Authentication uses per-session OIDC device flow: the first tool call
+// returns an activation URL, the user authenticates in a browser, and
+// subsequent calls use the cached token. Callers that already have a
+// Bearer token (CI, service accounts) can pass it via the Authorization
+// header to skip device flow entirely.
 func serveHTTP(apiURL string) {
 	listenAddr := os.Getenv("HIVETRACK_MCP_LISTEN")
 	if listenAddr == "" {
@@ -86,25 +88,25 @@ func serveHTTP(apiURL string) {
 
 	fmt.Fprintf(os.Stderr, "[mcp] starting: url=%s transport=http listen=%s\n", apiURL, listenAddr)
 
-	// The token function reads the Bearer token from the request context.
-	// Each MCP request carries the caller's own OIDC token through to the API.
-	client := htmcp.NewClient(apiURL, htclient.TokenProviderFunc(func(ctx context.Context) (htclient.TokenCache, error) {
-		token, ok := ctx.Value(bearerTokenKey{}).(string)
-		if !ok || token == "" {
-			return htclient.TokenCache{}, fmt.Errorf("no bearer token in request — pass Authorization header")
-		}
-		return htclient.TokenCache{AccessToken: token}, nil
-	}))
+	sessions := newSessionAuthManager(apiURL)
+	client := htmcp.NewClient(apiURL, sessions)
 
-	s := htmcp.NewServer(client)
+	// Clean up session auth state when the MCP session ends.
+	hooks := &server.Hooks{}
+	hooks.AddOnUnregisterSession(func(_ context.Context, sess server.ClientSession) {
+		sessions.removeSession(sess.SessionID())
+	})
+
+	s := htmcp.NewServer(client, server.WithHooks(hooks))
 
 	httpServer := server.NewStreamableHTTPServer(s,
 		server.WithEndpointPath("/mcp"),
-		// Extract the caller's Bearer token from the HTTP request into context.
+		// Extract optional Bearer token from the HTTP request into context.
 		server.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
-			auth := r.Header.Get("Authorization")
-			token := strings.TrimPrefix(auth, "Bearer ")
-			return context.WithValue(ctx, bearerTokenKey{}, token)
+			if token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); ok {
+				return context.WithValue(ctx, bearerTokenKey{}, token)
+			}
+			return ctx
 		}),
 	)
 

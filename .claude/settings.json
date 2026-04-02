@@ -1,11 +1,8 @@
 {
   "mcpServers": {
     "hivetrack": {
-      "command": "./mcp/hivetrack-mcp",
-      "args": [],
-      "env": {
-        "HIVETRACK_URL": "https://hivetrack.karo.gay"
-      }
+      "type": "streamable-http",
+      "url": "https://hivetrack-mcp.karo.gay/mcp"
     }
   },
   "hooks": {
