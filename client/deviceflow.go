@@ -157,11 +157,6 @@ func Login(serverURL string) error {
 
 // OIDC types
 
-type oidcProviderConfig struct {
-	Authority string `json:"authority"`
-	ClientID  string `json:"client_id"`
-}
-
 type oidcDiscovery struct {
 	DeviceAuthorizationEndpoint string `json:"device_authorization_endpoint"`
 	TokenEndpoint               string `json:"token_endpoint"`
@@ -203,16 +198,45 @@ func postFormJSON(endpoint string, values url.Values, out any) error {
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
-func fetchOIDCEndpoints(serverURL string) (oidcProviderConfig, oidcDiscovery, error) {
-	var providerCfg oidcProviderConfig
-	if err := getJSON(strings.TrimRight(serverURL, "/")+"/api/v1/auth/oidc-config", &providerCfg); err != nil {
-		return providerCfg, oidcDiscovery{}, fmt.Errorf("fetching OIDC config: %w", err)
+// OIDCProviderConfig holds the Hivetrack instance's OIDC provider settings.
+type OIDCProviderConfig struct {
+	Authority string `json:"authority"`
+	ClientID  string `json:"client_id"`
+}
+
+// FetchOIDCProviderConfig fetches the OIDC provider config from a Hivetrack instance.
+func FetchOIDCProviderConfig(serverURL string) (OIDCProviderConfig, error) {
+	var cfg OIDCProviderConfig
+	if err := getJSON(strings.TrimRight(serverURL, "/")+"/api/v1/auth/oidc-config", &cfg); err != nil {
+		return cfg, fmt.Errorf("fetching OIDC config: %w", err)
+	}
+	return cfg, nil
+}
+
+// FetchOIDCDiscovery fetches the raw OIDC discovery document from the provider.
+func FetchOIDCDiscovery(authority string) (map[string]any, error) {
+	discoveryURL := strings.TrimRight(authority, "/") + "/.well-known/openid-configuration"
+	var doc map[string]any
+	if err := getJSON(discoveryURL, &doc); err != nil {
+		return nil, fmt.Errorf("fetching OIDC discovery: %w", err)
+	}
+	return doc, nil
+}
+
+func fetchOIDCEndpoints(serverURL string) (OIDCProviderConfig, oidcDiscovery, error) {
+	providerCfg, err := FetchOIDCProviderConfig(serverURL)
+	if err != nil {
+		return OIDCProviderConfig{}, oidcDiscovery{}, err
 	}
 
-	var discovery oidcDiscovery
-	discoveryURL := strings.TrimRight(providerCfg.Authority, "/") + "/.well-known/openid-configuration"
-	if err := getJSON(discoveryURL, &discovery); err != nil {
-		return providerCfg, discovery, fmt.Errorf("fetching OIDC discovery: %w", err)
+	doc, err := FetchOIDCDiscovery(providerCfg.Authority)
+	if err != nil {
+		return providerCfg, oidcDiscovery{}, err
+	}
+
+	discovery := oidcDiscovery{
+		DeviceAuthorizationEndpoint: stringFromMap(doc, "device_authorization_endpoint"),
+		TokenEndpoint:               stringFromMap(doc, "token_endpoint"),
 	}
 
 	if discovery.DeviceAuthorizationEndpoint == "" {
@@ -220,5 +244,10 @@ func fetchOIDCEndpoints(serverURL string) (oidcProviderConfig, oidcDiscovery, er
 	}
 
 	return providerCfg, discovery, nil
+}
+
+func stringFromMap(m map[string]any, key string) string {
+	v, _ := m[key].(string)
+	return v
 }
 

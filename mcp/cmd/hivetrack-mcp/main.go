@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -88,6 +89,14 @@ func serveHTTP(apiURL string) {
 
 	fmt.Fprintf(os.Stderr, "[mcp] starting: url=%s transport=http listen=%s\n", apiURL, listenAddr)
 
+	// Fetch OIDC metadata from the Hivetrack API so we can serve it at
+	// /.well-known/oauth-authorization-server (MCP spec requirement).
+	oauthMeta, err := fetchOAuthMetadata(apiURL)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[mcp] warning: could not fetch OIDC metadata: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[mcp] OAuth discovery will be unavailable\n")
+	}
+
 	sessions := newSessionAuthManager(apiURL)
 	client := htmcp.NewClient(apiURL, sessions)
 
@@ -99,7 +108,7 @@ func serveHTTP(apiURL string) {
 
 	s := htmcp.NewServer(client, server.WithHooks(hooks))
 
-	httpServer := server.NewStreamableHTTPServer(s,
+	mcpHandler := server.NewStreamableHTTPServer(s,
 		server.WithEndpointPath("/mcp"),
 		// Extract optional Bearer token from the HTTP request into context.
 		server.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
@@ -110,9 +119,56 @@ func serveHTTP(apiURL string) {
 		}),
 	)
 
+	mux := http.NewServeMux()
+	mux.Handle("/mcp", mcpHandler)
+
+	if oauthMeta != nil {
+		metaJSON, _ := json.Marshal(oauthMeta)
+		mux.HandleFunc("/.well-known/oauth-authorization-server", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(metaJSON)
+		})
+	}
+
 	fmt.Fprintf(os.Stderr, "[mcp] serving HTTP on %s/mcp\n", listenAddr)
-	if err := httpServer.Start(listenAddr); err != nil {
+	if err := (&http.Server{Addr: listenAddr, Handler: mux}).ListenAndServe(); err != nil {
 		fmt.Fprintf(os.Stderr, "[mcp] server error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// fetchOAuthMetadata fetches the OIDC provider's discovery document via the
+// Hivetrack API and returns an RFC 8414 OAuth Authorization Server Metadata
+// object suitable for /.well-known/oauth-authorization-server.
+func fetchOAuthMetadata(apiURL string) (map[string]any, error) {
+	providerCfg, err := htclient.FetchOIDCProviderConfig(apiURL)
+	if err != nil {
+		return nil, err
+	}
+
+	oidcDoc, err := htclient.FetchOIDCDiscovery(providerCfg.Authority)
+	if err != nil {
+		return nil, err
+	}
+
+	meta := map[string]any{
+		"issuer":                 oidcDoc["issuer"],
+		"authorization_endpoint": oidcDoc["authorization_endpoint"],
+		"token_endpoint":         oidcDoc["token_endpoint"],
+		"registration_endpoint":  oidcDoc["registration_endpoint"],
+	}
+	copyIfPresent := func(key string, fallback any) {
+		if v, ok := oidcDoc[key]; ok {
+			meta[key] = v
+		} else if fallback != nil {
+			meta[key] = fallback
+		}
+	}
+	copyIfPresent("response_types_supported", []string{"code"})
+	copyIfPresent("code_challenge_methods_supported", []string{"S256"})
+	copyIfPresent("token_endpoint_auth_methods_supported", nil)
+	copyIfPresent("scopes_supported", nil)
+	copyIfPresent("grant_types_supported", nil)
+
+	return meta, nil
 }
