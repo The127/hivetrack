@@ -110,6 +110,8 @@ type IssueRepository interface {
 	GetByNumber(ctx context.Context, projectID uuid.UUID, number int) (*models.Issue, error)
 	List(ctx context.Context, filter *IssueFilter) ([]*models.Issue, int, error)
 
+	CountUntriagedByProject(ctx context.Context) (map[uuid.UUID]int, error)
+
 	// Links — direct-execute
 	InsertLink(ctx context.Context, link models.IssueLink) error
 	ListLinks(ctx context.Context, issueID uuid.UUID) ([]models.IssueLink, error)

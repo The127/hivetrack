@@ -15,6 +15,7 @@ import {
   ArchiveIcon,
   CodeIcon,
   HeadphonesIcon,
+  InboxIcon,
 } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -115,6 +116,10 @@ const archivedProjects = computed(() =>
                 </p>
               </div>
 
+              <Badge v-if="project.untriaged_count" colorScheme="amber" compact>
+                <InboxIcon class="size-3 mr-0.5" />
+                {{ project.untriaged_count }}
+              </Badge>
               <Badge :colorScheme="project.archetype === 'software' ? 'blue' : 'teal'" compact>
                 <component
                   :is="project.archetype === 'software' ? CodeIcon : HeadphonesIcon"
