@@ -74,6 +74,10 @@ const { data: projects, isLoading: loadingProjects } = useQuery({
   queryFn: () => apiFetch('/api/v1/projects'),
 })
 
+const totalUntriaged = computed(() =>
+  (projects.value?.items ?? []).reduce((sum, p) => sum + (p.untriaged_count ?? 0), 0),
+)
+
 // ── Status display helpers ────────────────────────────────────────────────────
 
 const STATUS_SCHEME = {
@@ -501,6 +505,11 @@ function priorityBorder(priority) {
               <p class="text-xs text-slate-500 dark:text-slate-400">{{ project.slug }}</p>
             </div>
 
+            <Badge v-if="project.untriaged_count" colorScheme="amber" compact>
+              <InboxIcon class="size-3 mr-0.5" />
+              {{ project.untriaged_count }}
+            </Badge>
+
             <Badge :colorScheme="project.archetype === 'software' ? 'blue' : 'teal'" compact>
               {{ project.archetype }}
             </Badge>
@@ -524,13 +533,12 @@ function priorityBorder(priority) {
 
       <!-- ── Triage inbox hint ──────────────────────────────────────────── -->
       <div
-        v-if="projects?.items?.length"
+        v-if="totalUntriaged > 0"
         class="mt-6 max-w-3xl mx-auto rounded-lg border border-amber-200 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 flex items-center gap-3"
       >
         <InboxIcon class="size-4 text-amber-600 flex-shrink-0" />
         <p class="text-sm text-amber-800 dark:text-amber-300">
-          Open a project and go to
-          <strong>Triage</strong> to review incoming issues.
+          <strong>{{ totalUntriaged }}</strong> {{ totalUntriaged === 1 ? 'issue' : 'issues' }} waiting in triage across your projects.
         </p>
       </div>
     </div>
