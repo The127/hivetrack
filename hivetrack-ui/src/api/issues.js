@@ -42,11 +42,6 @@ export const triageIssue = (slug, number, data) =>
     body: JSON.stringify(data),
   })
 
-export const refineIssue = (slug, number) =>
-  apiFetch(`/api/v1/projects/${slug}/issues/${number}/refine`, {
-    method: 'POST',
-  })
-
 export const fetchMyIssues = () => apiFetch('/api/v1/me/issues')
 
 export const createIssueLink = (slug, number, data) =>

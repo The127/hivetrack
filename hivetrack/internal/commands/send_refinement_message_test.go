@@ -13,38 +13,57 @@ import (
 	"github.com/the127/hivetrack/internal/testutil"
 )
 
-func TestHandleRefineIssue_Success(t *testing.T) {
+func TestSendRefinementMessage_Success(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
 	require.NoError(t, db.Users().Upsert(context.Background(), actor))
-	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	project := models.NewProject(actor.GetId(), "proj", "Proj", models.ProjectArchetypeSoftware)
 	db.Projects().Insert(project)
 	require.NoError(t, db.SaveChanges(context.Background()))
 
 	reporterID := actor.GetId()
-	unrefined := models.NewIssue(
-		project.GetId(), 1, models.IssueTypeTask, "Some task",
+	desc := "Original desc"
+	issue := models.NewIssue(
+		project.GetId(), 1, models.IssueTypeTask, "The task",
 		models.IssueStatusTodo, models.IssuePriorityNone, models.IssueEstimateNone,
 		&reporterID, true, models.IssueVisibilityNormal,
-		nil, nil, nil, nil, nil,
+		&desc, nil, nil, nil, nil,
 	)
-	db.Issues().Insert(unrefined)
+	db.Issues().Insert(issue)
 	require.NoError(t, db.SaveChanges(context.Background()))
 
-	assert.False(t, unrefined.GetRefined())
+	// Create active session
+	session := models.NewRefinementSession(issue.GetId())
+	require.NoError(t, db.Refinements().CreateSession(context.Background(), session))
+
+	pub := &spyPublisher{}
+	handler := commands.NewSendRefinementMessageHandler(pub)
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
-	_, err := commands.HandleRefineIssue(ctx, commands.RefineIssueCommand{
-		IssueID: unrefined.GetId(),
+	_, err := handler(ctx, commands.SendRefinementMessageCommand{
+		IssueID: issue.GetId(),
+		Content: "What about edge cases?",
 	})
 	require.NoError(t, err)
 
-	issue, err := db.Issues().GetByID(context.Background(), unrefined.GetId())
+	// Message was stored
+	_, msgs, err := db.Refinements().GetSessionWithMessages(context.Background(), session.ID)
 	require.NoError(t, err)
-	assert.True(t, issue.GetRefined())
+	require.Len(t, msgs, 1)
+	assert.Equal(t, "What about edge cases?", msgs[0].Content)
+	assert.Equal(t, models.RefinementRoleUser, msgs[0].Role)
+
+	// NATS request was published with message history
+	require.Len(t, pub.published, 1)
+	req := pub.published[0]
+	assert.Equal(t, session.ID, req.SessionID)
+	assert.Equal(t, "proj", req.ProjectSlug)
+	require.Len(t, req.Messages, 1)
+	assert.Equal(t, "user", req.Messages[0].Role)
+	assert.Equal(t, "What about edge cases?", req.Messages[0].Content)
 }
 
-func TestHandleRefineIssue_AuditLogRecordsActorAndTimestamp(t *testing.T) {
+func TestSendRefinementMessage_NoActiveSession(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
 	require.NoError(t, db.Users().Upsert(context.Background(), actor))
@@ -54,7 +73,7 @@ func TestHandleRefineIssue_AuditLogRecordsActorAndTimestamp(t *testing.T) {
 
 	reporterID := actor.GetId()
 	issue := models.NewIssue(
-		project.GetId(), 1, models.IssueTypeTask, "Some task",
+		project.GetId(), 1, models.IssueTypeTask, "Task",
 		models.IssueStatusTodo, models.IssuePriorityNone, models.IssueEstimateNone,
 		&reporterID, true, models.IssueVisibilityNormal,
 		nil, nil, nil, nil, nil,
@@ -62,30 +81,14 @@ func TestHandleRefineIssue_AuditLogRecordsActorAndTimestamp(t *testing.T) {
 	db.Issues().Insert(issue)
 	require.NoError(t, db.SaveChanges(context.Background()))
 
+	pub := &spyPublisher{}
+	handler := commands.NewSendRefinementMessageHandler(pub)
+
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
-	_, err := commands.HandleRefineIssue(ctx, commands.RefineIssueCommand{
+	_, err := handler(ctx, commands.SendRefinementMessageCommand{
 		IssueID: issue.GetId(),
-	})
-	require.NoError(t, err)
-
-	entries := db.AuditLog().(*inmemory.AuditLogRepository).Entries()
-	require.Len(t, entries, 1)
-	entry := entries[0]
-	assert.Equal(t, actor.GetId(), entry.ActorID)
-	assert.False(t, entry.RecordedAt.IsZero())
-	assert.Equal(t, issue.GetId(), entry.EntityID)
-	assert.Equal(t, "refined", entry.Action)
-}
-
-func TestHandleRefineIssue_NotFound(t *testing.T) {
-	db := inmemory.NewDbContext()
-	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
-	require.NoError(t, db.Users().Upsert(context.Background(), actor))
-	require.NoError(t, db.SaveChanges(context.Background()))
-
-	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
-	_, err := commands.HandleRefineIssue(ctx, commands.RefineIssueCommand{
-		IssueID: models.NewBaseModel().GetId(),
+		Content: "Hello",
 	})
 	require.ErrorIs(t, err, models.ErrNotFound)
+	assert.Empty(t, pub.published)
 }

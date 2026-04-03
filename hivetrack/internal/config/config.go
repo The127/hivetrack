@@ -16,6 +16,7 @@ type Config struct {
 	OIDC         OIDCConfig         `koanf:"oidc"`
 	Email        EmailConfig        `koanf:"email"`
 	AI           AIConfig           `koanf:"ai"`
+	Hivemind     HivemindConfig     `koanf:"hivemind"`
 	InitialAdmin InitialAdminConfig `koanf:"initial_admin"`
 	MCP          MCPConfig          `koanf:"mcp"`
 }
@@ -75,6 +76,13 @@ type AIConfig struct {
 	Provider string `koanf:"provider"`
 	Model    string `koanf:"model"`
 	APIKey   string `koanf:"api_key"`
+}
+
+type HivemindConfig struct {
+	Enabled         bool   `koanf:"enabled"`
+	NatsURL         string `koanf:"nats_url"`
+	ManagementURL   string `koanf:"management_url"`
+	ManagementToken string `koanf:"management_token"`
 }
 
 type InitialAdminConfig struct {

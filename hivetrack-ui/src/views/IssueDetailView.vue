@@ -10,7 +10,7 @@
 import { computed, ref, nextTick, useId } from "vue";
 import { useRoute, RouterLink } from "vue-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
-import { ArrowLeftIcon, LayersIcon, ZapIcon, ScissorsIcon, LinkIcon } from "lucide-vue-next";
+import { ArrowLeftIcon, LayersIcon, ZapIcon, ScissorsIcon, LinkIcon, SparklesIcon } from "lucide-vue-next";
 import MainLayout from "@/layouts/MainLayout.vue";
 import Badge from "@/components/ui/Badge.vue";
 import Button from "@/components/ui/Button.vue";
@@ -29,11 +29,13 @@ import "md-editor-v3/lib/style.css";
 import MarkdownEditor from "@/components/ui/MarkdownEditor.vue";
 import RelativeTime from "@/components/ui/RelativeTime.vue";
 import SplitIssueModal from "@/components/issue/SplitIssueModal.vue";
+import RefinementPanel from "@/components/issue/RefinementPanel.vue";
 import Modal from "@/components/ui/Modal.vue";
 import { fetchIssue, updateIssue, createIssueLink } from "@/api/issues";
 import { fetchProject } from "@/api/projects";
 import { fetchSprints } from "@/api/sprints";
 import { useTheme } from "@/composables/useTheme";
+import { useRefinement } from "@/composables/useRefinement";
 
 const { isDark } = useTheme();
 const editorTheme = computed(() => (isDark.value ? "dark" : "light"));
@@ -44,6 +46,9 @@ const previewId = useId();
 
 const slug = computed(() => route.params.slug);
 const number = computed(() => Number(route.params.number));
+
+// ── Refinement ───────────────────────────────────────────────────────────
+const refinement = useRefinement(slug, number);
 
 // ── Data ──────────────────────────────────────────────────────────────────
 
@@ -365,7 +370,16 @@ const { mutate: updateMilestone } = useMutation({
             project.name
           }}</span>
         </div>
-        <div class="ml-auto">
+        <div class="ml-auto flex items-center gap-2">
+          <Button
+            v-if="issue && issue.type === 'task' && !isTerminal"
+            variant="secondary"
+            size="sm"
+            @click="refinement.open()"
+          >
+            <SparklesIcon class="size-3.5" />
+            {{ refinement.session.value ? 'Continue refining' : 'Refine' }}
+          </Button>
           <Button
             v-if="issue && issue.type === 'task' && !isTerminal"
             variant="secondary"
@@ -791,5 +805,18 @@ const { mutate: updateMilestone } = useMutation({
         <Button variant="destructive" :loading="cancelPending" @click="confirmCancel">Cancel issue</Button>
       </template>
     </Modal>
+
+    <!-- Refinement panel -->
+    <RefinementPanel
+      :open="refinement.isOpen.value"
+      :session="refinement.session.value"
+      :loading="refinement.sessionLoading.value"
+      :send-pending="refinement.sendPending.value"
+      :accept-pending="refinement.acceptPending.value"
+      @close="refinement.close()"
+      @start="refinement.startSession()"
+      @send="(content) => refinement.sendMessage(content)"
+      @accept="refinement.acceptProposal()"
+    />
   </MainLayout>
 </template>

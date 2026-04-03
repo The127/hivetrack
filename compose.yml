@@ -53,6 +53,14 @@ services:
       KEYLINE_HOST: "http://localhost:5177"
     restart: unless-stopped
 
+  # ── NATS JetStream (Hivemind integration) ───────────────────────────────────
+  nats:
+    image: nats:latest
+    restart: unless-stopped
+    ports:
+      - "4222:4222"
+    command: ["-js"]
+
   # ── Mail catcher (dev only) ────────────────────────────────────────────────
   mailpit:
     image: axllent/mailpit:v1.26

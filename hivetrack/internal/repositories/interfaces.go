@@ -21,6 +21,7 @@ type DbContext interface {
 	Outbox() OutboxRepository
 	IssueStatusLog() IssueStatusLogRepository
 	AuditLog() AuditLogRepository
+	Refinements() RefinementRepository
 
 	// SaveChanges executes all queued Insert/Update/Delete in a single transaction.
 	SaveChanges(ctx context.Context) error
@@ -291,4 +292,14 @@ type OutboxRepository interface {
 // AuditLogRepository records auditable actions. All methods are direct-execute.
 type AuditLogRepository interface {
 	Insert(ctx context.Context, entry *models.AuditLogEntry) error
+}
+
+// RefinementRepository handles refinement session and message persistence.
+// All methods are direct-execute (not change-tracked).
+type RefinementRepository interface {
+	CreateSession(ctx context.Context, session *models.RefinementSession) error
+	GetActiveSession(ctx context.Context, issueID uuid.UUID) (*models.RefinementSession, error)
+	GetSessionWithMessages(ctx context.Context, sessionID uuid.UUID) (*models.RefinementSession, []*models.RefinementMessage, error)
+	AddMessage(ctx context.Context, msg *models.RefinementMessage) error
+	CompleteSession(ctx context.Context, sessionID uuid.UUID) error
 }

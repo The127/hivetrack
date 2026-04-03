@@ -168,6 +168,18 @@ var rules = []rule{
 		},
 	},
 	{
+		name: "infrastructure must not import business logic layers",
+		from: []string{pkg("infrastructure")},
+		mustNotImport: []string{
+			pkg("handlers"),
+			pkg("commands"),
+			pkg("queries"),
+			pkg("behaviors"),
+			pkg("setup"),
+			pkg("server"),
+		},
+	},
+	{
 		name: "config must not import any other internal package",
 		from: []string{pkg("config")},
 		mustNotImport: []string{
