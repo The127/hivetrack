@@ -72,9 +72,11 @@ const (
 type LinkType string
 
 const (
-	LinkTypeBlocks     LinkType = "blocks"
-	LinkTypeDuplicates LinkType = "duplicates"
-	LinkTypeRelatesTo  LinkType = "relates_to"
+	LinkTypeBlocks         LinkType = "blocks"
+	LinkTypeIsBlockedBy    LinkType = "is_blocked_by"
+	LinkTypeDuplicates     LinkType = "duplicates"
+	LinkTypeIsDuplicatedBy LinkType = "is_duplicated_by"
+	LinkTypeRelatesTo      LinkType = "relates_to"
 )
 
 type ChecklistItem struct {
