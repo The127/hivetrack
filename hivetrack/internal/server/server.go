@@ -68,13 +68,19 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 	protected.HandleFunc("/projects/{slug}/issues/{number}", issueH.UpdateIssue).Methods("PATCH")
 	protected.HandleFunc("/projects/{slug}/issues/{number}", issueH.DeleteIssue).Methods("DELETE")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/triage", issueH.TriageIssue).Methods("POST")
-	protected.HandleFunc("/projects/{slug}/issues/{number}/refine", issueH.RefineIssue).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/split", issueH.SplitIssue).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/links", issueH.AddIssueLink).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/checklist", issueH.AddChecklistItem).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/checklist/{item_id}", issueH.UpdateChecklistItem).Methods("PATCH")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/checklist/{item_id}", issueH.RemoveChecklistItem).Methods("DELETE")
 	protected.HandleFunc("/me/issues", issueH.GetMyIssues).Methods("GET")
+
+	// Refinement (Hivemind integration)
+	refinementH := handlers.NewRefinementHandler(med)
+	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/start", refinementH.StartSession).Methods("POST")
+	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/message", refinementH.SendMessage).Methods("POST")
+	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/session", refinementH.GetSession).Methods("GET")
+	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/accept", refinementH.AcceptProposal).Methods("POST")
 
 	// Comments
 	commentH := handlers.NewCommentHandler(med)
@@ -104,6 +110,16 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 	protected.HandleFunc("/projects/{slug}/labels", labelH.CreateLabel).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/labels/{label_id}", labelH.UpdateLabel).Methods("PATCH")
 	protected.HandleFunc("/projects/{slug}/labels/{label_id}", labelH.DeleteLabel).Methods("DELETE")
+
+	// Drones (Hivemind integration — proxy to Hivemind management API)
+	if cfg.Hivemind.Enabled {
+		droneH := handlers.NewDroneHandler(&cfg.Hivemind)
+		protected.HandleFunc("/projects/{slug}/drones", droneH.ListDrones).Methods("GET")
+		protected.HandleFunc("/projects/{slug}/drones/tokens", droneH.CreateToken).Methods("POST")
+		protected.HandleFunc("/projects/{slug}/drones/{drone_id}", droneH.GetDrone).Methods("GET")
+		protected.HandleFunc("/projects/{slug}/drones/{drone_id}/deregister", droneH.DeregisterDrone).Methods("POST")
+		protected.HandleFunc("/projects/{slug}/drones/tokens/{token}", droneH.RevokeToken).Methods("DELETE")
+	}
 
 	// Frontend SPA — catch-all, must be last
 	r.PathPrefix("/").Handler(spaHandler())

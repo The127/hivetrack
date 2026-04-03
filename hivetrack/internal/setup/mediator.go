@@ -10,7 +10,8 @@ import (
 )
 
 // Mediator registers all command and query handlers and the mediator singleton.
-func Mediator(dc *ioc.DependencyCollection) {
+// publisher is optional — when non-nil, refinement commands that depend on NATS are registered.
+func Mediator(dc *ioc.DependencyCollection, publisher ...commands.RefinementPublisher) {
 	m := mediatr.NewMediator()
 
 	// Event handlers
@@ -27,7 +28,6 @@ func Mediator(dc *ioc.DependencyCollection) {
 	mediatr.RegisterHandler(m, commands.HandleDeleteIssue)
 	mediatr.RegisterHandler(m, commands.HandleBatchUpdateIssues)
 	mediatr.RegisterHandler(m, commands.HandleTriageIssue)
-	mediatr.RegisterHandler(m, commands.HandleRefineIssue)
 	mediatr.RegisterHandler(m, commands.HandleCreateSprint)
 	mediatr.RegisterHandler(m, commands.HandleUpdateSprint)
 	mediatr.RegisterHandler(m, commands.HandleDeleteSprint)
@@ -45,6 +45,13 @@ func Mediator(dc *ioc.DependencyCollection) {
 	mediatr.RegisterHandler(m, commands.HandleCreateComment)
 	mediatr.RegisterHandler(m, commands.HandleUpdateComment)
 	mediatr.RegisterHandler(m, commands.HandleDeleteComment)
+	mediatr.RegisterHandler(m, commands.HandleAcceptRefinementProposal)
+
+	// Refinement commands (require Hivemind/NATS)
+	if len(publisher) > 0 && publisher[0] != nil {
+		mediatr.RegisterHandler(m, commands.NewStartRefinementSessionHandler(publisher[0]))
+		mediatr.RegisterHandler(m, commands.NewSendRefinementMessageHandler(publisher[0]))
+	}
 
 	// Queries
 	mediatr.RegisterHandler(m, queries.HandleGetUsers)
@@ -58,6 +65,7 @@ func Mediator(dc *ioc.DependencyCollection) {
 	mediatr.RegisterHandler(m, queries.HandleGetMilestones)
 	mediatr.RegisterHandler(m, queries.HandleGetLabels)
 	mediatr.RegisterHandler(m, queries.HandleGetComments)
+	mediatr.RegisterHandler(m, queries.HandleGetRefinementSession)
 
 	ioc.RegisterSingleton(dc, func(_ *ioc.DependencyProvider) mediatr.Mediator {
 		return m

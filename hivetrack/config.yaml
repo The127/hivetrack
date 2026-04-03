@@ -26,6 +26,12 @@ ai:
   model: claude-sonnet-4-6
   api_key: ""
 
+hivemind:
+  enabled: false
+  nats_url: nats://localhost:4222
+  management_url: http://localhost:8080
+  management_token: ""
+
 initial_admin:
   email: "admin@hivetrack.local"                # first login with this email gets instance_admin
 

@@ -27,6 +27,7 @@ type DbContext struct {
 	outbox         *OutboxRepository
 	issueStatusLog *IssueStatusLogRepository
 	auditLog       *AuditLogRepository
+	refinements    *RefinementRepository
 }
 
 // NewDbContext creates a new DbContext.
@@ -105,6 +106,13 @@ func (d *DbContext) AuditLog() repositories.AuditLogRepository {
 		d.auditLog = NewAuditLogRepository(d)
 	}
 	return d.auditLog
+}
+
+func (d *DbContext) Refinements() repositories.RefinementRepository {
+	if d.refinements == nil {
+		d.refinements = NewRefinementRepository(d)
+	}
+	return d.refinements
 }
 
 // SaveChanges executes all queued Insert/Update/Delete operations in a single transaction.
