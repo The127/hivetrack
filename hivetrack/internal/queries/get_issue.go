@@ -105,8 +105,10 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 	links := make([]IssueLinkInfo, 0, len(rawLinks))
 	for _, l := range rawLinks {
 		otherID := l.TargetIssueID
+		linkType := l.LinkType
 		if l.TargetIssueID == issue.GetId() {
 			otherID = l.SourceIssueID
+			linkType = inverseLinkType(linkType)
 		}
 		other, err := db.Issues().GetByID(ctx, otherID)
 		if err != nil {
@@ -120,7 +122,7 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 			ID:                l.ID,
 			SourceIssueID:     l.SourceIssueID,
 			TargetIssueID:     l.TargetIssueID,
-			LinkType:          l.LinkType,
+			LinkType:          linkType,
 			LinkedIssueNumber: linkedNumber,
 		})
 	}
@@ -170,4 +172,16 @@ func HandleGetIssue(ctx context.Context, q GetIssueQuery) (*IssueDetail, error) 
 	}
 
 	return detail, nil
+}
+
+// inverseLinkType returns the reverse perspective of a directional link type.
+func inverseLinkType(lt models.LinkType) models.LinkType {
+	switch lt {
+	case models.LinkTypeBlocks:
+		return models.LinkTypeIsBlockedBy
+	case models.LinkTypeDuplicates:
+		return models.LinkTypeIsDuplicatedBy
+	default:
+		return lt
+	}
 }
