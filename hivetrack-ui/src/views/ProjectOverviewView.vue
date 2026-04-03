@@ -39,7 +39,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import AddDroneModal from '@/components/project/AddDroneModal.vue'
 import RelativeTime from '@/components/ui/RelativeTime.vue'
 import { fetchProject, removeProjectMember, updateProject } from '@/api/projects'
-import { fetchDrones, deregisterDrone, revokeToken } from '@/api/drones'
+import { fetchDrones, deleteDrone, revokeToken } from '@/api/drones'
 import { fetchLabels, deleteLabel } from '@/api/labels'
 import { fetchIssues } from '@/api/issues'
 import { fetchSprints, fetchSprintBurndown } from '@/api/sprints'
@@ -95,13 +95,13 @@ const drones = computed(() => dronesData.value?.drones ?? [])
 const pendingTokens = computed(() => dronesData.value?.pending_tokens ?? [])
 const hivemindAvailable = computed(() => dronesData.value !== undefined)
 const showAddDroneModal = ref(false)
-const droneToDeregister = ref(null)
+const droneToDelete = ref(null)
 const tokenToRevoke = ref(null)
 
-const { mutate: doDeregisterDrone, isPending: deregisterDronePending } = useMutation({
-  mutationFn: (droneId) => deregisterDrone(slug.value, droneId),
+const { mutate: doDeleteDrone, isPending: deleteDronePending } = useMutation({
+  mutationFn: (droneId) => deleteDrone(slug.value, droneId),
   onSuccess: () => {
-    droneToDeregister.value = null
+    droneToDelete.value = null
     queryClient.invalidateQueries({ queryKey: ['drones', slug.value] })
   },
 })
@@ -522,8 +522,8 @@ function formatDateRange(start, end) {
             </span>
             <button
               class="opacity-0 group-hover:opacity-100 rounded-md p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all cursor-pointer"
-              title="Deregister drone"
-              @click="droneToDeregister = drone"
+              title="Delete drone"
+              @click="droneToDelete = drone"
             >
               <Trash2Icon class="size-3.5" />
             </button>
@@ -587,16 +587,16 @@ function formatDateRange(start, end) {
       @close="showAddDroneModal = false"
     />
 
-    <!-- Deregister drone confirmation -->
+    <!-- Delete drone confirmation -->
     <ConfirmDialog
-      v-if="droneToDeregister"
-      :open="!!droneToDeregister"
-      title="Deregister drone?"
-      :message="`Deregister '${droneToDeregister.drone_id}'? It will be disconnected and removed from the pool.`"
-      confirm-text="Deregister"
-      :loading="deregisterDronePending"
-      @confirm="doDeregisterDrone(droneToDeregister.drone_id)"
-      @cancel="droneToDeregister = null"
+      v-if="droneToDelete"
+      :open="!!droneToDelete"
+      title="Delete drone?"
+      :message="`Delete '${droneToDelete.drone_id}'? It will be disconnected and its registration purged.`"
+      confirm-text="Delete"
+      :loading="deleteDronePending"
+      @confirm="doDeleteDrone(droneToDelete.drone_id)"
+      @cancel="droneToDelete = null"
     />
 
     <!-- Revoke token confirmation -->
