@@ -14,4 +14,3 @@ type IssueStatusChangedEvent struct {
 	NewStatus models.IssueStatus
 	ActorID   uuid.UUID
 }
-

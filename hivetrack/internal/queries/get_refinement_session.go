@@ -19,10 +19,10 @@ type GetRefinementSessionQuery struct {
 type RefinementSessionDetail struct {
 	ID        uuid.UUID                      `json:"id"`
 	IssueID   uuid.UUID                      `json:"issue_id"`
-	Status    models.RefinementSessionStatus  `json:"status"`
-	Messages  []RefinementMessageDetail       `json:"messages"`
-	CreatedAt time.Time                       `json:"created_at"`
-	UpdatedAt time.Time                       `json:"updated_at"`
+	Status    models.RefinementSessionStatus `json:"status"`
+	Messages  []RefinementMessageDetail      `json:"messages"`
+	CreatedAt time.Time                      `json:"created_at"`
+	UpdatedAt time.Time                      `json:"updated_at"`
 }
 
 type RefinementMessageDetail struct {
