@@ -160,8 +160,8 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 		}
 	}
 
-	// Auto-triage untriaged issues when they reach a terminal status.
-	if cmd.Status != nil && isTerminalStatus(*cmd.Status) && !issue.GetTriaged() {
+	// Auto-triage untriaged issues when their status changes.
+	if cmd.Status != nil && *cmd.Status != oldStatus && !issue.GetTriaged() {
 		issue.SetTriaged(true)
 	}
 
