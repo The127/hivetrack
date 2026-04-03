@@ -497,7 +497,7 @@ func TestHandleUpdateIssue_RefinedRejectedForEpic(t *testing.T) {
 	assert.False(t, unchanged.GetRefined())
 }
 
-func TestHandleUpdateIssue_TerminalStatusAutoTriagesUntriagedIssue(t *testing.T) {
+func TestHandleUpdateIssue_StatusChangeAutoTriagesUntriagedIssue(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
 	require.NoError(t, db.Users().Upsert(context.Background(), actor))
@@ -516,16 +516,16 @@ func TestHandleUpdateIssue_TerminalStatusAutoTriagesUntriagedIssue(t *testing.T)
 	require.False(t, issue.GetTriaged(), "precondition: issue must be untriaged")
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
-	cancelled := models.IssueStatusCancelled
+	inProgress := models.IssueStatusInProgress
 	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
 		IssueID: issue.GetId(),
-		Status:  &cancelled,
+		Status:  &inProgress,
 	})
 	require.NoError(t, err)
 
 	updated, err := db.Issues().GetByID(context.Background(), issue.GetId())
 	require.NoError(t, err)
-	assert.True(t, updated.GetTriaged(), "issue should be auto-triaged when moved to a terminal status")
+	assert.True(t, updated.GetTriaged(), "issue should be auto-triaged when its status changes")
 }
 
 func TestHandleUpdateIssue_TerminalStatusClearsHoldOnBlockedIssue(t *testing.T) {
