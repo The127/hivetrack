@@ -62,6 +62,12 @@ func (h *DroneHandler) DeregisterDrone(w http.ResponseWriter, r *http.Request) {
 	h.proxyTo(w, "POST", fmt.Sprintf("/api/v1/drones/%s/deregister", droneID), nil)
 }
 
+// DeleteDrone proxies DELETE /projects/{slug}/drones/{drone_id}
+func (h *DroneHandler) DeleteDrone(w http.ResponseWriter, r *http.Request) {
+	droneID := mux.Vars(r)["drone_id"]
+	h.proxyTo(w, "DELETE", fmt.Sprintf("/api/v1/drones/%s", droneID), nil)
+}
+
 // RevokeToken proxies DELETE /projects/{slug}/drones/tokens/{token}
 func (h *DroneHandler) RevokeToken(w http.ResponseWriter, r *http.Request) {
 	token := mux.Vars(r)["token"]

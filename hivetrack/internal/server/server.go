@@ -118,6 +118,7 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 		protected.HandleFunc("/projects/{slug}/drones/tokens", droneH.CreateToken).Methods("POST")
 		protected.HandleFunc("/projects/{slug}/drones/{drone_id}", droneH.GetDrone).Methods("GET")
 		protected.HandleFunc("/projects/{slug}/drones/{drone_id}/deregister", droneH.DeregisterDrone).Methods("POST")
+		protected.HandleFunc("/projects/{slug}/drones/{drone_id}", droneH.DeleteDrone).Methods("DELETE")
 		protected.HandleFunc("/projects/{slug}/drones/tokens/{token}", droneH.RevokeToken).Methods("DELETE")
 	}
 

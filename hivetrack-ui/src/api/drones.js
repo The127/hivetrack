@@ -17,6 +17,11 @@ export const deregisterDrone = (slug, droneId) =>
     method: 'POST',
   })
 
+export const deleteDrone = (slug, droneId) =>
+  apiFetch(`/api/v1/projects/${slug}/drones/${droneId}`, {
+    method: 'DELETE',
+  })
+
 export const revokeToken = (slug, token) =>
   apiFetch(`/api/v1/projects/${slug}/drones/tokens/${token}`, {
     method: 'DELETE',
