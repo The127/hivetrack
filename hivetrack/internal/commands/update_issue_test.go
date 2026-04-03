@@ -497,6 +497,37 @@ func TestHandleUpdateIssue_RefinedRejectedForEpic(t *testing.T) {
 	assert.False(t, unchanged.GetRefined())
 }
 
+func TestHandleUpdateIssue_TerminalStatusAutoTriagesUntriagedIssue(t *testing.T) {
+	db := inmemory.NewDbContext()
+	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
+	require.NoError(t, db.Users().Upsert(context.Background(), actor))
+	project := models.NewProject(actor.GetId(), "p", "P", models.ProjectArchetypeSoftware)
+	db.Projects().Insert(project)
+	require.NoError(t, db.SaveChanges(context.Background()))
+
+	issue := models.NewIssue(
+		project.GetId(), 1, models.IssueTypeTask, "Untriaged issue",
+		models.IssueStatusTodo, models.IssuePriorityNone, models.IssueEstimateNone,
+		nil, false, models.IssueVisibilityNormal,
+		nil, nil, nil, nil, nil,
+	)
+	db.Issues().Insert(issue)
+	require.NoError(t, db.SaveChanges(context.Background()))
+	require.False(t, issue.GetTriaged(), "precondition: issue must be untriaged")
+
+	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
+	cancelled := models.IssueStatusCancelled
+	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
+		IssueID: issue.GetId(),
+		Status:  &cancelled,
+	})
+	require.NoError(t, err)
+
+	updated, err := db.Issues().GetByID(context.Background(), issue.GetId())
+	require.NoError(t, err)
+	assert.True(t, updated.GetTriaged(), "issue should be auto-triaged when moved to a terminal status")
+}
+
 func TestHandleUpdateIssue_TerminalStatusClearsHoldOnBlockedIssue(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")

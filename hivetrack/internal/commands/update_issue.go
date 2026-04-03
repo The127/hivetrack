@@ -160,6 +160,11 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 		}
 	}
 
+	// Auto-triage untriaged issues when they reach a terminal status.
+	if cmd.Status != nil && isTerminalStatus(*cmd.Status) && !issue.GetTriaged() {
+		issue.SetTriaged(true)
+	}
+
 	// Auto-clear holds on blocked issues when this issue reaches a terminal status.
 	if cmd.Status != nil && isTerminalStatus(*cmd.Status) {
 		if err := autoClearBlockedHolds(ctx, db, issue); err != nil {
