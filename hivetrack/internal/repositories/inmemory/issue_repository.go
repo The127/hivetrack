@@ -98,6 +98,16 @@ func (r *IssueRepository) ListLinks(_ context.Context, issueID uuid.UUID) ([]mod
 	return result, nil
 }
 
+func (r *IssueRepository) CountUntriagedByProject(_ context.Context) (map[uuid.UUID]int, error) {
+	result := make(map[uuid.UUID]int)
+	for _, issue := range r.byID {
+		if !issue.GetTriaged() {
+			result[issue.GetProjectID()]++
+		}
+	}
+	return result, nil
+}
+
 func matchesIssueFilter(issue *models.Issue, filter *repositories.IssueFilter) bool {
 	if filter.ProjectID != nil && issue.GetProjectID() != *filter.ProjectID {
 		return false

@@ -266,6 +266,26 @@ func (r *IssueRepository) ListLinks(ctx context.Context, issueID uuid.UUID) ([]m
 	return links, rows.Err()
 }
 
+func (r *IssueRepository) CountUntriagedByProject(ctx context.Context) (map[uuid.UUID]int, error) {
+	rows, err := r.ctx.queryContext(ctx).QueryContext(ctx,
+		`SELECT project_id, COUNT(*) FROM issues WHERE triaged = false GROUP BY project_id`)
+	if err != nil {
+		return nil, fmt.Errorf("counting untriaged issues: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := make(map[uuid.UUID]int)
+	for rows.Next() {
+		var projectID uuid.UUID
+		var count int
+		if err := rows.Scan(&projectID, &count); err != nil {
+			return nil, fmt.Errorf("scanning untriaged count: %w", err)
+		}
+		result[projectID] = count
+	}
+	return result, rows.Err()
+}
+
 func (r *IssueRepository) ExecuteDelete(ctx context.Context, tx *sql.Tx, issue *models.Issue) error {
 	_, err := tx.ExecContext(ctx, `DELETE FROM issues WHERE id=$1`, issue.GetId())
 	if err != nil {

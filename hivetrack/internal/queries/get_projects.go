@@ -14,12 +14,13 @@ import (
 type GetProjectsQuery struct{}
 
 type ProjectSummary struct {
-	ID          uuid.UUID               `json:"id"`
-	Slug        string                  `json:"slug"`
-	Name        string                  `json:"name"`
-	Description *string                 `json:"description,omitempty"`
-	Archetype   models.ProjectArchetype `json:"archetype"`
-	Archived    bool                    `json:"archived"`
+	ID             uuid.UUID               `json:"id"`
+	Slug           string                  `json:"slug"`
+	Name           string                  `json:"name"`
+	Description    *string                 `json:"description,omitempty"`
+	Archetype      models.ProjectArchetype `json:"archetype"`
+	Archived       bool                    `json:"archived"`
+	UntriagedCount int                     `json:"untriaged_count"`
 }
 
 type GetProjectsResult struct {
@@ -42,15 +43,21 @@ func HandleGetProjects(ctx context.Context, _ GetProjectsQuery) (*GetProjectsRes
 		return nil, fmt.Errorf("listing projects: %w", err)
 	}
 
+	untriagedCounts, err := db.Issues().CountUntriagedByProject(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("counting untriaged issues: %w", err)
+	}
+
 	summaries := make([]ProjectSummary, 0, len(projects))
 	for _, p := range projects {
 		summaries = append(summaries, ProjectSummary{
-			ID:          p.GetId(),
-			Slug:        p.GetSlug(),
-			Name:        p.GetName(),
-			Description: p.GetDescription(),
-			Archetype:   p.GetArchetype(),
-			Archived:    p.GetArchived(),
+			ID:             p.GetId(),
+			Slug:           p.GetSlug(),
+			Name:           p.GetName(),
+			Description:    p.GetDescription(),
+			Archetype:      p.GetArchetype(),
+			Archived:       p.GetArchived(),
+			UntriagedCount: untriagedCounts[p.GetId()],
 		})
 	}
 
