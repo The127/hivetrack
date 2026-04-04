@@ -32,6 +32,8 @@ import {
   ChevronRightIcon,
   ChevronLeftIcon,
   LogOutIcon,
+  MenuIcon,
+  XIcon,
 } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
 import { useAuth } from "@/composables/useAuth";
@@ -61,6 +63,12 @@ const userName = computed(
 
 const collapsed = ref(localStorage.getItem('hivetrack:sidebar:collapsed') === 'true');
 watch(collapsed, (v) => localStorage.setItem('hivetrack:sidebar:collapsed', String(v)));
+
+// ── Mobile sidebar drawer ─────────────────────────────────────────────────────
+const mobileOpen = ref(false);
+
+// Close mobile drawer on route change.
+watch(() => route.fullPath, () => { mobileOpen.value = false; });
 
 // ── Keyboard shortcuts ────────────────────────────────────────────────────────
 
@@ -93,7 +101,139 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
 
 <template>
   <div class="flex h-screen overflow-hidden bg-white dark:bg-slate-950">
-    <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+    <!-- ── Mobile sidebar backdrop ─────────────────────────────────────── -->
+    <Transition
+      enter-active-class="transition-opacity duration-200 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-150 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="mobileOpen"
+        class="fixed inset-0 z-40 bg-black/40 lg:hidden"
+        @click="mobileOpen = false"
+      />
+    </Transition>
+
+    <!-- ── Mobile sidebar drawer ───────────────────────────────────────── -->
+    <Transition
+      enter-active-class="transition-transform duration-200 ease-out"
+      enter-from-class="-translate-x-full"
+      enter-to-class="translate-x-0"
+      leave-active-class="transition-transform duration-150 ease-in"
+      leave-from-class="translate-x-0"
+      leave-to-class="-translate-x-full"
+    >
+      <aside
+        v-if="mobileOpen"
+        class="fixed inset-y-0 left-0 z-50 w-64 flex flex-col bg-gray-50 dark:bg-slate-900 text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-800 overflow-y-auto lg:hidden"
+      >
+        <!-- Header with close button -->
+        <div class="flex items-center gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800">
+          <img src="@/assets/logo.svg" alt="Hivetrack" class="size-6 flex-shrink-0" />
+          <span class="font-semibold tracking-tight text-gray-900 dark:text-gray-100 text-sm flex-1">Hivetrack</span>
+          <button
+            class="flex items-center justify-center size-6 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 cursor-pointer flex-shrink-0"
+            title="Close menu"
+            @click="mobileOpen = false"
+          >
+            <XIcon class="size-4" />
+          </button>
+        </div>
+
+        <!-- Navigation (always expanded) -->
+        <nav class="flex-1 px-2 py-2 space-y-0.5">
+          <RouterLink
+            to="/"
+            :class="route.path === '/' ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : ''"
+            class="flex items-center gap-2.5 px-2 w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            exact-active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          >
+            <LayoutDashboardIcon class="size-4 flex-shrink-0" />
+            <span>My Work</span>
+          </RouterLink>
+
+          <RouterLink
+            to="/projects"
+            class="flex items-center gap-2.5 px-2 w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          >
+            <FolderKanbanIcon class="size-4 flex-shrink-0" />
+            <span>Projects</span>
+          </RouterLink>
+
+          <template v-if="projectSlug">
+            <div class="pt-3 pb-1 px-2 flex items-center gap-1">
+              <RouterLink
+                to="/projects"
+                class="text-[11px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                Projects
+              </RouterLink>
+              <ChevronRightIcon class="size-3 text-gray-400 dark:text-gray-600" />
+              <span class="text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 truncate max-w-24">
+                {{ projectSlug }}
+              </span>
+            </div>
+
+            <RouterLink
+              v-for="item in [
+                { to: `/projects/${projectSlug}/overview`, icon: LayoutIcon, label: 'Overview' },
+                { to: `/projects/${projectSlug}/board`, icon: KanbanIcon, label: 'Board' },
+                { to: `/projects/${projectSlug}/backlog`, icon: ListIcon, label: 'Backlog' },
+                { to: `/projects/${projectSlug}/sprints`, icon: TimerIcon, label: 'Sprints' },
+                { to: `/projects/${projectSlug}/epics`, icon: LayersIcon, label: 'Epics' },
+                { to: `/projects/${projectSlug}/triage`, icon: InboxIcon, label: 'Triage' },
+                { to: `/projects/${projectSlug}/milestones`, icon: FlagIcon, label: 'Milestones' },
+                { to: `/projects/${projectSlug}/settings`, icon: SettingsIcon, label: 'Settings' },
+              ]"
+              :key="item.to"
+              :to="item.to"
+              class="flex items-center gap-2.5 px-2 w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+              active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+              <component :is="item.icon" class="size-4 flex-shrink-0" />
+              <span class="flex-1">{{ item.label }}</span>
+              <span
+                v-if="item.label === 'Triage' && triageCount > 0"
+                class="flex-shrink-0 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums bg-amber-500 text-white px-1"
+              >
+                {{ triageCount > 99 ? '99+' : triageCount }}
+              </span>
+            </RouterLink>
+          </template>
+        </nav>
+
+        <!-- Bottom section -->
+        <div class="px-2 py-2 border-t border-gray-200 dark:border-gray-800 space-y-0.5">
+          <RouterLink
+            to="/settings"
+            class="flex items-center gap-2.5 px-2 w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
+            active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          >
+            <SettingsIcon class="size-4 flex-shrink-0" />
+            <span>User settings</span>
+          </RouterLink>
+        </div>
+
+        <!-- User profile -->
+        <div class="px-3 py-2.5 border-t border-gray-200 dark:border-gray-800 flex items-center gap-2.5 min-w-0">
+          <Avatar :name="userName" size="sm" :src="user?.profile?.picture" />
+          <span class="text-sm text-gray-700 dark:text-gray-300 truncate flex-1 min-w-0">{{ userName }}</span>
+          <button
+            class="flex-shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors duration-100 cursor-pointer"
+            title="Sign out"
+            @click="signOut"
+          >
+            <LogOutIcon class="size-4" />
+          </button>
+        </div>
+      </aside>
+    </Transition>
+
+    <!-- ── Desktop sidebar ─────────────────────────────────────────────── -->
     <aside
       :class="collapsed ? 'w-14' : 'w-56'"
       class="hidden lg:flex flex-shrink-0 flex-col bg-gray-50 dark:bg-slate-900 text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-800 overflow-y-auto transition-[width] duration-200 ease-in-out"
@@ -326,8 +466,23 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
     </aside>
 
     <!-- ── Main content ────────────────────────────────────────────────── -->
-    <main class="flex-1 overflow-y-auto min-w-0 bg-white dark:bg-slate-950">
-      <slot />
-    </main>
+    <div class="flex-1 flex flex-col min-w-0">
+      <!-- Mobile top bar with hamburger -->
+      <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-slate-900 lg:hidden">
+        <button
+          class="flex items-center justify-center size-8 rounded text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 cursor-pointer"
+          title="Open menu"
+          @click="mobileOpen = true"
+        >
+          <MenuIcon class="size-5" />
+        </button>
+        <img src="@/assets/logo.svg" alt="Hivetrack" class="size-5" />
+        <span class="font-semibold tracking-tight text-gray-900 dark:text-gray-100 text-sm">Hivetrack</span>
+      </div>
+
+      <main class="flex-1 overflow-y-auto min-w-0 bg-white dark:bg-slate-950">
+        <slot />
+      </main>
+    </div>
   </div>
 </template>
