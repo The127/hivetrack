@@ -13,6 +13,7 @@ import (
 // RefinementPublisher publishes refinement requests to the messaging infrastructure.
 type RefinementPublisher interface {
 	PublishRefinementRequest(ctx context.Context, req RefinementPublishRequest) error
+	PublishRefinementAccept(ctx context.Context, sessionID uuid.UUID) error
 }
 
 // RefinementPublishRequest is the data sent to Hivemind for refinement.
