@@ -434,9 +434,13 @@ func (i *Issue) SetCancelReason(v *string) {
 	i.TrackChange(IssueChangeCancelReason)
 }
 
+// IsTerminalStatus returns true if the given status is terminal (across all archetypes).
+func IsTerminalStatus(s IssueStatus) bool {
+	return s == IssueStatusDone || s == IssueStatusCancelled ||
+		s == IssueStatusResolved || s == IssueStatusClosed
+}
+
 // IsTerminal returns true if the issue is in a terminal state.
 func (i *Issue) IsTerminal() bool {
-	return i.status == IssueStatusDone ||
-		i.status == IssueStatusCancelled ||
-		i.status == IssueStatusClosed
+	return IsTerminalStatus(i.status)
 }
