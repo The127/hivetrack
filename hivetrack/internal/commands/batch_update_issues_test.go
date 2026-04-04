@@ -115,8 +115,10 @@ func TestHandleBatchUpdateIssues_SetOnHold(t *testing.T) {
 	_, err := commands.HandleBatchUpdateIssues(ctx, commands.BatchUpdateIssuesCommand{
 		ProjectID:    project.GetId(),
 		IssueNumbers: []int{1},
-		OnHold:       &onHold,
-		HoldReason:   &reason,
+		Hold: commands.HoldUpdate{
+			OnHold:     &onHold,
+			HoldReason: &reason,
+		},
 	})
 	require.NoError(t, err)
 
@@ -150,8 +152,10 @@ func TestHandleBatchUpdateIssues_ClearOnHold(t *testing.T) {
 	_, err := commands.HandleBatchUpdateIssues(ctx, commands.BatchUpdateIssuesCommand{
 		ProjectID:    project.GetId(),
 		IssueNumbers: []int{1},
-		OnHold:       &onHold,
-		HoldReason:   &reason,
+		Hold: commands.HoldUpdate{
+			OnHold:     &onHold,
+			HoldReason: &reason,
+		},
 	})
 	require.NoError(t, err)
 
@@ -160,7 +164,9 @@ func TestHandleBatchUpdateIssues_ClearOnHold(t *testing.T) {
 	_, err = commands.HandleBatchUpdateIssues(ctx, commands.BatchUpdateIssuesCommand{
 		ProjectID:    project.GetId(),
 		IssueNumbers: []int{1},
-		OnHold:       &offHold,
+		Hold: commands.HoldUpdate{
+			OnHold: &offHold,
+		},
 	})
 	require.NoError(t, err)
 

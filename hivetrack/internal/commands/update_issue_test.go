@@ -349,10 +349,12 @@ func TestHandleUpdateIssue_SetOnHold(t *testing.T) {
 	reason := models.HoldReasonWaitingOnCustomer
 	note := "waiting for response"
 	_, err := commands.HandleUpdateIssue(ctx, commands.UpdateIssueCommand{
-		IssueID:    issue.GetId(),
-		OnHold:     &onHold,
-		HoldReason: &reason,
-		HoldNote:   &note,
+		IssueID: issue.GetId(),
+		Hold: commands.HoldUpdate{
+			OnHold:     &onHold,
+			HoldReason: &reason,
+			HoldNote:   &note,
+		},
 	})
 	require.NoError(t, err)
 

@@ -48,33 +48,13 @@ func HandleGetMyIssues(ctx context.Context, _ GetMyIssuesQuery) (*GetMyIssuesRes
 		if i.IsTerminal() {
 			continue
 		}
-		assignees, err := resolveUsers(ctx, db, i.GetAssignees())
+		summary, err := buildIssueSummary(ctx, db, i)
 		if err != nil {
-			return nil, fmt.Errorf("resolving assignees: %w", err)
-		}
-		labelInfos, err := resolveLabels(ctx, db, i.GetLabels())
-		if err != nil {
-			return nil, fmt.Errorf("resolving labels: %w", err)
+			return nil, err
 		}
 		slug := projectSlugs[i.GetProjectID()]
-		items = append(items, IssueSummary{
-			ID:          i.GetId(),
-			Number:      i.GetNumber(),
-			Type:        i.GetType(),
-			Title:       i.GetTitle(),
-			Status:      i.GetStatus(),
-			Priority:    i.GetPriority(),
-			Estimate:    i.GetEstimate(),
-			Triaged:     i.GetTriaged(),
-			Assignees:   assignees,
-			Labels:      labelInfos,
-			SprintID:    i.GetSprintID(),
-			MilestoneID: i.GetMilestoneID(),
-			OnHold:      i.GetOnHold(),
-			ProjectSlug: &slug,
-			CreatedAt:   i.GetCreatedAt(),
-			UpdatedAt:   i.GetUpdatedAt(),
-		})
+		summary.ProjectSlug = &slug
+		items = append(items, summary)
 	}
 
 	if items == nil {

@@ -28,9 +28,7 @@ type UpdateIssueCommand struct {
 	MilestoneID   *uuid.UUID
 	ParentID      *uuid.UUID
 	ClearParentID bool
-	OnHold        *bool
-	HoldReason    *models.HoldReason
-	HoldNote      *string
+	Hold          HoldUpdate
 	Visibility    *models.IssueVisibility
 	Rank          *string
 	OwnerID       *uuid.UUID
@@ -87,9 +85,7 @@ type issueFieldPatch struct {
 	SprintID      *uuid.UUID
 	ClearSprintID bool
 	MilestoneID   *uuid.UUID
-	OnHold        *bool
-	HoldReason    *models.HoldReason
-	HoldNote      *string
+	Hold          HoldUpdate
 }
 
 // applyCommonFieldPatch applies the shared field-patching logic used by both
@@ -118,10 +114,10 @@ func applyCommonFieldPatch(issue *models.Issue, patch issueFieldPatch) {
 	if patch.MilestoneID != nil {
 		issue.SetMilestoneID(patch.MilestoneID)
 	}
-	if patch.OnHold != nil {
-		if *patch.OnHold {
+	if patch.Hold.OnHold != nil {
+		if *patch.Hold.OnHold {
 			now := time.Now()
-			issue.SetHold(true, patch.HoldReason, &now, patch.HoldNote)
+			issue.SetHold(true, patch.Hold.HoldReason, &now, patch.Hold.HoldNote)
 		} else {
 			issue.SetHold(false, nil, nil, nil)
 		}
@@ -146,9 +142,7 @@ func applyFieldUpdates(ctx context.Context, db repositories.DbContext, issue *mo
 		SprintID:      cmd.SprintID,
 		ClearSprintID: cmd.ClearSprintID,
 		MilestoneID:   cmd.MilestoneID,
-		OnHold:        cmd.OnHold,
-		HoldReason:    cmd.HoldReason,
-		HoldNote:      cmd.HoldNote,
+		Hold:          cmd.Hold,
 	})
 
 	if err := applyParentUpdate(ctx, db, issue, cmd); err != nil {
