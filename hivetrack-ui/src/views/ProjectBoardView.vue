@@ -18,6 +18,7 @@ import { useRoute, RouterLink } from "vue-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { VueDraggable } from "vue-draggable-plus";
 import { useDragReorder } from "@/composables/useDragReorder";
+import { formatDateRange } from "@/composables/useDate";
 import {
   PlusIcon,
   XCircleIcon,
@@ -246,11 +247,6 @@ function onCrossColumnDrop(evt, toColKey) {
 }
 
 
-function formatDateRange(startDate, endDate) {
-  const fmt = (d) =>
-    new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  return `${fmt(startDate)} – ${fmt(endDate)}`;
-}
 
 // ── Cancelled issues (collapsible in Done column) ────────────────────────────
 

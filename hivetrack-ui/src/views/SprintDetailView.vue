@@ -18,6 +18,7 @@ import Badge from '@/components/ui/Badge.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import { fetchSprints } from '@/api/sprints'
 import { fetchIssues } from '@/api/issues'
+import { formatDate } from '@/composables/useDate'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug)
@@ -62,15 +63,12 @@ const groupedIssues = computed(() => {
 // ── Formatting ────────────────────────────────────────────────────────────────
 
 
-function formatDate(dateStr) {
-  if (!dateStr) return null
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
+const YEAR = { year: true }
 
 function dateRange(s) {
   if (!s) return null
-  const start = formatDate(s.start_date)
-  const end = formatDate(s.end_date)
+  const start = formatDate(s.start_date, YEAR)
+  const end = formatDate(s.end_date, YEAR)
   if (start && end) return `${start} – ${end}`
   if (start) return `Started ${start}`
   if (end) return `Ended ${end}`

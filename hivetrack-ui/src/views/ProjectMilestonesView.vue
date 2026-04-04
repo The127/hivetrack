@@ -19,6 +19,7 @@ import Modal from '@/components/ui/Modal.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import MilestoneTimeline from '@/components/milestone/MilestoneTimeline.vue'
 import { fetchMilestones, createMilestone, updateMilestone, deleteMilestone } from '@/api/milestones'
+import { formatDate } from '@/composables/useDate'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug)
@@ -113,12 +114,6 @@ function toggleClose(milestone) {
   doUpdate({ id: milestone.id, data: { close } })
 }
 
-// ── Formatting ────────────────────────────────────────────────────────────────
-
-function formatDate(dateStr) {
-  if (!dateStr) return null
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
 </script>
 
 <template>
@@ -192,7 +187,7 @@ function formatDate(dateStr) {
               >{{ m.title }}</span>
               <Badge v-if="m.closed_at" colorScheme="gray" compact>closed</Badge>
               <span v-if="m.target_date" class="text-xs text-slate-400 dark:text-slate-500">
-                → {{ formatDate(m.target_date) }}
+                → {{ formatDate(m.target_date, { year: true }) }}
               </span>
             </div>
             <div class="flex items-center gap-1 flex-shrink-0">

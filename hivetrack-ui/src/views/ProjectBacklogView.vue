@@ -24,6 +24,7 @@ import { useRoute } from "vue-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { VueDraggable } from "vue-draggable-plus";
 import { useDragReorder } from "@/composables/useDragReorder";
+import { formatDateRange } from "@/composables/useDate";
 import {
   PlusIcon,
   ListIcon,
@@ -597,11 +598,6 @@ const showCreateIssue = ref(false);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatDateRange(startDate, endDate) {
-  const fmt = (d) =>
-    new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  return `${fmt(startDate)} – ${fmt(endDate)}`;
-}
 </script>
 
 <template>

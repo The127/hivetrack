@@ -10,6 +10,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { updateMilestone } from '@/api/milestones'
+import { formatDate } from '@/composables/useDate'
 
 const props = defineProps({
   milestones: { type: Array, required: true },
@@ -176,11 +177,6 @@ const { mutate: doUpdate } = useMutation({
 })
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
 
 function draggedDate(m) {
   const left = getMarkerLeft(m)

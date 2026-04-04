@@ -9,6 +9,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { isTerminalStatus, statusColumns } from '@/composables/issueConstants'
+import { formatDateRange } from '@/composables/useDate'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import {
   KanbanIcon,
@@ -221,14 +222,6 @@ const SCHEME_ICON_CLASS = {
   teal: 'text-teal-500',
 }
 
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function formatDateRange(start, end) {
-  return `${formatDate(start)} – ${formatDate(end)}`
-}
 </script>
 
 <template>
