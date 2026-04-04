@@ -178,24 +178,3 @@ func (h *ProjectHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 	}
 	RespondJSON(w, http.StatusNoContent, nil)
 }
-
-// parseNullableInt decodes a json.RawMessage as a nullable int using **int
-// patch semantics:
-//   - nil/empty raw → nil (field absent, no update)
-//   - "null"        → &(*int=nil) (explicitly clear)
-//   - number        → &(*int=&v) (set to value)
-func parseNullableInt(raw json.RawMessage) (**int, error) {
-	if len(raw) == 0 {
-		return nil, nil
-	}
-	if string(raw) == "null" {
-		p := (*int)(nil)
-		return &p, nil
-	}
-	var v int
-	if err := json.Unmarshal(raw, &v); err != nil {
-		return nil, err
-	}
-	ptr := &v
-	return &ptr, nil
-}

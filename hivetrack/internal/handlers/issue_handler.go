@@ -1,9 +1,7 @@
 package handlers
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
 	"net/http"
 	"strconv"
 
@@ -147,12 +145,6 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bodyBytes, err := io.ReadAll(r.Body)
-	if err != nil {
-		RespondError(w, models.ErrBadRequest)
-		return
-	}
-
 	var body struct {
 		Title        *string                 `json:"title"`
 		Description  *string                 `json:"description"`
@@ -161,37 +153,36 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		Estimate     *models.IssueEstimate   `json:"estimate"`
 		AssigneeIDs  []uuid.UUID             `json:"assignee_ids"`
 		LabelIDs     []uuid.UUID             `json:"label_ids"`
-		SprintID     *uuid.UUID              `json:"sprint_id"`
+		SprintID     json.RawMessage         `json:"sprint_id"`
 		MilestoneID  *uuid.UUID              `json:"milestone_id"`
-		ParentID     *uuid.UUID              `json:"parent_id"`
+		ParentID     json.RawMessage         `json:"parent_id"`
 		OnHold       *bool                   `json:"on_hold"`
 		HoldReason   *models.HoldReason      `json:"hold_reason"`
 		HoldNote     *string                 `json:"hold_note"`
 		Visibility   *models.IssueVisibility `json:"visibility"`
 		Rank         *string                 `json:"rank"`
-		OwnerID      *uuid.UUID              `json:"owner_id"`
+		OwnerID      json.RawMessage         `json:"owner_id"`
 		CancelReason *string                 `json:"cancel_reason"`
 	}
-	if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&body); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		RespondError(w, models.ErrBadRequest)
 		return
 	}
 
-	// Detect explicit null for sprint_id/parent_id/owner_id to distinguish "clear" from "not provided".
-	clearSprintID := false
-	clearParentID := false
-	clearOwnerID := false
-	var rawFields map[string]json.RawMessage
-	if err := json.Unmarshal(bodyBytes, &rawFields); err == nil {
-		if raw, ok := rawFields["sprint_id"]; ok && string(raw) == "null" {
-			clearSprintID = true
-		}
-		if raw, ok := rawFields["parent_id"]; ok && string(raw) == "null" {
-			clearParentID = true
-		}
-		if raw, ok := rawFields["owner_id"]; ok && string(raw) == "null" {
-			clearOwnerID = true
-		}
+	sprintID, clearSprintID, err := parseNullableUUID(body.SprintID)
+	if err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+	parentID, clearParentID, err := parseNullableUUID(body.ParentID)
+	if err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+	ownerID, clearOwnerID, err := parseNullableUUID(body.OwnerID)
+	if err != nil {
+		RespondError(w, models.ErrBadRequest)
+		return
 	}
 
 	ctx := commands.ContextWithMediator(r.Context(), h.mediator)
@@ -205,17 +196,17 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		Estimate:      body.Estimate,
 		AssigneeIDs:   body.AssigneeIDs,
 		LabelIDs:      body.LabelIDs,
-		SprintID:      body.SprintID,
+		SprintID:      sprintID,
 		ClearSprintID: clearSprintID,
 		MilestoneID:   body.MilestoneID,
-		ParentID:      body.ParentID,
+		ParentID:      parentID,
 		ClearParentID: clearParentID,
 		OnHold:        body.OnHold,
 		HoldReason:    body.HoldReason,
 		HoldNote:      body.HoldNote,
 		Visibility:    body.Visibility,
 		Rank:          body.Rank,
-		OwnerID:       body.OwnerID,
+		OwnerID:       ownerID,
 		ClearOwnerID:  clearOwnerID,
 		CancelReason:  body.CancelReason,
 	})
