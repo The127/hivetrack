@@ -22,9 +22,7 @@ type BatchUpdateIssuesCommand struct {
 	SprintID      *uuid.UUID
 	ClearSprintID bool
 	MilestoneID   *uuid.UUID
-	OnHold        *bool
-	HoldReason    *models.HoldReason
-	HoldNote      *string
+	Hold          HoldUpdate
 }
 
 type BatchUpdateIssuesResult struct {
@@ -59,9 +57,7 @@ func HandleBatchUpdateIssues(ctx context.Context, cmd BatchUpdateIssuesCommand) 
 			SprintID:      cmd.SprintID,
 			ClearSprintID: cmd.ClearSprintID,
 			MilestoneID:   cmd.MilestoneID,
-			OnHold:        cmd.OnHold,
-			HoldReason:    cmd.HoldReason,
-			HoldNote:      cmd.HoldNote,
+			Hold:          cmd.Hold,
 		})
 
 		issue.SetUpdatedAt(now)

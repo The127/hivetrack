@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -76,21 +77,8 @@ func (h *SprintHandler) UpdateSprint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify sprint belongs to this project.
-	sprintsResult, err := mediatr.Send[*queries.GetSprintsResult](r.Context(), h.mediator, queries.GetSprintsQuery{ProjectSlug: slug})
-	if err != nil {
+	if err := h.verifySprintBelongsToProject(r.Context(), slug, sprintID); err != nil {
 		RespondError(w, err)
-		return
-	}
-	found := false
-	for _, s := range sprintsResult.Sprints {
-		if s.ID == sprintID {
-			found = true
-			break
-		}
-	}
-	if !found {
-		RespondError(w, models.ErrNotFound)
 		return
 	}
 
@@ -158,21 +146,8 @@ func (h *SprintHandler) DeleteSprint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify sprint belongs to this project.
-	sprintsResult, err := mediatr.Send[*queries.GetSprintsResult](r.Context(), h.mediator, queries.GetSprintsQuery{ProjectSlug: slug})
-	if err != nil {
+	if err := h.verifySprintBelongsToProject(r.Context(), slug, sprintID); err != nil {
 		RespondError(w, err)
-		return
-	}
-	found := false
-	for _, s := range sprintsResult.Sprints {
-		if s.ID == sprintID {
-			found = true
-			break
-		}
-	}
-	if !found {
-		RespondError(w, models.ErrNotFound)
 		return
 	}
 
@@ -184,4 +159,19 @@ func (h *SprintHandler) DeleteSprint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	RespondJSON(w, http.StatusNoContent, nil)
+}
+
+// verifySprintBelongsToProject checks that the given sprint ID exists within
+// the project identified by slug. Returns models.ErrNotFound if not found.
+func (h *SprintHandler) verifySprintBelongsToProject(ctx context.Context, slug string, sprintID uuid.UUID) error {
+	sprintsResult, err := mediatr.Send[*queries.GetSprintsResult](ctx, h.mediator, queries.GetSprintsQuery{ProjectSlug: slug})
+	if err != nil {
+		return err
+	}
+	for _, s := range sprintsResult.Sprints {
+		if s.ID == sprintID {
+			return nil
+		}
+	}
+	return models.ErrNotFound
 }

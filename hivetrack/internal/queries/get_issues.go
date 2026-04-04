@@ -125,34 +125,11 @@ func HandleGetIssues(ctx context.Context, q GetIssuesQuery) (*GetIssuesResult, e
 
 	items := make([]IssueSummary, 0, len(issues))
 	for _, i := range issues {
-		assignees, err := resolveUsers(ctx, db, i.GetAssignees())
+		summary, err := buildIssueSummary(ctx, db, i)
 		if err != nil {
-			return nil, fmt.Errorf("resolving assignees: %w", err)
+			return nil, err
 		}
-		labelInfos, err := resolveLabels(ctx, db, i.GetLabels())
-		if err != nil {
-			return nil, fmt.Errorf("resolving labels: %w", err)
-		}
-		items = append(items, IssueSummary{
-			ID:          i.GetId(),
-			Number:      i.GetNumber(),
-			Type:        i.GetType(),
-			Title:       i.GetTitle(),
-			Status:      i.GetStatus(),
-			Priority:    i.GetPriority(),
-			Estimate:    i.GetEstimate(),
-			Triaged:     i.GetTriaged(),
-			Refined:     i.GetRefined(),
-			Assignees:   assignees,
-			Labels:      labelInfos,
-			SprintID:    i.GetSprintID(),
-			MilestoneID: i.GetMilestoneID(),
-			ParentID:    i.GetParentID(),
-			Rank:        i.GetRank(),
-			OnHold:      i.GetOnHold(),
-			CreatedAt:   i.GetCreatedAt(),
-			UpdatedAt:   i.GetUpdatedAt(),
-		})
+		items = append(items, summary)
 	}
 
 	return &GetIssuesResult{

@@ -146,19 +146,17 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Title        *string                 `json:"title"`
-		Description  *string                 `json:"description"`
-		Status       *models.IssueStatus     `json:"status"`
-		Priority     *models.IssuePriority   `json:"priority"`
-		Estimate     *models.IssueEstimate   `json:"estimate"`
-		AssigneeIDs  []uuid.UUID             `json:"assignee_ids"`
-		LabelIDs     []uuid.UUID             `json:"label_ids"`
-		SprintID     json.RawMessage         `json:"sprint_id"`
-		MilestoneID  *uuid.UUID              `json:"milestone_id"`
-		ParentID     json.RawMessage         `json:"parent_id"`
-		OnHold       *bool                   `json:"on_hold"`
-		HoldReason   *models.HoldReason      `json:"hold_reason"`
-		HoldNote     *string                 `json:"hold_note"`
+		Title       *string               `json:"title"`
+		Description *string               `json:"description"`
+		Status      *models.IssueStatus   `json:"status"`
+		Priority    *models.IssuePriority `json:"priority"`
+		Estimate    *models.IssueEstimate `json:"estimate"`
+		AssigneeIDs []uuid.UUID           `json:"assignee_ids"`
+		LabelIDs    []uuid.UUID           `json:"label_ids"`
+		SprintID    json.RawMessage       `json:"sprint_id"`
+		MilestoneID *uuid.UUID            `json:"milestone_id"`
+		ParentID    json.RawMessage       `json:"parent_id"`
+		commands.HoldUpdate
 		Visibility   *models.IssueVisibility `json:"visibility"`
 		Rank         *string                 `json:"rank"`
 		OwnerID      json.RawMessage         `json:"owner_id"`
@@ -201,9 +199,7 @@ func (h *IssueHandler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		MilestoneID:   body.MilestoneID,
 		ParentID:      parentID,
 		ClearParentID: clearParentID,
-		OnHold:        body.OnHold,
-		HoldReason:    body.HoldReason,
-		HoldNote:      body.HoldNote,
+		Hold:          body.HoldUpdate,
 		Visibility:    body.Visibility,
 		Rank:          body.Rank,
 		OwnerID:       ownerID,
@@ -561,9 +557,7 @@ func (h *IssueHandler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request)
 		SprintID      *uuid.UUID            `json:"sprint_id"`
 		ClearSprintID bool                  `json:"clear_sprint_id"`
 		MilestoneID   *uuid.UUID            `json:"milestone_id"`
-		OnHold        *bool                 `json:"on_hold"`
-		HoldReason    *models.HoldReason    `json:"hold_reason"`
-		HoldNote      *string               `json:"hold_note"`
+		commands.HoldUpdate
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		RespondError(w, models.ErrBadRequest)
@@ -581,9 +575,7 @@ func (h *IssueHandler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request)
 		SprintID:      body.SprintID,
 		ClearSprintID: body.ClearSprintID,
 		MilestoneID:   body.MilestoneID,
-		OnHold:        body.OnHold,
-		HoldReason:    body.HoldReason,
-		HoldNote:      body.HoldNote,
+		Hold:          body.HoldUpdate,
 	})
 	if err != nil {
 		RespondError(w, err)
