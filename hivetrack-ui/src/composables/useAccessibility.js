@@ -9,11 +9,15 @@ const font = ref(localStorage.getItem(`${STORAGE_PREFIX}font`) ?? 'default')
 function apply() {
   const root = document.documentElement
 
-  // Build combined filter string
-  const filters = []
-  if (colorVision.value !== 'normal') filters.push(`url(#cv-${colorVision.value})`)
-  if (highContrast.value) filters.push('contrast(1.25)')
-  root.style.filter = filters.join(' ') || ''
+  // Color vision — apply SVG filter to root element
+  if (colorVision.value !== 'normal') {
+    root.style.filter = `url(#cv-${colorVision.value})`
+  } else {
+    root.style.filter = ''
+  }
+
+  // High contrast — toggle class for CSS custom property overrides
+  root.classList.toggle('high-contrast', highContrast.value)
 
   // Font
   root.classList.remove('font-system', 'font-dyslexia')

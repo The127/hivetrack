@@ -2,6 +2,59 @@
 @plugin "@tailwindcss/typography";
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* High contrast — override Tailwind color tokens for stronger contrast */
+.high-contrast {
+  /* Push dark text darker */
+  --color-slate-900: oklch(10% .042 265.755);
+  --color-slate-800: oklch(16% .041 260.031);
+  --color-slate-700: oklch(24% .044 257.287);
+  --color-gray-900: oklch(10% .034 264.665);
+  --color-gray-800: oklch(16% .033 256.848);
+  --color-gray-700: oklch(24% .034 259.733);
+
+  /* Push muted/secondary text to be more readable */
+  --color-slate-500: oklch(40% .046 257.417);
+  --color-slate-400: oklch(52% .04 256.788);
+  --color-gray-500: oklch(40% .027 264.364);
+  --color-gray-400: oklch(52% .022 261.325);
+
+  /* Strengthen borders */
+  --color-slate-200: oklch(82% .016 255.508);
+  --color-slate-300: oklch(74% .025 252.894);
+  --color-slate-100: oklch(88% .01 247.896);
+  --color-gray-200: oklch(82% .008 264.531);
+  --color-gray-300: oklch(74% .012 258.338);
+
+  /* Stronger accent colors */
+  --color-blue-500: oklch(52% .24 259.815);
+  --color-blue-600: oklch(46% .245 262.881);
+  --color-red-500: oklch(54% .237 25.331);
+  --color-red-600: oklch(48% .245 27.325);
+}
+
+/* Dark mode high contrast — push light text lighter, borders brighter */
+.high-contrast:where(.dark, .dark *) {
+  --color-slate-100: oklch(99% .003 247.896);
+  --color-slate-200: oklch(96% .01 255.508);
+  --color-slate-300: oklch(92% .018 252.894);
+  --color-slate-400: oklch(82% .035 256.788);
+  --color-gray-100: oklch(99% .002 264.542);
+  --color-gray-200: oklch(96% .005 264.531);
+  --color-gray-300: oklch(92% .008 258.338);
+  --color-gray-400: oklch(82% .018 261.325);
+
+  /* Stronger borders in dark mode */
+  --color-slate-700: oklch(48% .044 257.287);
+  --color-slate-600: oklch(55% .043 257.281);
+  --color-gray-700: oklch(48% .034 259.733);
+  --color-gray-600: oklch(55% .03 256.802);
+
+  /* Brighter accents */
+  --color-blue-400: oklch(78% .165 254.624);
+  --color-blue-300: oklch(88% .105 251.813);
+  --color-red-400: oklch(78% .191 22.216);
+}
+
 /* Dyslexia-friendly font */
 @font-face {
   font-family: "OpenDyslexic";
