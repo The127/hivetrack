@@ -31,13 +31,6 @@ func stringOr(args map[string]any, key, def string) string {
 	return def
 }
 
-// setOptionalString sets a key in body if the arg is present and non-empty.
-func setOptionalString(body map[string]any, args map[string]any, key string) {
-	if v, ok := args[key].(string); ok && v != "" {
-		body[key] = v
-	}
-}
-
 // parseUUIDList extracts a comma-separated list of UUIDs from an argument.
 // Returns nil (not error) if the key is absent or empty.
 func parseUUIDList(args map[string]any, key string) ([]string, error) {

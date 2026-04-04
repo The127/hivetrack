@@ -552,31 +552,15 @@ func makeBatchUpdateIssues(client *Client) server.ToolHandlerFunc {
 			return errResult(fmt.Errorf("no valid issue numbers provided")), nil
 		}
 
-		// Build the batch update body for the backend endpoint.
-		body := map[string]any{
-			"numbers": numbers,
-		}
-		setOptionalString(body, args, "status")
-		setOptionalString(body, args, "priority")
-		setOptionalString(body, args, "estimate")
+		batchReq := htclient.BatchUpdateIssuesRequest{Numbers: numbers}
+		batchReq.Status = fieldFromArgs(args, "status")
+		batchReq.Priority = fieldFromArgs(args, "priority")
+		batchReq.Estimate = fieldFromArgs(args, "estimate")
+		batchReq.SprintID = fieldFromArgs(args, "sprint_id")
+		batchReq.MilestoneID = fieldFromArgs(args, "milestone_id")
 
 		// Handle sprint_id: "null" means clear.
-		if v, ok := args["sprint_id"].(string); ok {
-			if v == "null" {
-				body["clear_sprint_id"] = true
-			} else if v != "" {
-				body["sprint_id"] = v
-			}
-		}
-		setOptionalString(body, args, "milestone_id")
-
-		batchReq := htclient.BatchUpdateIssuesRequest{Numbers: numbers}
-		batchReq.Status = fieldFromArgsNoNull(body, "status")
-		batchReq.Priority = fieldFromArgsNoNull(body, "priority")
-		batchReq.Estimate = fieldFromArgsNoNull(body, "estimate")
-		batchReq.SprintID = fieldFromArgsNoNull(body, "sprint_id")
-		batchReq.MilestoneID = fieldFromArgsNoNull(body, "milestone_id")
-		if body["clear_sprint_id"] == true {
+		if v, ok := args["sprint_id"].(string); ok && v == "null" {
 			batchReq.ClearSprintID = htclient.Set(true)
 		}
 
@@ -594,8 +578,8 @@ func makeBatchUpdateIssues(client *Client) server.ToolHandlerFunc {
 		if v, ok := args["on_hold"].(string); ok && v != "" {
 			batchReq.OnHold = htclient.Set(v == "true")
 		}
-		batchReq.HoldReason = fieldFromArgsNoNull(args, "hold_reason")
-		batchReq.HoldNote = fieldFromArgsNoNull(args, "hold_note")
+		batchReq.HoldReason = fieldFromArgs(args, "hold_reason")
+		batchReq.HoldNote = fieldFromArgs(args, "hold_note")
 		result, err := client.Typed().BatchUpdateIssues(ctx, slug, batchReq)
 		if err != nil {
 			return errResult(err), nil
