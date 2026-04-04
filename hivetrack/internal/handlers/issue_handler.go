@@ -26,76 +26,26 @@ func NewIssueHandler(m mediatr.Mediator) *IssueHandler {
 
 func (h *IssueHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	slug := mux.Vars(r)["slug"]
+	params := r.URL.Query()
 
-	q := queries.GetIssuesQuery{ProjectSlug: slug}
-
-	if s := r.URL.Query().Get("status"); s != "" {
-		status := models.IssueStatus(s)
-		q.Status = &status
-	}
-	if p := r.URL.Query().Get("priority"); p != "" {
-		priority := models.IssuePriority(p)
-		q.Priority = &priority
-	}
-	if t := r.URL.Query().Get("triaged"); t != "" {
-		triaged := t == "true"
-		q.Triaged = &triaged
-	}
-	if rf := r.URL.Query().Get("refined"); rf != "" {
-		refined := rf == "true"
-		q.Refined = &refined
-	}
-	if b := r.URL.Query().Get("backlog"); b != "" {
-		inBacklog := b == "true"
-		q.InBacklog = &inBacklog
-	}
-	if text := r.URL.Query().Get("text"); text != "" {
-		q.Text = &text
-	}
-	if tp := r.URL.Query().Get("type"); tp != "" {
-		issueType := models.IssueType(tp)
-		q.Type = &issueType
-	}
-	if pid := r.URL.Query().Get("parent_id"); pid != "" {
-		if parentID, err := uuid.Parse(pid); err == nil {
-			q.ParentID = &parentID
-		}
-	}
-	if np := r.URL.Query().Get("no_parent"); np == "true" {
-		v := true
-		q.HasNoParent = &v
-	}
-	if sid := r.URL.Query().Get("sprint_id"); sid != "" {
-		if sprintID, err := uuid.Parse(sid); err == nil {
-			q.SprintID = &sprintID
-		}
-	}
-	if aid := r.URL.Query().Get("assignee_id"); aid != "" {
-		if assigneeID, err := uuid.Parse(aid); err == nil {
-			q.AssigneeID = &assigneeID
-		}
-	}
-	if lid := r.URL.Query().Get("label_id"); lid != "" {
-		if labelID, err := uuid.Parse(lid); err == nil {
-			q.LabelID = &labelID
-		}
-	}
-	if elid := r.URL.Query().Get("exclude_label_id"); elid != "" {
-		if excludeLabelID, err := uuid.Parse(elid); err == nil {
-			q.ExcludeLabelID = &excludeLabelID
-		}
-	}
-	if oh := r.URL.Query().Get("on_hold"); oh != "" {
-		onHold := oh == "true"
-		q.OnHold = &onHold
-	}
-	if l := r.URL.Query().Get("limit"); l != "" {
-		limit, _ := strconv.Atoi(l)
-		q.Limit = limit
-	}
-	if o := r.URL.Query().Get("offset"); o != "" {
-		offset, _ := strconv.Atoi(o)
-		q.Offset = offset
+	q := queries.GetIssuesQuery{
+		ProjectSlug:    slug,
+		Status:         typedParam[models.IssueStatus](params, "status"),
+		Priority:       typedParam[models.IssuePriority](params, "priority"),
+		Type:           typedParam[models.IssueType](params, "type"),
+		Triaged:        queryParamBool(params, "triaged"),
+		Refined:        queryParamBool(params, "refined"),
+		InBacklog:      queryParamBool(params, "backlog"),
+		OnHold:         queryParamBool(params, "on_hold"),
+		HasNoParent:    queryParamBool(params, "no_parent"),
+		Text:           queryParam(params, "text"),
+		ParentID:       queryParamUUID(params, "parent_id"),
+		SprintID:       queryParamUUID(params, "sprint_id"),
+		AssigneeID:     queryParamUUID(params, "assignee_id"),
+		LabelID:        queryParamUUID(params, "label_id"),
+		ExcludeLabelID: queryParamUUID(params, "exclude_label_id"),
+		Limit:          queryParamInt(params, "limit"),
+		Offset:         queryParamInt(params, "offset"),
 	}
 
 	result, err := mediatr.Send[*queries.GetIssuesResult](r.Context(), h.mediator, q)
