@@ -23,7 +23,7 @@ import {
 import { useRoute } from "vue-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { VueDraggable } from "vue-draggable-plus";
-import { generateKeyBetween } from "fractional-indexing";
+import { computeRank } from "@/composables/useRank";
 import {
   PlusIcon,
   ListIcon,
@@ -229,17 +229,6 @@ watch(
   },
   { immediate: true },
 );
-
-function computeRank(items, newIdx) {
-  const prev = newIdx > 0 ? (items[newIdx - 1]?.rank ?? null) : null;
-  const next =
-    newIdx < items.length - 1 ? (items[newIdx + 1]?.rank ?? null) : null;
-  try {
-    return generateKeyBetween(prev, next);
-  } catch {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  }
-}
 
 // ── Reorder mutation ────────────────────────────────────────────────────────
 
