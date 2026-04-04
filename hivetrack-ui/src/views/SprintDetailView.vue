@@ -7,7 +7,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
-import { priorityBorder, estimateLabel } from '@/composables/issueConstants'
+import { priorityBorder, estimateLabel, statusLabel, statusScheme } from '@/composables/issueConstants'
 import { useQuery } from '@tanstack/vue-query'
 import { ArrowLeftIcon } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
@@ -61,30 +61,6 @@ const groupedIssues = computed(() => {
 
 // ── Formatting ────────────────────────────────────────────────────────────────
 
-const STATUS_LABEL = {
-  todo: 'To Do',
-  in_progress: 'In Progress',
-  in_review: 'In Review',
-  done: 'Done',
-  cancelled: 'Cancelled',
-  open: 'Open',
-  resolved: 'Resolved',
-  closed: 'Closed',
-}
-
-const STATUS_COLOR = {
-  todo: 'gray',
-  in_progress: 'blue',
-  in_review: 'purple',
-  done: 'green',
-  cancelled: 'gray',
-  open: 'blue',
-  resolved: 'green',
-  closed: 'gray',
-}
-
-function statusLabel(s) { return STATUS_LABEL[s] ?? s }
-function statusColor(s) { return STATUS_COLOR[s] ?? 'gray' }
 
 function formatDate(dateStr) {
   if (!dateStr) return null
@@ -147,7 +123,7 @@ const isLoading = computed(() => sprintsLoading.value || issuesLoading.value)
         <div v-else class="space-y-5">
           <div v-for="group in groupedIssues" :key="group.status">
             <div class="flex items-center gap-2 mb-2">
-              <Badge :colorScheme="statusColor(group.status)" compact>{{ statusLabel(group.status) }}</Badge>
+              <Badge :colorScheme="statusScheme(group.status)" compact>{{ statusLabel(group.status) }}</Badge>
               <span class="text-xs text-slate-400">{{ group.issues.length }}</span>
             </div>
             <div class="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">

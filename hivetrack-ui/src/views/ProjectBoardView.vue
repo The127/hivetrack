@@ -13,17 +13,13 @@
 -->
 <script setup>
 import { ref, computed, watch, nextTick } from "vue";
-import { priorityBorder, estimateLabel, isTerminalStatus } from "@/composables/issueConstants";
+import { priorityBorder, estimateLabel, isTerminalStatus, statusColumns } from "@/composables/issueConstants";
 import { useRoute, RouterLink } from "vue-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { VueDraggable } from "vue-draggable-plus";
 import { generateKeyBetween } from "fractional-indexing";
 import {
   PlusIcon,
-  CircleIcon,
-  CircleDotIcon,
-  GitPullRequestIcon,
-  CheckCircle2Icon,
   XCircleIcon,
   ChevronDownIcon,
   InboxIcon,
@@ -147,39 +143,6 @@ function doCompleteSprint({ moveToSprintId }) {
 
 // ── Status column config ──────────────────────────────────────────────────────
 
-const SOFTWARE_COLUMNS = [
-  { key: "todo", label: "To Do", scheme: "gray", icon: CircleIcon },
-  {
-    key: "in_progress",
-    label: "In Progress",
-    scheme: "blue",
-    icon: CircleDotIcon,
-  },
-  {
-    key: "in_review",
-    label: "In Review",
-    scheme: "violet",
-    icon: GitPullRequestIcon,
-  },
-  { key: "done", label: "Done", scheme: "green", icon: CheckCircle2Icon },
-];
-
-const SUPPORT_COLUMNS = [
-  { key: "open", label: "Open", scheme: "sky", icon: CircleIcon },
-  {
-    key: "in_progress",
-    label: "In Progress",
-    scheme: "blue",
-    icon: CircleDotIcon,
-  },
-  {
-    key: "resolved",
-    label: "Resolved",
-    scheme: "teal",
-    icon: CheckCircle2Icon,
-  },
-  { key: "closed", label: "Closed", scheme: "gray", icon: XCircleIcon },
-];
 
 const wipLimits = computed(() => ({
   in_progress: project.value?.wip_limit_in_progress ?? null,
@@ -188,9 +151,7 @@ const wipLimits = computed(() => ({
 
 const columns = computed(() => {
   if (!project.value) return [];
-  return project.value.archetype === "support"
-    ? SUPPORT_COLUMNS
-    : SOFTWARE_COLUMNS;
+  return statusColumns(project.value.archetype).filter((c) => c.key !== "cancelled");
 });
 
 // ── Board search / filter ────────────────────────────────────────────────────

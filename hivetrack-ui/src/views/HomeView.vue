@@ -13,17 +13,13 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
-import { priorityBorder } from '@/composables/issueConstants'
+import { priorityBorder, statusScheme, STATUS_META } from '@/composables/issueConstants'
 import { useRouter } from 'vue-router'
 import {
   PlusIcon,
   InboxIcon,
   FolderKanbanIcon,
   CircleDotIcon,
-  CircleIcon,
-  GitPullRequestIcon,
-  CheckCircle2Icon,
-  XCircleIcon,
   ListIcon,
   KanbanIcon,
 } from 'lucide-vue-next'
@@ -81,24 +77,8 @@ const totalUntriaged = computed(() =>
 
 // ── Status display helpers ────────────────────────────────────────────────────
 
-const STATUS_SCHEME = {
-  todo: 'gray',
-  in_progress: 'blue',
-  in_review: 'violet',
-  done: 'green',
-  cancelled: 'gray',
-  open: 'sky',
-  resolved: 'teal',
-  closed: 'gray',
-}
-
-function statusScheme(status) {
-  return STATUS_SCHEME[status] ?? 'gray'
-}
-
-// Format status string for display: "in_progress" → "In progress"
 function formatStatus(s) {
-  return s.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
+  return STATUS_META[s]?.label ?? s.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
 }
 
 // ── Priority mutation (list view) ─────────────────────────────────────────────
@@ -127,16 +107,7 @@ const { mutate: updateMyIssuePriority } = useMutation({
 
 // ── Board columns config ──────────────────────────────────────────────────────
 
-const ALL_COLUMNS = [
-  { key: 'todo',        label: 'To Do',      scheme: 'gray',   icon: CircleIcon },
-  { key: 'open',        label: 'Open',        scheme: 'sky',    icon: CircleIcon },
-  { key: 'in_progress', label: 'In Progress', scheme: 'blue',   icon: CircleDotIcon },
-  { key: 'in_review',   label: 'In Review',   scheme: 'violet', icon: GitPullRequestIcon },
-  { key: 'done',        label: 'Done',        scheme: 'green',  icon: CheckCircle2Icon },
-  { key: 'resolved',    label: 'Resolved',    scheme: 'teal',   icon: CheckCircle2Icon },
-  { key: 'closed',      label: 'Closed',      scheme: 'gray',   icon: XCircleIcon },
-  { key: 'cancelled',   label: 'Cancelled',   scheme: 'gray',   icon: XCircleIcon },
-]
+const ALL_COLUMNS = Object.entries(STATUS_META).map(([key, meta]) => ({ key, ...meta }))
 
 const activeColumns = computed(() => {
   const usedStatuses = new Set((myIssues.value?.items ?? []).map(i => i.status))

@@ -8,7 +8,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
-import { isTerminalStatus } from '@/composables/issueConstants'
+import { isTerminalStatus, statusColumns } from '@/composables/issueConstants'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import {
   KanbanIcon,
@@ -21,10 +21,8 @@ import {
   CalendarIcon,
   UsersIcon,
   TagIcon,
-  CircleIcon,
   CircleDotIcon,
   GitPullRequestIcon,
-  CheckCircle2Icon,
   XCircleIcon,
   Trash2Icon,
   SlidersHorizontalIcon,
@@ -190,23 +188,8 @@ const { data: burndownResult } = useQuery({
 const allIssues = computed(() => issuesResult.value?.items ?? [])
 const inboxCount = computed(() => inboxResult.value?.total ?? 0)
 
-const SOFTWARE_STATUSES = [
-  { key: 'todo', label: 'To Do', icon: CircleIcon, scheme: 'gray' },
-  { key: 'in_progress', label: 'In Progress', icon: CircleDotIcon, scheme: 'blue' },
-  { key: 'in_review', label: 'In Review', icon: GitPullRequestIcon, scheme: 'violet' },
-  { key: 'done', label: 'Done', icon: CheckCircle2Icon, scheme: 'green' },
-  { key: 'cancelled', label: 'Cancelled', icon: XCircleIcon, scheme: 'gray' },
-]
-
-const SUPPORT_STATUSES = [
-  { key: 'open', label: 'Open', icon: CircleIcon, scheme: 'sky' },
-  { key: 'in_progress', label: 'In Progress', icon: CircleDotIcon, scheme: 'blue' },
-  { key: 'resolved', label: 'Resolved', icon: CheckCircle2Icon, scheme: 'teal' },
-  { key: 'closed', label: 'Closed', icon: XCircleIcon, scheme: 'gray' },
-]
-
 const statusDefs = computed(() =>
-  project.value?.archetype === 'support' ? SUPPORT_STATUSES : SOFTWARE_STATUSES,
+  statusColumns(project.value?.archetype),
 )
 
 const statusCounts = computed(() => {

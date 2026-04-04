@@ -13,13 +13,7 @@
 -->
 <script setup>
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import {
-  CircleIcon,
-  CircleDotIcon,
-  GitPullRequestIcon,
-  CheckCircle2Icon,
-  XCircleIcon,
-} from 'lucide-vue-next'
+import { STATUS_META, SOFTWARE_STATUSES, SUPPORT_STATUSES } from '@/composables/issueConstants'
 
 const props = defineProps({
   status: { type: String, required: true },
@@ -27,20 +21,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:status'])
-
-const STATUS_META = {
-  todo:        { label: 'To Do',       scheme: 'gray',   icon: CircleIcon },
-  in_progress: { label: 'In Progress', scheme: 'blue',   icon: CircleDotIcon },
-  in_review:   { label: 'In Review',   scheme: 'violet', icon: GitPullRequestIcon },
-  done:        { label: 'Done',        scheme: 'green',  icon: CheckCircle2Icon },
-  cancelled:   { label: 'Cancelled',   scheme: 'gray',   icon: XCircleIcon },
-  open:        { label: 'Open',        scheme: 'sky',    icon: CircleIcon },
-  resolved:    { label: 'Resolved',    scheme: 'teal',   icon: CheckCircle2Icon },
-  closed:      { label: 'Closed',      scheme: 'gray',   icon: XCircleIcon },
-}
-
-const SOFTWARE_STATUSES = ['todo', 'in_progress', 'in_review', 'done', 'cancelled']
-const SUPPORT_STATUSES = ['open', 'in_progress', 'resolved', 'closed']
 
 const ICON_COLORS = {
   gray:   'text-slate-400',
