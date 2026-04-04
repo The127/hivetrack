@@ -31,6 +31,23 @@ func stringOr(args map[string]any, key, def string) string {
 	return def
 }
 
+// parseIssueNumbers parses a comma-separated string of issue numbers.
+func parseIssueNumbers(s string) ([]int, error) {
+	var numbers []int
+	for _, part := range strings.Split(s, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		n, err := strconv.Atoi(part)
+		if err != nil {
+			return nil, fmt.Errorf("invalid issue number: %q", part)
+		}
+		numbers = append(numbers, n)
+	}
+	return numbers, nil
+}
+
 // parseUUIDList extracts a comma-separated list of UUIDs from an argument.
 // Returns nil (not error) if the key is absent or empty.
 func parseUUIDList(args map[string]any, key string) ([]string, error) {
