@@ -16,7 +16,7 @@
 <script setup>
 import { ref, computed, reactive, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { priorityBorder } from '@/composables/issueConstants'
+import { priorityBorder, statusColumns, isTerminalStatus } from '@/composables/issueConstants'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import {
   InboxIcon,
@@ -75,23 +75,10 @@ const activeSprints = computed(() =>
 
 // ── Status options per archetype ───────────────────────────────────────────────
 
-const SOFTWARE_STATUSES = [
-  { key: 'todo',        label: 'To Do',      terminal: false },
-  { key: 'in_progress', label: 'In Progress', terminal: false },
-  { key: 'in_review',   label: 'In Review',   terminal: false },
-  { key: 'done',        label: 'Done',        terminal: true  },
-  { key: 'cancelled',   label: 'Cancelled',   terminal: true  },
-]
-const SUPPORT_STATUSES = [
-  { key: 'open',        label: 'Open',       terminal: false },
-  { key: 'in_progress', label: 'In Progress', terminal: false },
-  { key: 'resolved',    label: 'Resolved',   terminal: true  },
-  { key: 'closed',      label: 'Closed',     terminal: true  },
-]
-
-const triageStatuses = computed(() =>
-  project.value?.archetype === 'support' ? SUPPORT_STATUSES : SOFTWARE_STATUSES
-)
+const triageStatuses = computed(() => {
+  const arch = project.value?.archetype ?? 'software'
+  return statusColumns(arch).map(s => ({ ...s, terminal: isTerminalStatus(s.key, arch) }))
+})
 
 const terminalStatus = computed(() =>
   project.value?.archetype === 'support' ? 'closed' : 'cancelled'
