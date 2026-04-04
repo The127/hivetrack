@@ -17,6 +17,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { useOptimisticMutation } from '@/composables/useOptimisticMutation'
 import { priorityBorder, estimateLabel } from '@/composables/issueConstants'
 import { VueDraggable } from 'vue-draggable-plus'
 import {
@@ -138,52 +139,30 @@ const { mutate: attachTask } = useMutation({
   },
 })
 
-// ── Inline status update ──────────────────────────────────────────────────
+// ── Inline status/priority update ────────────────────────────────────────
 
-const { mutate: updateChildStatus } = useMutation({
+const childKey = () => ['issues', props.projectSlug, { parent_id: props.epicId }]
+const childUpdater = (old, { number, ...fields }) => ({
+  ...old,
+  items: old.items.map(i => i.number === number ? { ...i, ...fields } : i),
+})
+const childInvalidateKeys = [
+  () => ['issues', props.projectSlug],
+  () => ['issue', props.projectSlug],
+]
+
+const { mutate: updateChildStatus } = useOptimisticMutation(queryClient, {
+  queryKey: childKey,
   mutationFn: ({ number, status }) => updateIssue(props.projectSlug, number, { status }),
-  onMutate: async ({ number, status }) => {
-    const key = ['issues', props.projectSlug, { parent_id: props.epicId }]
-    await queryClient.cancelQueries({ queryKey: key })
-    const previous = queryClient.getQueryData(key)
-    queryClient.setQueryData(key, old => {
-      if (!old) return old
-      return { ...old, items: old.items.map(i => i.number === number ? { ...i, status } : i) }
-    })
-    return { previous }
-  },
-  onError: (_err, _vars, context) => {
-    if (context?.previous) {
-      queryClient.setQueryData(['issues', props.projectSlug, { parent_id: props.epicId }], context.previous)
-    }
-  },
-  onSettled: () => {
-    queryClient.invalidateQueries({ queryKey: ['issues', props.projectSlug] })
-    queryClient.invalidateQueries({ queryKey: ['issue', props.projectSlug] })
-  },
+  updater: childUpdater,
+  invalidateKeys: childInvalidateKeys,
 })
 
-const { mutate: updateChildPriority } = useMutation({
+const { mutate: updateChildPriority } = useOptimisticMutation(queryClient, {
+  queryKey: childKey,
   mutationFn: ({ number, priority }) => updateIssue(props.projectSlug, number, { priority }),
-  onMutate: async ({ number, priority }) => {
-    const key = ['issues', props.projectSlug, { parent_id: props.epicId }]
-    await queryClient.cancelQueries({ queryKey: key })
-    const previous = queryClient.getQueryData(key)
-    queryClient.setQueryData(key, old => {
-      if (!old) return old
-      return { ...old, items: old.items.map(i => i.number === number ? { ...i, priority } : i) }
-    })
-    return { previous }
-  },
-  onError: (_err, _vars, context) => {
-    if (context?.previous) {
-      queryClient.setQueryData(['issues', props.projectSlug, { parent_id: props.epicId }], context.previous)
-    }
-  },
-  onSettled: () => {
-    queryClient.invalidateQueries({ queryKey: ['issues', props.projectSlug] })
-    queryClient.invalidateQueries({ queryKey: ['issue', props.projectSlug] })
-  },
+  updater: childUpdater,
+  invalidateKeys: childInvalidateKeys,
 })
 </script>
 

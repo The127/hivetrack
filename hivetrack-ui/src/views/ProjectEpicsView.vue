@@ -12,6 +12,7 @@ import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { priorityBorder, estimateLabel, isTerminalStatus } from '@/composables/issueConstants'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { useOptimisticMutation } from '@/composables/useOptimisticMutation'
 import { VueDraggable } from 'vue-draggable-plus'
 import {
   LayersIcon,
@@ -91,50 +92,24 @@ function toggleEpic(epicId) {
   expandedEpics.value = next
 }
 
-// ── Inline status update ─────────────────────────────────────────────────────
+// ── Inline status/priority update ───────────────────────────────────────────
 
-const { mutate: updateEpicStatus } = useMutation({
-  mutationFn: ({ number, status }) => updateIssue(slug.value, number, { status }),
-  onMutate: async ({ number, status }) => {
-    const key = ['issues', slug.value, { type: 'epic', limit: 500 }]
-    await queryClient.cancelQueries({ queryKey: key })
-    const previous = queryClient.getQueryData(key)
-    queryClient.setQueryData(key, old => {
-      if (!old) return old
-      return { ...old, items: old.items.map(i => i.number === number ? { ...i, status } : i) }
-    })
-    return { previous }
-  },
-  onError: (_err, _vars, context) => {
-    if (context?.previous) {
-      queryClient.setQueryData(['issues', slug.value, { type: 'epic', limit: 500 }], context.previous)
-    }
-  },
-  onSettled: () => {
-    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
-  },
+const epicKey = () => ['issues', slug.value, { type: 'epic', limit: 500 }]
+const epicUpdater = (old, { number, ...fields }) => ({
+  ...old,
+  items: old.items.map(i => i.number === number ? { ...i, ...fields } : i),
 })
 
-const { mutate: updateEpicPriority } = useMutation({
+const { mutate: updateEpicStatus } = useOptimisticMutation(queryClient, {
+  queryKey: epicKey,
+  mutationFn: ({ number, status }) => updateIssue(slug.value, number, { status }),
+  updater: epicUpdater,
+})
+
+const { mutate: updateEpicPriority } = useOptimisticMutation(queryClient, {
+  queryKey: epicKey,
   mutationFn: ({ number, priority }) => updateIssue(slug.value, number, { priority }),
-  onMutate: async ({ number, priority }) => {
-    const key = ['issues', slug.value, { type: 'epic', limit: 500 }]
-    await queryClient.cancelQueries({ queryKey: key })
-    const previous = queryClient.getQueryData(key)
-    queryClient.setQueryData(key, old => {
-      if (!old) return old
-      return { ...old, items: old.items.map(i => i.number === number ? { ...i, priority } : i) }
-    })
-    return { previous }
-  },
-  onError: (_err, _vars, context) => {
-    if (context?.previous) {
-      queryClient.setQueryData(['issues', slug.value, { type: 'epic', limit: 500 }], context.previous)
-    }
-  },
-  onSettled: () => {
-    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
-  },
+  updater: epicUpdater,
 })
 
 // ── Drag-and-drop: unassigned ↔ epic ─────────────────────────────────────────

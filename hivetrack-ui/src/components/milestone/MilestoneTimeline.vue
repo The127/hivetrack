@@ -8,7 +8,8 @@
 -->
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { useQueryClient } from '@tanstack/vue-query'
+import { useOptimisticMutation } from '@/composables/useOptimisticMutation'
 import { updateMilestone } from '@/api/milestones'
 import { formatDate } from '@/composables/useDate'
 
@@ -158,22 +159,10 @@ onUnmounted(() => {
 
 const queryClient = useQueryClient()
 
-const { mutate: doUpdate } = useMutation({
+const { mutate: doUpdate } = useOptimisticMutation(queryClient, {
+  queryKey: () => ['milestones', props.slug],
   mutationFn: ({ id, data }) => updateMilestone(props.slug, id, data),
-  onMutate: async ({ id, data }) => {
-    await queryClient.cancelQueries({ queryKey: ['milestones', props.slug] })
-    const previous = queryClient.getQueryData(['milestones', props.slug])
-    queryClient.setQueryData(['milestones', props.slug], old =>
-      old?.map(m => m.id === id ? { ...m, ...data } : m) ?? old
-    )
-    return { previous }
-  },
-  onError: (_err, _vars, context) => {
-    queryClient.setQueryData(['milestones', props.slug], context.previous)
-  },
-  onSettled: () => {
-    queryClient.invalidateQueries({ queryKey: ['milestones', props.slug] })
-  },
+  updater: (old, { id, data }) => old?.map(m => m.id === id ? { ...m, ...data } : m) ?? old,
 })
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
