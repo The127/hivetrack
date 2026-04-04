@@ -16,6 +16,7 @@
 <script setup>
 import { ref, computed, reactive, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { priorityBorder } from '@/composables/issueConstants'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import {
   InboxIcon,
@@ -100,19 +101,6 @@ const defaultStatus = computed(() =>
   project.value?.archetype === 'support' ? 'open' : 'todo'
 )
 
-// ── Priority border ───────────────────────────────────────────────────────────
-
-const PRIORITY_BORDER = {
-  none:     'border-l-slate-200',
-  low:      'border-l-sky-400',
-  medium:   'border-l-amber-400',
-  high:     'border-l-orange-500',
-  critical: 'border-l-red-500',
-}
-
-function priorityBorder(priority) {
-  return PRIORITY_BORDER[priority] ?? 'border-l-slate-200'
-}
 
 // ── Triage form state ─────────────────────────────────────────────────────────
 
