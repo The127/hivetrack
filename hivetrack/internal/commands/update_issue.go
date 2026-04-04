@@ -77,6 +77,57 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	return &UpdateIssueResult{}, nil
 }
 
+// issueFieldPatch holds the fields shared between single and batch issue updates.
+type issueFieldPatch struct {
+	Status        *models.IssueStatus
+	Priority      *models.IssuePriority
+	Estimate      *models.IssueEstimate
+	AssigneeIDs   []uuid.UUID
+	LabelIDs      []uuid.UUID
+	SprintID      *uuid.UUID
+	ClearSprintID bool
+	MilestoneID   *uuid.UUID
+	OnHold        *bool
+	HoldReason    *models.HoldReason
+	HoldNote      *string
+}
+
+// applyCommonFieldPatch applies the shared field-patching logic used by both
+// single and batch issue updates.
+func applyCommonFieldPatch(issue *models.Issue, patch issueFieldPatch) {
+	if patch.Status != nil {
+		issue.SetStatus(*patch.Status)
+	}
+	if patch.Priority != nil {
+		issue.SetPriority(*patch.Priority)
+	}
+	if patch.Estimate != nil {
+		issue.SetEstimate(*patch.Estimate)
+	}
+	if patch.AssigneeIDs != nil {
+		issue.SetAssignees(patch.AssigneeIDs)
+	}
+	if patch.LabelIDs != nil {
+		issue.SetLabels(patch.LabelIDs)
+	}
+	if patch.ClearSprintID {
+		issue.SetSprintID(nil)
+	} else if patch.SprintID != nil {
+		issue.SetSprintID(patch.SprintID)
+	}
+	if patch.MilestoneID != nil {
+		issue.SetMilestoneID(patch.MilestoneID)
+	}
+	if patch.OnHold != nil {
+		if *patch.OnHold {
+			now := time.Now()
+			issue.SetHold(true, patch.HoldReason, &now, patch.HoldNote)
+		} else {
+			issue.SetHold(false, nil, nil, nil)
+		}
+	}
+}
+
 // applyFieldUpdates patches all fields on the issue from the command.
 func applyFieldUpdates(ctx context.Context, db repositories.DbContext, issue *models.Issue, cmd UpdateIssueCommand, actor authentication.CurrentUser) error {
 	if cmd.Title != nil {
@@ -85,39 +136,23 @@ func applyFieldUpdates(ctx context.Context, db repositories.DbContext, issue *mo
 	if cmd.Description != nil {
 		issue.SetDescription(cmd.Description)
 	}
-	if cmd.Status != nil {
-		issue.SetStatus(*cmd.Status)
-	}
-	if cmd.Priority != nil {
-		issue.SetPriority(*cmd.Priority)
-	}
-	if cmd.Estimate != nil {
-		issue.SetEstimate(*cmd.Estimate)
-	}
-	if cmd.AssigneeIDs != nil {
-		issue.SetAssignees(cmd.AssigneeIDs)
-	}
-	if cmd.LabelIDs != nil {
-		issue.SetLabels(cmd.LabelIDs)
-	}
-	if cmd.ClearSprintID {
-		issue.SetSprintID(nil)
-	} else if cmd.SprintID != nil {
-		issue.SetSprintID(cmd.SprintID)
-	}
-	if cmd.MilestoneID != nil {
-		issue.SetMilestoneID(cmd.MilestoneID)
-	}
+
+	applyCommonFieldPatch(issue, issueFieldPatch{
+		Status:        cmd.Status,
+		Priority:      cmd.Priority,
+		Estimate:      cmd.Estimate,
+		AssigneeIDs:   cmd.AssigneeIDs,
+		LabelIDs:      cmd.LabelIDs,
+		SprintID:      cmd.SprintID,
+		ClearSprintID: cmd.ClearSprintID,
+		MilestoneID:   cmd.MilestoneID,
+		OnHold:        cmd.OnHold,
+		HoldReason:    cmd.HoldReason,
+		HoldNote:      cmd.HoldNote,
+	})
+
 	if err := applyParentUpdate(ctx, db, issue, cmd); err != nil {
 		return err
-	}
-	if cmd.OnHold != nil {
-		if *cmd.OnHold {
-			now := time.Now()
-			issue.SetHold(true, cmd.HoldReason, &now, cmd.HoldNote)
-		} else {
-			issue.SetHold(false, nil, nil, nil)
-		}
 	}
 	if cmd.Visibility != nil {
 		issue.SetVisibility(*cmd.Visibility)

@@ -50,36 +50,19 @@ func HandleBatchUpdateIssues(ctx context.Context, cmd BatchUpdateIssuesCommand) 
 			return nil, fmt.Errorf("issue #%d: %w", number, models.ErrNotFound)
 		}
 
-		if cmd.Status != nil {
-			issue.SetStatus(*cmd.Status)
-		}
-		if cmd.Priority != nil {
-			issue.SetPriority(*cmd.Priority)
-		}
-		if cmd.Estimate != nil {
-			issue.SetEstimate(*cmd.Estimate)
-		}
-		if cmd.AssigneeIDs != nil {
-			issue.SetAssignees(cmd.AssigneeIDs)
-		}
-		if cmd.LabelIDs != nil {
-			issue.SetLabels(cmd.LabelIDs)
-		}
-		if cmd.ClearSprintID {
-			issue.SetSprintID(nil)
-		} else if cmd.SprintID != nil {
-			issue.SetSprintID(cmd.SprintID)
-		}
-		if cmd.MilestoneID != nil {
-			issue.SetMilestoneID(cmd.MilestoneID)
-		}
-		if cmd.OnHold != nil {
-			if *cmd.OnHold {
-				issue.SetHold(true, cmd.HoldReason, &now, cmd.HoldNote)
-			} else {
-				issue.SetHold(false, nil, nil, nil)
-			}
-		}
+		applyCommonFieldPatch(issue, issueFieldPatch{
+			Status:        cmd.Status,
+			Priority:      cmd.Priority,
+			Estimate:      cmd.Estimate,
+			AssigneeIDs:   cmd.AssigneeIDs,
+			LabelIDs:      cmd.LabelIDs,
+			SprintID:      cmd.SprintID,
+			ClearSprintID: cmd.ClearSprintID,
+			MilestoneID:   cmd.MilestoneID,
+			OnHold:        cmd.OnHold,
+			HoldReason:    cmd.HoldReason,
+			HoldNote:      cmd.HoldNote,
+		})
 
 		issue.SetUpdatedAt(now)
 		db.Issues().Update(issue)
