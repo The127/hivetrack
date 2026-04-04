@@ -9,7 +9,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { isTerminalStatus, statusColumns } from '@/composables/issueConstants'
-import { formatDate, formatDateRange } from '@/composables/useDate'
+import { formatDateRange } from '@/composables/useDate'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import {
   KanbanIcon,
