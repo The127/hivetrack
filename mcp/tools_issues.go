@@ -339,39 +339,16 @@ func makeUpdateIssue(client *Client) server.ToolHandlerFunc {
 			}
 		}
 
-		if v, ok := args["assignee_ids"].(string); ok && v != "" {
-			if v == "null" {
-				req.AssigneeIDs = htclient.Null[[]string]()
-			} else {
-				ids, err := parseUUIDList(args, "assignee_ids")
-				if err != nil {
-					return errResult(fmt.Errorf("invalid assignee_ids: %w", err)), nil
-				}
-				if ids != nil {
-					req.AssigneeIDs = htclient.Set(ids)
-				}
-			}
+		if assignees, err := parseNullableUUIDList(args, "assignee_ids"); err != nil {
+			return errResult(err), nil
+		} else {
+			req.AssigneeIDs = assignees
 		}
 
-		if v, ok := args["label_ids"].(string); ok && v != "" {
-			if v == "null" {
-				req.LabelIDs = htclient.Null[[]string]()
-			} else {
-				ids, err := parseUUIDList(args, "label_ids")
-				if err != nil {
-					return errResult(fmt.Errorf("invalid label_ids: %w", err)), nil
-				}
-				if ids != nil {
-					req.LabelIDs = htclient.Set(ids)
-				}
-			}
-		}
-		if req.LabelIDs.IsAbsent() {
-			if ids, err := resolveLabelNames(client, slug, args, "label_names"); err != nil {
-				return errResult(fmt.Errorf("resolving label names: %w", err)), nil
-			} else if ids != nil {
-				req.LabelIDs = htclient.Set(ids)
-			}
+		if labels, err := resolveLabelsField(client, slug, args); err != nil {
+			return errResult(err), nil
+		} else {
+			req.LabelIDs = labels
 		}
 
 		if v, ok := args["on_hold"].(string); ok && v != "" {
@@ -593,40 +570,6 @@ func makeBatchUpdateIssues(client *Client) server.ToolHandlerFunc {
 		}
 		setOptionalString(body, args, "milestone_id")
 
-		if v, ok := args["assignee_ids"].(string); ok {
-			if v == "null" {
-				body["assignee_ids"] = []string{}
-			} else if v != "" {
-				ids, err := parseUUIDList(args, "assignee_ids")
-				if err != nil {
-					return errResult(fmt.Errorf("invalid assignee_ids: %w", err)), nil
-				}
-				if ids != nil {
-					body["assignee_ids"] = ids
-				}
-			}
-		}
-		if v, ok := args["label_ids"].(string); ok {
-			if v == "null" {
-				body["label_ids"] = []string{}
-			} else if v != "" {
-				ids, err := parseUUIDList(args, "label_ids")
-				if err != nil {
-					return errResult(fmt.Errorf("invalid label_ids: %w", err)), nil
-				}
-				if ids != nil {
-					body["label_ids"] = ids
-				}
-			}
-		}
-		if _, hasLabelIDs := body["label_ids"]; !hasLabelIDs {
-			if ids, err := resolveLabelNames(client, slug, args, "label_names"); err != nil {
-				return errResult(fmt.Errorf("resolving label names: %w", err)), nil
-			} else if ids != nil {
-				body["label_ids"] = ids
-			}
-		}
-
 		batchReq := htclient.BatchUpdateIssuesRequest{Numbers: numbers}
 		batchReq.Status = fieldFromArgsNoNull(body, "status")
 		batchReq.Priority = fieldFromArgsNoNull(body, "priority")
@@ -636,11 +579,17 @@ func makeBatchUpdateIssues(client *Client) server.ToolHandlerFunc {
 		if body["clear_sprint_id"] == true {
 			batchReq.ClearSprintID = htclient.Set(true)
 		}
-		if ids, ok := body["assignee_ids"].([]string); ok {
-			batchReq.AssigneeIDs = htclient.Set(ids)
+
+		if assignees, err := parseNullableUUIDList(args, "assignee_ids"); err != nil {
+			return errResult(err), nil
+		} else {
+			batchReq.AssigneeIDs = assignees
 		}
-		if ids, ok := body["label_ids"].([]string); ok {
-			batchReq.LabelIDs = htclient.Set(ids)
+
+		if labels, err := resolveLabelsField(client, slug, args); err != nil {
+			return errResult(err), nil
+		} else {
+			batchReq.LabelIDs = labels
 		}
 		if v, ok := args["on_hold"].(string); ok && v != "" {
 			batchReq.OnHold = htclient.Set(v == "true")
