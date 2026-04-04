@@ -17,7 +17,8 @@
 import { ref, computed, reactive, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { priorityBorder, statusColumns, isTerminalStatus } from '@/composables/issueConstants'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { useQuery, useQueryClient } from '@tanstack/vue-query'
+import { useOptimisticMutation } from '@/composables/useOptimisticMutation'
 import {
   InboxIcon,
   PlusIcon,
@@ -150,7 +151,8 @@ watch(terminalStatus, (v) => {
 
 // ── Triage mutation ───────────────────────────────────────────────────────────
 
-const { mutate: doTriage, isPending: triaging } = useMutation({
+const { mutate: doTriage, isPending: triaging } = useOptimisticMutation(queryClient, {
+  queryKey: () => INBOX_KEY.value,
   mutationFn: ({ number, duplicateOf }) =>
     triageIssue(slug.value, number, {
       status: form.status,
@@ -164,25 +166,15 @@ const { mutate: doTriage, isPending: triaging } = useMutation({
         })
       }
     }),
-  onMutate: async ({ issueId }) => {
-    await queryClient.cancelQueries({ queryKey: INBOX_KEY.value })
-    const previous = queryClient.getQueryData(INBOX_KEY.value)
-    queryClient.setQueryData(INBOX_KEY.value, old =>
-      old
-        ? { ...old, items: old.items.filter(i => i.id !== issueId), total: old.total - 1 }
-        : old
-    )
-    return { previous }
-  },
-  onError: (_err, _vars, ctx) => {
-    if (ctx?.previous) {
-      queryClient.setQueryData(INBOX_KEY.value, ctx.previous)
-    }
-  },
+  updater: (old, { issueId }) => ({
+    ...old,
+    items: old.items.filter(i => i.id !== issueId),
+    total: old.total - 1,
+  }),
+  invalidateKeys: [() => ['issues', slug.value]],
   onSettled: () => {
     triagingId.value = null
     triageMode.value = null
-    queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
   },
 })
 
