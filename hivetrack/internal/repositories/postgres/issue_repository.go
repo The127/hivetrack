@@ -75,6 +75,31 @@ func (r *IssueRepository) ExecuteInsert(ctx context.Context, tx *sql.Tx, issue *
 	return nil
 }
 
+// issueColumnMapping defines the change-to-column mapping for simple single-column fields.
+// Each entry maps a change constant to a column name and a function that extracts the value.
+// To add a new single-column field, append one entry here.
+var issueColumnMapping = []struct {
+	change models.IssueChange
+	column string
+	value  func(*models.Issue) any
+}{
+	{models.IssueChangeTitle, "title", func(i *models.Issue) any { return i.GetTitle() }},
+	{models.IssueChangeDescription, "description", func(i *models.Issue) any { return i.GetDescription() }},
+	{models.IssueChangeStatus, "status", func(i *models.Issue) any { return i.GetStatus() }},
+	{models.IssueChangePriority, "priority", func(i *models.Issue) any { return i.GetPriority() }},
+	{models.IssueChangeEstimate, "estimate", func(i *models.Issue) any { return i.GetEstimate() }},
+	{models.IssueChangeMilestoneID, "milestone_id", func(i *models.Issue) any { return i.GetMilestoneID() }},
+	{models.IssueChangeSprintID, "sprint_id", func(i *models.Issue) any { return i.GetSprintID() }},
+	{models.IssueChangeSprintCarryCount, "sprint_carry_count", func(i *models.Issue) any { return i.GetSprintCarryCount() }},
+	{models.IssueChangeTriaged, "triaged", func(i *models.Issue) any { return i.GetTriaged() }},
+	{models.IssueChangeRefined, "refined", func(i *models.Issue) any { return i.GetRefined() }},
+	{models.IssueChangeVisibility, "visibility", func(i *models.Issue) any { return i.GetVisibility() }},
+	{models.IssueChangeRank, `"rank"`, func(i *models.Issue) any { return i.GetRank() }},
+	{models.IssueChangeParentID, "parent_id", func(i *models.Issue) any { return i.GetParentID() }},
+	{models.IssueChangeOwnerID, "owner_id", func(i *models.Issue) any { return i.GetOwnerID() }},
+	{models.IssueChangeCancelReason, "cancel_reason", func(i *models.Issue) any { return i.GetCancelReason() }},
+}
+
 func (r *IssueRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, issue *models.Issue) error {
 	if !issue.HasChanges() {
 		return nil
@@ -93,75 +118,33 @@ func (r *IssueRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, issue *
 	args = append(args, issue.GetUpdatedAt())
 	argIdx++
 
-	if issue.HasChange(models.IssueChangeTitle) {
-		setClauses = append(setClauses, fmt.Sprintf("title=$%d", argIdx))
-		args = append(args, issue.GetTitle())
-		argIdx++
+	// Simple single-column fields driven by the mapping table
+	for _, m := range issueColumnMapping {
+		if issue.HasChange(m.change) {
+			setClauses = append(setClauses, fmt.Sprintf("%s=$%d", m.column, argIdx))
+			args = append(args, m.value(issue))
+			argIdx++
+		}
 	}
-	if issue.HasChange(models.IssueChangeDescription) {
-		setClauses = append(setClauses, fmt.Sprintf("description=$%d", argIdx))
-		args = append(args, issue.GetDescription())
-		argIdx++
-	}
-	if issue.HasChange(models.IssueChangeStatus) {
-		setClauses = append(setClauses, fmt.Sprintf("status=$%d", argIdx))
-		args = append(args, issue.GetStatus())
-		argIdx++
-	}
+
+	// Hold maps one change to four columns
 	if issue.HasChange(models.IssueChangeHold) {
-		setClauses = append(setClauses, fmt.Sprintf("on_hold=$%d", argIdx))
-		args = append(args, issue.GetOnHold())
-		argIdx++
-		setClauses = append(setClauses, fmt.Sprintf("hold_reason=$%d", argIdx))
-		args = append(args, issue.GetHoldReason())
-		argIdx++
-		setClauses = append(setClauses, fmt.Sprintf("hold_since=$%d", argIdx))
-		args = append(args, issue.GetHoldSince())
-		argIdx++
-		setClauses = append(setClauses, fmt.Sprintf("hold_note=$%d", argIdx))
-		args = append(args, issue.GetHoldNote())
-		argIdx++
+		for _, col := range []struct {
+			name string
+			val  any
+		}{
+			{"on_hold", issue.GetOnHold()},
+			{"hold_reason", issue.GetHoldReason()},
+			{"hold_since", issue.GetHoldSince()},
+			{"hold_note", issue.GetHoldNote()},
+		} {
+			setClauses = append(setClauses, fmt.Sprintf("%s=$%d", col.name, argIdx))
+			args = append(args, col.val)
+			argIdx++
+		}
 	}
-	if issue.HasChange(models.IssueChangePriority) {
-		setClauses = append(setClauses, fmt.Sprintf("priority=$%d", argIdx))
-		args = append(args, issue.GetPriority())
-		argIdx++
-	}
-	if issue.HasChange(models.IssueChangeEstimate) {
-		setClauses = append(setClauses, fmt.Sprintf("estimate=$%d", argIdx))
-		args = append(args, issue.GetEstimate())
-		argIdx++
-	}
-	if issue.HasChange(models.IssueChangeMilestoneID) {
-		setClauses = append(setClauses, fmt.Sprintf("milestone_id=$%d", argIdx))
-		args = append(args, issue.GetMilestoneID())
-		argIdx++
-	}
-	if issue.HasChange(models.IssueChangeSprintID) {
-		setClauses = append(setClauses, fmt.Sprintf("sprint_id=$%d", argIdx))
-		args = append(args, issue.GetSprintID())
-		argIdx++
-	}
-	if issue.HasChange(models.IssueChangeSprintCarryCount) {
-		setClauses = append(setClauses, fmt.Sprintf("sprint_carry_count=$%d", argIdx))
-		args = append(args, issue.GetSprintCarryCount())
-		argIdx++
-	}
-	if issue.HasChange(models.IssueChangeTriaged) {
-		setClauses = append(setClauses, fmt.Sprintf("triaged=$%d", argIdx))
-		args = append(args, issue.GetTriaged())
-		argIdx++
-	}
-	if issue.HasChange(models.IssueChangeRefined) {
-		setClauses = append(setClauses, fmt.Sprintf("refined=$%d", argIdx))
-		args = append(args, issue.GetRefined())
-		argIdx++
-	}
-	if issue.HasChange(models.IssueChangeVisibility) {
-		setClauses = append(setClauses, fmt.Sprintf("visibility=$%d", argIdx))
-		args = append(args, issue.GetVisibility())
-		argIdx++
-	}
+
+	// Checklist requires JSON marshaling
 	if issue.HasChange(models.IssueChangeChecklist) {
 		checklistJSON, err := json.Marshal(issue.GetChecklist())
 		if err != nil {
@@ -169,26 +152,6 @@ func (r *IssueRepository) ExecuteUpdate(ctx context.Context, tx *sql.Tx, issue *
 		}
 		setClauses = append(setClauses, fmt.Sprintf("checklist=$%d", argIdx))
 		args = append(args, checklistJSON)
-		argIdx++
-	}
-	if issue.HasChange(models.IssueChangeRank) {
-		setClauses = append(setClauses, fmt.Sprintf(`"rank"=$%d`, argIdx))
-		args = append(args, issue.GetRank())
-		argIdx++
-	}
-	if issue.HasChange(models.IssueChangeParentID) {
-		setClauses = append(setClauses, fmt.Sprintf("parent_id=$%d", argIdx))
-		args = append(args, issue.GetParentID())
-		argIdx++
-	}
-	if issue.HasChange(models.IssueChangeOwnerID) {
-		setClauses = append(setClauses, fmt.Sprintf("owner_id=$%d", argIdx))
-		args = append(args, issue.GetOwnerID())
-		argIdx++
-	}
-	if issue.HasChange(models.IssueChangeCancelReason) {
-		setClauses = append(setClauses, fmt.Sprintf("cancel_reason=$%d", argIdx))
-		args = append(args, issue.GetCancelReason())
 		argIdx++
 	}
 
