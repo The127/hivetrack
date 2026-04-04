@@ -130,19 +130,12 @@ func makeUpdateSprint(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, id")), nil
 		}
 
-		setStr := func(key string) htclient.Field[string] {
-			if v, ok := args[key].(string); ok && v != "" {
-				return htclient.Set(v)
-			}
-			return htclient.Field[string]{}
-		}
-
 		req := htclient.UpdateSprintRequest{
-			Name:      setStr("name"),
-			Goal:      setStr("goal"),
-			StartDate: setStr("start_date"),
-			EndDate:   setStr("end_date"),
-			Status:    setStr("status"),
+			Name:      fieldFromArgsNoNull(args, "name"),
+			Goal:      fieldFromArgsNoNull(args, "goal"),
+			StartDate: fieldFromArgsNoNull(args, "start_date"),
+			EndDate:   fieldFromArgsNoNull(args, "end_date"),
+			Status:    fieldFromArgsNoNull(args, "status"),
 		}
 		if force, ok := args["force"].(bool); ok && force {
 			req.Force = htclient.Set(true)

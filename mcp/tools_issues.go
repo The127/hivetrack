@@ -318,25 +318,14 @@ func makeUpdateIssue(client *Client) server.ToolHandlerFunc {
 
 		req := htclient.UpdateIssueRequest{}
 
-		// Helper: parse string arg as Set or Null field.
-		setOrNull := func(key string) htclient.Field[string] {
-			if v, ok := args[key].(string); ok && v != "" {
-				if v == "null" {
-					return htclient.Null[string]()
-				}
-				return htclient.Set(v)
-			}
-			return htclient.Field[string]{}
-		}
-
-		req.Title = setOrNull("title")
-		req.Description = setOrNull("description")
-		req.Status = setOrNull("status")
-		req.Priority = setOrNull("priority")
-		req.Estimate = setOrNull("estimate")
-		req.SprintID = setOrNull("sprint_id")
-		req.MilestoneID = setOrNull("milestone_id")
-		req.OwnerID = setOrNull("owner_id")
+		req.Title = fieldFromArgs(args, "title")
+		req.Description = fieldFromArgs(args, "description")
+		req.Status = fieldFromArgs(args, "status")
+		req.Priority = fieldFromArgs(args, "priority")
+		req.Estimate = fieldFromArgs(args, "estimate")
+		req.SprintID = fieldFromArgs(args, "sprint_id")
+		req.MilestoneID = fieldFromArgs(args, "milestone_id")
+		req.OwnerID = fieldFromArgs(args, "owner_id")
 
 		if v, ok := args["parent_id"].(string); ok && v != "" {
 			if v == "null" {
@@ -388,8 +377,8 @@ func makeUpdateIssue(client *Client) server.ToolHandlerFunc {
 		if v, ok := args["on_hold"].(string); ok && v != "" {
 			req.OnHold = htclient.Set(v == "true")
 		}
-		req.HoldReason = setOrNull("hold_reason")
-		req.HoldNote = setOrNull("hold_note")
+		req.HoldReason = fieldFromArgs(args, "hold_reason")
+		req.HoldNote = fieldFromArgs(args, "hold_note")
 
 		if err := client.Typed().UpdateIssue(ctx, slug, number, req); err != nil {
 			return errResult(err), nil
@@ -639,17 +628,11 @@ func makeBatchUpdateIssues(client *Client) server.ToolHandlerFunc {
 		}
 
 		batchReq := htclient.BatchUpdateIssuesRequest{Numbers: numbers}
-		setFromMap := func(m map[string]any, key string) htclient.Field[string] {
-			if v, ok := m[key].(string); ok && v != "" {
-				return htclient.Set(v)
-			}
-			return htclient.Field[string]{}
-		}
-		batchReq.Status = setFromMap(body, "status")
-		batchReq.Priority = setFromMap(body, "priority")
-		batchReq.Estimate = setFromMap(body, "estimate")
-		batchReq.SprintID = setFromMap(body, "sprint_id")
-		batchReq.MilestoneID = setFromMap(body, "milestone_id")
+		batchReq.Status = fieldFromArgsNoNull(body, "status")
+		batchReq.Priority = fieldFromArgsNoNull(body, "priority")
+		batchReq.Estimate = fieldFromArgsNoNull(body, "estimate")
+		batchReq.SprintID = fieldFromArgsNoNull(body, "sprint_id")
+		batchReq.MilestoneID = fieldFromArgsNoNull(body, "milestone_id")
 		if body["clear_sprint_id"] == true {
 			batchReq.ClearSprintID = htclient.Set(true)
 		}
@@ -662,8 +645,8 @@ func makeBatchUpdateIssues(client *Client) server.ToolHandlerFunc {
 		if v, ok := args["on_hold"].(string); ok && v != "" {
 			batchReq.OnHold = htclient.Set(v == "true")
 		}
-		batchReq.HoldReason = setFromMap(body, "hold_reason")
-		batchReq.HoldNote = setFromMap(body, "hold_note")
+		batchReq.HoldReason = fieldFromArgsNoNull(args, "hold_reason")
+		batchReq.HoldNote = fieldFromArgsNoNull(args, "hold_note")
 		result, err := client.Typed().BatchUpdateIssues(ctx, slug, batchReq)
 		if err != nil {
 			return errResult(err), nil
