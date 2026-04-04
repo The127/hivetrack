@@ -239,7 +239,7 @@ func handleStatusChangeSideEffects(ctx context.Context, db repositories.DbContex
 		issue.SetTriaged(true)
 	}
 
-	if isTerminalStatus(newStatus) {
+	if models.IsTerminalStatus(newStatus) {
 		if err := autoClearBlockedHolds(ctx, db, issue); err != nil {
 			return err
 		}
@@ -283,11 +283,6 @@ func actorIsViewerOnProject(ctx context.Context, db repositories.DbContext, proj
 		return false, fmt.Errorf("getting project member: %w", err)
 	}
 	return member != nil && member.Role == models.ProjectRoleViewer, nil
-}
-
-func isTerminalStatus(s models.IssueStatus) bool {
-	return s == models.IssueStatusDone || s == models.IssueStatusCancelled ||
-		s == models.IssueStatusResolved || s == models.IssueStatusClosed
 }
 
 // autoClearBlockedHolds clears on_hold on issues blocked by this one,
@@ -338,7 +333,7 @@ func hasOtherActiveBlockers(ctx context.Context, db repositories.DbContext, bloc
 		if err != nil {
 			return false, fmt.Errorf("getting blocker: %w", err)
 		}
-		if blocker != nil && !isTerminalStatus(blocker.GetStatus()) {
+		if blocker != nil && !models.IsTerminalStatus(blocker.GetStatus()) {
 			return true, nil
 		}
 	}
