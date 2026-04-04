@@ -268,98 +268,27 @@ func (r *IssueRepository) GetByNumber(ctx context.Context, projectID uuid.UUID, 
 }
 
 func (r *IssueRepository) List(ctx context.Context, filter *repositories.IssueFilter) ([]*models.Issue, int, error) {
-	baseQuery := issueSelectQuery + ` WHERE 1=1`
-	var args []any
-	argIdx := 1
+	w := newWhereBuilder(issueSelectQuery)
 
-	if filter.ProjectID != nil {
-		baseQuery += fmt.Sprintf(` AND i.project_id=$%d`, argIdx)
-		args = append(args, *filter.ProjectID)
-		argIdx++
-	}
-	if filter.Status != nil {
-		baseQuery += fmt.Sprintf(` AND i.status=$%d`, argIdx)
-		args = append(args, *filter.Status)
-		argIdx++
-	}
-	if filter.Priority != nil {
-		baseQuery += fmt.Sprintf(` AND i.priority=$%d`, argIdx)
-		args = append(args, *filter.Priority)
-		argIdx++
-	}
-	if filter.SprintID != nil {
-		baseQuery += fmt.Sprintf(` AND i.sprint_id=$%d`, argIdx)
-		args = append(args, *filter.SprintID)
-		argIdx++
-	}
-	if filter.InBacklog != nil && *filter.InBacklog {
-		baseQuery += ` AND i.sprint_id IS NULL`
-	}
-	if filter.Triaged != nil {
-		baseQuery += fmt.Sprintf(` AND i.triaged=$%d`, argIdx)
-		args = append(args, *filter.Triaged)
-		argIdx++
-	}
-	if filter.Refined != nil {
-		baseQuery += fmt.Sprintf(` AND i.refined=$%d`, argIdx)
-		args = append(args, *filter.Refined)
-		argIdx++
-	}
-	if filter.AssigneeID != nil {
-		baseQuery += fmt.Sprintf(` AND EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.user_id=$%d)`, argIdx)
-		args = append(args, *filter.AssigneeID)
-		argIdx++
-	}
-	if filter.Text != nil && *filter.Text != "" {
-		baseQuery += fmt.Sprintf(` AND to_tsvector('english', i.title || ' ' || coalesce(i.description, '')) @@ plainto_tsquery('english', $%d)`, argIdx)
-		args = append(args, *filter.Text)
-		argIdx++
-	}
-	if filter.Type != nil {
-		baseQuery += fmt.Sprintf(` AND i.type=$%d`, argIdx)
-		args = append(args, *filter.Type)
-		argIdx++
-	}
-	if filter.ParentID != nil {
-		baseQuery += fmt.Sprintf(` AND i.parent_id=$%d`, argIdx)
-		args = append(args, *filter.ParentID)
-		argIdx++
-	}
-	if filter.HasNoParent != nil && *filter.HasNoParent {
-		baseQuery += ` AND i.parent_id IS NULL`
-	}
-	if filter.LabelID != nil {
-		baseQuery += fmt.Sprintf(` AND EXISTS (SELECT 1 FROM issue_labels il WHERE il.issue_id = i.id AND il.label_id=$%d)`, argIdx)
-		args = append(args, *filter.LabelID)
-		argIdx++
-	}
-	if filter.ExcludeLabelID != nil {
-		baseQuery += fmt.Sprintf(` AND NOT EXISTS (SELECT 1 FROM issue_labels il WHERE il.issue_id = i.id AND il.label_id=$%d)`, argIdx)
-		args = append(args, *filter.ExcludeLabelID)
-		argIdx++
-	}
-	if filter.OnHold != nil {
-		baseQuery += fmt.Sprintf(` AND i.on_hold=$%d`, argIdx)
-		args = append(args, *filter.OnHold)
-	}
+	r.applyIssueFilters(w, filter)
 
 	// Count total
-	countQuery := `SELECT COUNT(*) FROM (` + baseQuery + `) sub`
+	countQuery := `SELECT COUNT(*) FROM (` + w.query + `) sub`
 	var total int
-	if err := r.ctx.queryContext(ctx).QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := r.ctx.queryContext(ctx).QueryRowContext(ctx, countQuery, w.args...).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("counting issues: %w", err)
 	}
 
-	baseQuery += ` ORDER BY i."rank" ASC NULLS LAST, i.created_at DESC`
+	w.query += ` ORDER BY i."rank" ASC NULLS LAST, i.created_at DESC`
 
 	if filter.Limit > 0 {
-		baseQuery += fmt.Sprintf(` LIMIT %d`, filter.Limit)
+		w.query += fmt.Sprintf(` LIMIT %d`, filter.Limit)
 	}
 	if filter.Offset > 0 {
-		baseQuery += fmt.Sprintf(` OFFSET %d`, filter.Offset)
+		w.query += fmt.Sprintf(` OFFSET %d`, filter.Offset)
 	}
 
-	rows, err := r.ctx.queryContext(ctx).QueryContext(ctx, baseQuery, args...)
+	rows, err := r.ctx.queryContext(ctx).QueryContext(ctx, w.query, w.args...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("listing issues: %w", err)
 	}
@@ -374,6 +303,24 @@ func (r *IssueRepository) List(ctx context.Context, filter *repositories.IssueFi
 		issues = append(issues, issue)
 	}
 	return issues, total, rows.Err()
+}
+
+func (r *IssueRepository) applyIssueFilters(w *whereBuilder, filter *repositories.IssueFilter) {
+	w.eq(`i.project_id`, filter.ProjectID != nil, filter.ProjectID)
+	w.eq(`i.status`, filter.Status != nil, filter.Status)
+	w.eq(`i.priority`, filter.Priority != nil, filter.Priority)
+	w.eq(`i.sprint_id`, filter.SprintID != nil, filter.SprintID)
+	w.raw(filter.InBacklog != nil && *filter.InBacklog, `i.sprint_id IS NULL`)
+	w.eq(`i.triaged`, filter.Triaged != nil, filter.Triaged)
+	w.eq(`i.refined`, filter.Refined != nil, filter.Refined)
+	w.clause(`EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.user_id=$%d)`, filter.AssigneeID != nil, filter.AssigneeID)
+	w.clause(`to_tsvector('english', i.title || ' ' || coalesce(i.description, '')) @@ plainto_tsquery('english', $%d)`, filter.Text != nil && *filter.Text != "", filter.Text)
+	w.eq(`i.type`, filter.Type != nil, filter.Type)
+	w.eq(`i.parent_id`, filter.ParentID != nil, filter.ParentID)
+	w.raw(filter.HasNoParent != nil && *filter.HasNoParent, `i.parent_id IS NULL`)
+	w.clause(`EXISTS (SELECT 1 FROM issue_labels il WHERE il.issue_id = i.id AND il.label_id=$%d)`, filter.LabelID != nil, filter.LabelID)
+	w.clause(`NOT EXISTS (SELECT 1 FROM issue_labels il WHERE il.issue_id = i.id AND il.label_id=$%d)`, filter.ExcludeLabelID != nil, filter.ExcludeLabelID)
+	w.eq(`i.on_hold`, filter.OnHold != nil, filter.OnHold)
 }
 
 func (r *IssueRepository) syncAssignees(ctx context.Context, tx *sql.Tx, issueID uuid.UUID, assignees []uuid.UUID) error {
