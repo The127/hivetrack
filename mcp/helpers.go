@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	htclient "github.com/the127/hivetrack/client"
 )
 
 // errMissing returns a descriptive error for missing required arguments.
@@ -68,6 +69,29 @@ func resolveLabelNames(client *Client, slug string, args map[string]any, key str
 		return nil, nil
 	}
 	return client.Typed().ResolveLabelNames(context.Background(), slug, v)
+}
+
+// fieldFromArgs extracts a string arg and returns it as a Field.
+// If the value is "null", returns a Null field (explicit clear).
+// If present and non-empty, returns a Set field.
+// If absent or empty, returns an absent (zero) field.
+func fieldFromArgs(args map[string]any, key string) htclient.Field[string] {
+	if v, ok := args[key].(string); ok && v != "" {
+		if v == "null" {
+			return htclient.Null[string]()
+		}
+		return htclient.Set(v)
+	}
+	return htclient.Field[string]{}
+}
+
+// fieldFromArgsNoNull is like fieldFromArgs but does not treat "null" specially.
+// Use for fields where clearing via "null" is not meaningful (e.g. sprint name, goal).
+func fieldFromArgsNoNull(args map[string]any, key string) htclient.Field[string] {
+	if v, ok := args[key].(string); ok && v != "" {
+		return htclient.Set(v)
+	}
+	return htclient.Field[string]{}
 }
 
 // resolveIssueID takes a value that is either a UUID or an issue number string,

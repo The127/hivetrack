@@ -87,17 +87,10 @@ func makeUpdateMilestone(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, milestone_id")), nil
 		}
 
-		setStr := func(key string) htclient.Field[string] {
-			if v, ok := args[key].(string); ok && v != "" {
-				return htclient.Set(v)
-			}
-			return htclient.Field[string]{}
-		}
-
 		req := htclient.UpdateMilestoneRequest{
-			Title:       setStr("title"),
-			Description: setStr("description"),
-			TargetDate:  setStr("target_date"),
+			Title:       fieldFromArgsNoNull(args, "title"),
+			Description: fieldFromArgsNoNull(args, "description"),
+			TargetDate:  fieldFromArgsNoNull(args, "target_date"),
 		}
 		if v, ok := args["close"].(string); ok && v != "" {
 			req.Close = htclient.Set(v == "true")
