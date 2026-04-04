@@ -17,7 +17,7 @@ import { priorityBorder, estimateLabel, isTerminalStatus, statusColumns } from "
 import { useRoute, RouterLink } from "vue-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { VueDraggable } from "vue-draggable-plus";
-import { computeRank } from "@/composables/useRank";
+import { useDragReorder } from "@/composables/useDragReorder";
 import {
   PlusIcon,
   XCircleIcon,
@@ -178,7 +178,6 @@ function matchesSearch(issue) {
 
 // ── Drag-and-drop state ─────────────────────────────────────────────────────
 
-const isDragging = ref(false);
 const columnIssues = ref({});
 
 function rebuildColumnIssues() {
@@ -199,7 +198,7 @@ watch(
   { immediate: true },
 );
 
-// ── Reorder mutation ────────────────────────────────────────────────────────
+// ── Drag-and-drop ──────────────────────────────────────────────────────────
 
 const { mutate: reorderIssue } = useMutation({
   mutationFn: ({ issueNumber, data }) =>
@@ -233,38 +232,17 @@ const { mutate: reorderIssue } = useMutation({
   },
 });
 
-// ── Drag handlers ───────────────────────────────────────────────────────────
-
-function onDragStart() {
-  isDragging.value = true;
-}
-
-function onDragEnd() {
-  setTimeout(() => {
-    isDragging.value = false;
-  }, 0);
-}
+const { isDragging, onDragStart, onDragEnd, handleDrag } = useDragReorder(
+  columnIssues,
+  (item, data) => reorderIssue({ issueNumber: item.number, data }),
+);
 
 function onWithinColumnDrag(evt, colKey) {
-  const items = columnIssues.value[colKey];
-  const newIdx = evt.newDraggableIndex;
-  const movedItem = items[newIdx];
-  const newRank = computeRank(items, newIdx);
-  movedItem.rank = newRank;
-  reorderIssue({ issueNumber: movedItem.number, data: { rank: newRank } });
+  handleDrag(evt, colKey);
 }
 
 function onCrossColumnDrop(evt, toColKey) {
-  const items = columnIssues.value[toColKey];
-  const newIdx = evt.newDraggableIndex;
-  const movedItem = items[newIdx];
-  const newRank = computeRank(items, newIdx);
-  movedItem.rank = newRank;
-  movedItem.status = toColKey;
-  reorderIssue({
-    issueNumber: movedItem.number,
-    data: { rank: newRank, status: toColKey },
-  });
+  handleDrag(evt, toColKey, { status: toColKey });
 }
 
 

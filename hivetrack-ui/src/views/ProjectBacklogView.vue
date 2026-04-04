@@ -23,7 +23,7 @@ import {
 import { useRoute } from "vue-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { VueDraggable } from "vue-draggable-plus";
-import { computeRank } from "@/composables/useRank";
+import { useDragReorder } from "@/composables/useDragReorder";
 import {
   PlusIcon,
   ListIcon,
@@ -189,7 +189,6 @@ const targetSprints = computed(() => {
 // ── Drag-and-drop state ─────────────────────────────────────────────────────
 
 const BACKLOG_KEY = "__backlog__";
-const isDragging = ref(false);
 const sectionIssues = ref({});
 const overlayDropZones = reactive({});
 
@@ -230,7 +229,7 @@ watch(
   { immediate: true },
 );
 
-// ── Reorder mutation ────────────────────────────────────────────────────────
+// ── Drag-and-drop ──────────────────────────────────────────────────────────
 
 const { mutate: reorderIssue } = useMutation({
   mutationFn: ({ issueNumber, data }) =>
@@ -264,41 +263,18 @@ const { mutate: reorderIssue } = useMutation({
   },
 });
 
-// ── Drag handlers ───────────────────────────────────────────────────────────
-
-function onSectionDragStart() {
-  isDragging.value = true;
-}
-
-function onSectionDragEnd() {
-  setTimeout(() => {
-    isDragging.value = false;
-  }, 0);
-}
+const { isDragging, onDragStart: onSectionDragStart, onDragEnd: onSectionDragEnd, handleDrag } = useDragReorder(
+  sectionIssues,
+  (item, data) => reorderIssue({ issueNumber: item.number, data }),
+);
 
 function onWithinSectionDrag(evt, sectionId) {
-  const items = sectionIssues.value[sectionId];
-  if (!items) return;
-  const newIdx = evt.newDraggableIndex;
-  const movedItem = items[newIdx];
-  const newRank = computeRank(items, newIdx);
-  movedItem.rank = newRank;
-  reorderIssue({ issueNumber: movedItem.number, data: { rank: newRank } });
+  handleDrag(evt, sectionId);
 }
 
 function onCrossSectionDrop(evt, toSectionId) {
-  const items = sectionIssues.value[toSectionId];
-  if (!items) return;
-  const newIdx = evt.newDraggableIndex;
-  const movedItem = items[newIdx];
-  const newRank = computeRank(items, newIdx);
   const newSprintId = toSectionId === BACKLOG_KEY ? null : toSectionId;
-  movedItem.rank = newRank;
-  movedItem.sprint_id = newSprintId;
-  reorderIssue({
-    issueNumber: movedItem.number,
-    data: { rank: newRank, sprint_id: newSprintId },
-  });
+  handleDrag(evt, toSectionId, { sprint_id: newSprintId });
 }
 
 function onDropToOverlayZone(evt, targetId) {

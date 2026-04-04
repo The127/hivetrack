@@ -24,7 +24,7 @@ import {
   KanbanIcon,
 } from 'lucide-vue-next'
 import { VueDraggable } from 'vue-draggable-plus'
-import { computeRank } from '@/composables/useRank'
+import { useDragReorder } from '@/composables/useDragReorder'
 import MainLayout from '@/layouts/MainLayout.vue'
 import AssigneePopover from '@/components/issue/AssigneePopover.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -116,7 +116,6 @@ const activeColumns = computed(() => {
 
 // ── Drag-and-drop (board view) ────────────────────────────────────────────────
 
-const isDragging = ref(false)
 const columnIssues = ref({})
 
 function rebuildColumnIssues() {
@@ -128,14 +127,6 @@ function rebuildColumnIssues() {
   }
   columnIssues.value = newMap
 }
-
-watch(
-  [myIssues, activeColumns],
-  () => {
-    if (!isDragging.value) rebuildColumnIssues()
-  },
-  { immediate: true },
-)
 
 const { mutate: reorderIssue } = useMutation({
   mutationFn: ({ projectSlug, issueNumber, data }) =>
@@ -164,39 +155,26 @@ const { mutate: reorderIssue } = useMutation({
   },
 })
 
-function onDragStart() {
-  isDragging.value = true
-}
+const { isDragging, onDragStart, onDragEnd, handleDrag } = useDragReorder(
+  columnIssues,
+  (item, data) => reorderIssue({ projectSlug: item.project_slug, issueNumber: item.number, data }),
+)
 
-function onDragEnd() {
-  setTimeout(() => {
-    isDragging.value = false
-  }, 0)
-}
+watch(
+  [myIssues, activeColumns],
+  () => {
+    if (!isDragging.value) rebuildColumnIssues()
+  },
+  { immediate: true },
+)
 
 function onWithinColumnDrag(evt, colKey) {
-  const items = columnIssues.value[colKey]
-  const newIdx = evt.newDraggableIndex
-  const movedItem = items[newIdx]
-  const newRank = computeRank(items, newIdx)
-  movedItem.rank = newRank
-  reorderIssue({ projectSlug: movedItem.project_slug, issueNumber: movedItem.number, data: { rank: newRank } })
+  handleDrag(evt, colKey)
 }
 
 function onCrossColumnDrop(evt, toColKey) {
-  const items = columnIssues.value[toColKey]
-  const newIdx = evt.newDraggableIndex
-  const movedItem = items[newIdx]
-  const newRank = computeRank(items, newIdx)
-  movedItem.rank = newRank
-  movedItem.status = toColKey
-  reorderIssue({
-    projectSlug: movedItem.project_slug,
-    issueNumber: movedItem.number,
-    data: { rank: newRank, status: toColKey },
-  })
+  handleDrag(evt, toColKey, { status: toColKey })
 }
-
 
 </script>
 
