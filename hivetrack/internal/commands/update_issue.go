@@ -55,6 +55,30 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 
 	oldStatus := issue.GetStatus()
 
+	if err := applyFieldUpdates(ctx, db, issue, cmd, actor); err != nil {
+		return nil, err
+	}
+
+	if err := handleStatusChangeSideEffects(ctx, db, issue, cmd, oldStatus, actor); err != nil {
+		return nil, err
+	}
+
+	issue.SetUpdatedAt(time.Now())
+	db.Issues().Update(issue)
+
+	if err := db.SaveChanges(ctx); err != nil {
+		return nil, fmt.Errorf("saving issue: %w", err)
+	}
+
+	if err := recordStatusTransition(ctx, db, issue, cmd, oldStatus); err != nil {
+		return nil, err
+	}
+
+	return &UpdateIssueResult{}, nil
+}
+
+// applyFieldUpdates patches all fields on the issue from the command.
+func applyFieldUpdates(ctx context.Context, db repositories.DbContext, issue *models.Issue, cmd UpdateIssueCommand, actor authentication.CurrentUser) error {
 	if cmd.Title != nil {
 		issue.SetTitle(*cmd.Title)
 	}
@@ -84,26 +108,8 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	if cmd.MilestoneID != nil {
 		issue.SetMilestoneID(cmd.MilestoneID)
 	}
-	if cmd.ClearParentID {
-		issue.SetParentID(nil)
-	} else if cmd.ParentID != nil {
-		if issue.GetType() != models.IssueTypeTask {
-			return nil, fmt.Errorf("only tasks can have a parent: %w", models.ErrBadRequest)
-		}
-		parent, err := db.Issues().GetByID(ctx, *cmd.ParentID)
-		if err != nil {
-			return nil, fmt.Errorf("getting parent issue: %w", err)
-		}
-		if parent == nil {
-			return nil, fmt.Errorf("parent issue %s: %w", cmd.ParentID, models.ErrNotFound)
-		}
-		if parent.GetType() != models.IssueTypeEpic {
-			return nil, fmt.Errorf("parent must be an epic: %w", models.ErrBadRequest)
-		}
-		if parent.GetProjectID() != issue.GetProjectID() {
-			return nil, fmt.Errorf("parent must be in the same project: %w", models.ErrBadRequest)
-		}
-		issue.SetParentID(cmd.ParentID)
+	if err := applyParentUpdate(ctx, db, issue, cmd); err != nil {
+		return err
 	}
 	if cmd.OnHold != nil {
 		if *cmd.OnHold {
@@ -127,66 +133,119 @@ func HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) (*UpdateIssu
 	if cmd.CancelReason != nil {
 		issue.SetCancelReason(cmd.CancelReason)
 	}
-	if cmd.Refined != nil {
-		if issue.GetType() == models.IssueTypeEpic {
-			return nil, models.NewDomainError("refined_not_supported_for_epics", models.ErrBadRequest)
+	if err := applyRefinedUpdate(ctx, db, issue, cmd, actor); err != nil {
+		return err
+	}
+	return nil
+}
+
+// applyParentUpdate validates and sets the parent issue reference.
+func applyParentUpdate(ctx context.Context, db repositories.DbContext, issue *models.Issue, cmd UpdateIssueCommand) error {
+	if cmd.ClearParentID {
+		issue.SetParentID(nil)
+		return nil
+	}
+	if cmd.ParentID == nil {
+		return nil
+	}
+	if issue.GetType() != models.IssueTypeTask {
+		return fmt.Errorf("only tasks can have a parent: %w", models.ErrBadRequest)
+	}
+	parent, err := db.Issues().GetByID(ctx, *cmd.ParentID)
+	if err != nil {
+		return fmt.Errorf("getting parent issue: %w", err)
+	}
+	if parent == nil {
+		return fmt.Errorf("parent issue %s: %w", cmd.ParentID, models.ErrNotFound)
+	}
+	if parent.GetType() != models.IssueTypeEpic {
+		return fmt.Errorf("parent must be an epic: %w", models.ErrBadRequest)
+	}
+	if parent.GetProjectID() != issue.GetProjectID() {
+		return fmt.Errorf("parent must be in the same project: %w", models.ErrBadRequest)
+	}
+	issue.SetParentID(cmd.ParentID)
+	return nil
+}
+
+// applyRefinedUpdate validates permissions and sets the refined flag.
+func applyRefinedUpdate(ctx context.Context, db repositories.DbContext, issue *models.Issue, cmd UpdateIssueCommand, actor authentication.CurrentUser) error {
+	if cmd.Refined == nil {
+		return nil
+	}
+	if issue.GetType() == models.IssueTypeEpic {
+		return models.NewDomainError("refined_not_supported_for_epics", models.ErrBadRequest)
+	}
+	if !actor.IsAdmin {
+		isViewer, err := actorIsViewerOnProject(ctx, db, issue.GetProjectID(), actor.ID)
+		if err != nil {
+			return err
 		}
-		if !actor.IsAdmin {
-			isViewer, err := actorIsViewerOnProject(ctx, db, issue.GetProjectID(), actor.ID)
-			if err != nil {
-				return nil, err
-			}
-			if isViewer {
-				return nil, fmt.Errorf("actor lacks write permission to mark issue as refined: %w", models.ErrForbidden)
-			}
+		if isViewer {
+			return fmt.Errorf("actor lacks write permission to mark issue as refined: %w", models.ErrForbidden)
 		}
-		if *cmd.Refined && issue.GetRefined() {
-			return nil, models.NewDomainError("already_refined", models.ErrConflict)
+	}
+	if *cmd.Refined && issue.GetRefined() {
+		return models.NewDomainError("already_refined", models.ErrConflict)
+	}
+	issue.SetRefined(*cmd.Refined)
+	return nil
+}
+
+// handleStatusChangeSideEffects runs auto-assign, auto-triage, and auto-clear-hold
+// logic triggered by a status change.
+func handleStatusChangeSideEffects(ctx context.Context, db repositories.DbContext, issue *models.Issue, cmd UpdateIssueCommand, oldStatus models.IssueStatus, actor authentication.CurrentUser) error {
+	if cmd.Status == nil {
+		return nil
+	}
+	newStatus := *cmd.Status
+
+	if oldStatus == models.IssueStatusTodo && newStatus == models.IssueStatusInProgress {
+		if err := dispatchAutoAssignEvent(ctx, issue, oldStatus, newStatus, actor); err != nil {
+			return err
 		}
-		issue.SetRefined(*cmd.Refined)
 	}
 
-	if cmd.Status != nil && oldStatus == models.IssueStatusTodo && *cmd.Status == models.IssueStatusInProgress {
-		if m, ok := getMediatorFromContext(ctx); ok {
-			if err := mediatr.SendEvent(ctx, m, events.IssueStatusChangedEvent{
-				Issue:     issue,
-				OldStatus: oldStatus,
-				NewStatus: *cmd.Status,
-				ActorID:   actor.ID,
-			}); err != nil {
-				return nil, fmt.Errorf("auto-assign on status change: %w", err)
-			}
-		}
-	}
-
-	// Auto-triage untriaged issues when their status changes.
-	if cmd.Status != nil && *cmd.Status != oldStatus && !issue.GetTriaged() {
+	if newStatus != oldStatus && !issue.GetTriaged() {
 		issue.SetTriaged(true)
 	}
 
-	// Auto-clear holds on blocked issues when this issue reaches a terminal status.
-	if cmd.Status != nil && isTerminalStatus(*cmd.Status) {
+	if isTerminalStatus(newStatus) {
 		if err := autoClearBlockedHolds(ctx, db, issue); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	issue.SetUpdatedAt(time.Now())
+	return nil
+}
 
-	db.Issues().Update(issue)
-
-	if err := db.SaveChanges(ctx); err != nil {
-		return nil, fmt.Errorf("saving issue: %w", err)
+// dispatchAutoAssignEvent fires the status-changed event so the auto-assign
+// handler can add the actor as an assignee.
+func dispatchAutoAssignEvent(ctx context.Context, issue *models.Issue, oldStatus, newStatus models.IssueStatus, actor authentication.CurrentUser) error {
+	m, ok := getMediatorFromContext(ctx)
+	if !ok {
+		return nil
 	}
-
-	// Record status transition for burndown tracking
-	if cmd.Status != nil && *cmd.Status != oldStatus {
-		if err := db.IssueStatusLog().Insert(ctx, issue.GetId(), string(*cmd.Status), time.Now()); err != nil {
-			return nil, fmt.Errorf("logging issue status: %w", err)
-		}
+	if err := mediatr.SendEvent(ctx, m, events.IssueStatusChangedEvent{
+		Issue:     issue,
+		OldStatus: oldStatus,
+		NewStatus: newStatus,
+		ActorID:   actor.ID,
+	}); err != nil {
+		return fmt.Errorf("auto-assign on status change: %w", err)
 	}
+	return nil
+}
 
-	return &UpdateIssueResult{}, nil
+// recordStatusTransition writes to the status log for burndown tracking.
+func recordStatusTransition(ctx context.Context, db repositories.DbContext, issue *models.Issue, cmd UpdateIssueCommand, oldStatus models.IssueStatus) error {
+	if cmd.Status == nil || *cmd.Status == oldStatus {
+		return nil
+	}
+	if err := db.IssueStatusLog().Insert(ctx, issue.GetId(), string(*cmd.Status), time.Now()); err != nil {
+		return fmt.Errorf("logging issue status: %w", err)
+	}
+	return nil
 }
 
 func actorIsViewerOnProject(ctx context.Context, db repositories.DbContext, projectID, actorID uuid.UUID) (bool, error) {
