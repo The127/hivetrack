@@ -187,7 +187,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
                 { to: `/projects/${projectSlug}/epics`, icon: LayersIcon, label: 'Epics' },
                 { to: `/projects/${projectSlug}/triage`, icon: InboxIcon, label: 'Triage' },
                 { to: `/projects/${projectSlug}/milestones`, icon: FlagIcon, label: 'Milestones' },
-                { to: `/projects/${projectSlug}/settings`, icon: SettingsIcon, label: 'Settings' },
               ]"
               :key="item.to"
               :to="item.to"
@@ -400,16 +399,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
             <span v-if="!collapsed">Milestones</span>
           </RouterLink>
 
-          <RouterLink
-            :to="`/projects/${projectSlug}/settings`"
-            :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
-            class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
-            active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            title="Settings"
-          >
-            <SettingsIcon class="size-4 flex-shrink-0" />
-            <span v-if="!collapsed">Settings</span>
-          </RouterLink>
         </template>
       </nav>
 
