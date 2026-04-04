@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/the127/hivetrack/internal/change"
-	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/repositories"
 )
 
@@ -142,70 +141,51 @@ func (d *DbContext) SaveChanges(ctx context.Context) error {
 	return nil
 }
 
-func (d *DbContext) applyChange(ctx context.Context, tx *sql.Tx, entry change.Entry) error {
-	switch entry.GetItemType() {
-	case projectEntityType:
-		proj := entry.GetItem().(*models.Project)
-		switch entry.GetChangeType() {
-		case change.Added:
-			return d.Projects().(*ProjectRepository).ExecuteInsert(ctx, tx, proj)
-		case change.Updated:
-			return d.Projects().(*ProjectRepository).ExecuteUpdate(ctx, tx, proj)
-		case change.Deleted:
-			return d.Projects().(*ProjectRepository).ExecuteDelete(ctx, tx, proj)
-		}
-	case issueEntityType:
-		issue := entry.GetItem().(*models.Issue)
-		switch entry.GetChangeType() {
-		case change.Added:
-			return d.Issues().(*IssueRepository).ExecuteInsert(ctx, tx, issue)
-		case change.Updated:
-			return d.Issues().(*IssueRepository).ExecuteUpdate(ctx, tx, issue)
-		case change.Deleted:
-			return d.Issues().(*IssueRepository).ExecuteDelete(ctx, tx, issue)
-		}
-	case sprintEntityType:
-		sprint := entry.GetItem().(*models.Sprint)
-		switch entry.GetChangeType() {
-		case change.Added:
-			return d.Sprints().(*SprintRepository).ExecuteInsert(ctx, tx, sprint)
-		case change.Updated:
-			return d.Sprints().(*SprintRepository).ExecuteUpdate(ctx, tx, sprint)
-		case change.Deleted:
-			return d.Sprints().(*SprintRepository).ExecuteDelete(ctx, tx, sprint)
-		}
-	case milestoneEntityType:
-		ms := entry.GetItem().(*models.Milestone)
-		switch entry.GetChangeType() {
-		case change.Added:
-			return d.Milestones().(*MilestoneRepository).ExecuteInsert(ctx, tx, ms)
-		case change.Updated:
-			return d.Milestones().(*MilestoneRepository).ExecuteUpdate(ctx, tx, ms)
-		case change.Deleted:
-			return d.Milestones().(*MilestoneRepository).ExecuteDelete(ctx, tx, ms)
-		}
-	case labelEntityType:
-		lbl := entry.GetItem().(*models.Label)
-		switch entry.GetChangeType() {
-		case change.Added:
-			return d.Labels().(*LabelRepository).ExecuteInsert(ctx, tx, lbl)
-		case change.Updated:
-			return d.Labels().(*LabelRepository).ExecuteUpdate(ctx, tx, lbl)
-		case change.Deleted:
-			return d.Labels().(*LabelRepository).ExecuteDelete(ctx, tx, lbl)
-		}
-	case commentEntityType:
-		cmt := entry.GetItem().(*models.Comment)
-		switch entry.GetChangeType() {
-		case change.Added:
-			return d.Comments().(*CommentRepository).ExecuteInsert(ctx, tx, cmt)
-		case change.Updated:
-			return d.Comments().(*CommentRepository).ExecuteUpdate(ctx, tx, cmt)
-		case change.Deleted:
-			return d.Comments().(*CommentRepository).ExecuteDelete(ctx, tx, cmt)
-		}
+// entityApplier handles Insert/Update/Delete for a single entity type.
+type entityApplier struct {
+	insert func(ctx context.Context, tx *sql.Tx, item any) error
+	update func(ctx context.Context, tx *sql.Tx, item any) error
+	delete func(ctx context.Context, tx *sql.Tx, item any) error
+}
+
+func typedApplier[T any](
+	insert func(context.Context, *sql.Tx, T) error,
+	update func(context.Context, *sql.Tx, T) error,
+	del func(context.Context, *sql.Tx, T) error,
+) entityApplier {
+	return entityApplier{
+		insert: func(ctx context.Context, tx *sql.Tx, item any) error { return insert(ctx, tx, item.(T)) },
+		update: func(ctx context.Context, tx *sql.Tx, item any) error { return update(ctx, tx, item.(T)) },
+		delete: func(ctx context.Context, tx *sql.Tx, item any) error { return del(ctx, tx, item.(T)) },
 	}
-	return nil
+}
+
+func (d *DbContext) entityAppliers() map[int]entityApplier {
+	return map[int]entityApplier{
+		projectEntityType:   typedApplier(d.Projects().(*ProjectRepository).ExecuteInsert, d.Projects().(*ProjectRepository).ExecuteUpdate, d.Projects().(*ProjectRepository).ExecuteDelete),
+		issueEntityType:     typedApplier(d.Issues().(*IssueRepository).ExecuteInsert, d.Issues().(*IssueRepository).ExecuteUpdate, d.Issues().(*IssueRepository).ExecuteDelete),
+		sprintEntityType:    typedApplier(d.Sprints().(*SprintRepository).ExecuteInsert, d.Sprints().(*SprintRepository).ExecuteUpdate, d.Sprints().(*SprintRepository).ExecuteDelete),
+		milestoneEntityType: typedApplier(d.Milestones().(*MilestoneRepository).ExecuteInsert, d.Milestones().(*MilestoneRepository).ExecuteUpdate, d.Milestones().(*MilestoneRepository).ExecuteDelete),
+		labelEntityType:     typedApplier(d.Labels().(*LabelRepository).ExecuteInsert, d.Labels().(*LabelRepository).ExecuteUpdate, d.Labels().(*LabelRepository).ExecuteDelete),
+		commentEntityType:   typedApplier(d.Comments().(*CommentRepository).ExecuteInsert, d.Comments().(*CommentRepository).ExecuteUpdate, d.Comments().(*CommentRepository).ExecuteDelete),
+	}
+}
+
+func (d *DbContext) applyChange(ctx context.Context, tx *sql.Tx, entry change.Entry) error {
+	applier, ok := d.entityAppliers()[entry.GetItemType()]
+	if !ok {
+		return fmt.Errorf("unknown entity type: %d", entry.GetItemType())
+	}
+	switch entry.GetChangeType() {
+	case change.Added:
+		return applier.insert(ctx, tx, entry.GetItem())
+	case change.Updated:
+		return applier.update(ctx, tx, entry.GetItem())
+	case change.Deleted:
+		return applier.delete(ctx, tx, entry.GetItem())
+	default:
+		return fmt.Errorf("unknown change type: %d", entry.GetChangeType())
+	}
 }
 
 // execDirect runs fn in a fresh transaction. Used by direct-execute repository methods.
