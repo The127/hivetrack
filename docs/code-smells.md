@@ -28,7 +28,7 @@ Generated: 2026-04-04
 | # | Smell | Location | Summary |
 |---|-------|----------|---------|
 | 17 | ~~**Duplicated Code**~~ | ~~6-7 views~~ | ~~`PRIORITY_BORDER` / `ESTIMATE_LABEL` maps copy-pasted across BoardView, BacklogView, SprintDetailView, EpicsView, TriageView, HomeView, IssueDetailView~~ **Fixed in #99** |
-| 18 | **Duplicated Code** | 3 views | `TERMINAL_STATUSES` sets defined independently in Board, Backlog, Overview |
+| 18 | ~~**Duplicated Code**~~ | ~~3 views~~ | ~~`TERMINAL_STATUSES` sets defined independently in Board, Backlog, Overview~~ **Fixed in #100** |
 | 19 | **Duplicated Code** | 5 views | Status column/color/label config defined ad-hoc in Board, Overview, Triage, SprintDetail, Home |
 | 20 | **Duplicated Code** | 3 views | `computeRank()` fractional-indexing function identical in Board, Backlog, Home |
 | 21 | **Duplicated Code** | 3 views | Drag-and-drop boilerplate (~100 lines each) in Board, Backlog, Home |

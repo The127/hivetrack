@@ -9,7 +9,7 @@
 <script setup>
 import { computed, ref, nextTick, useId } from "vue";
 import { useRoute, RouterLink } from "vue-router";
-import { ESTIMATE_LABEL } from "@/composables/issueConstants";
+import { ESTIMATE_LABEL, isTerminalStatus } from "@/composables/issueConstants";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { ArrowLeftIcon, LayersIcon, ZapIcon, ScissorsIcon, LinkIcon, SparklesIcon } from "lucide-vue-next";
 import MainLayout from "@/layouts/MainLayout.vue";
@@ -307,10 +307,9 @@ function saveDescription() {
 
 const showSplitModal = ref(false)
 
-const isTerminal = computed(() => {
-  const s = issue.value?.status
-  return s === 'done' || s === 'cancelled' || s === 'closed'
-})
+const isTerminal = computed(() =>
+  isTerminalStatus(issue.value?.status, project.value?.archetype)
+)
 
 // ── Label mutation ───────────────────────────────────────────────────────────
 
