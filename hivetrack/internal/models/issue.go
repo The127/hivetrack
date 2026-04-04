@@ -192,51 +192,87 @@ func NewIssue(projectID uuid.UUID, number int, issueType IssueType, title string
 	}
 }
 
-func NewIssueFromDB(
-	id uuid.UUID, createdAt, updatedAt time.Time, version any,
-	projectID uuid.UUID, number int,
-	issueType IssueType, title string, description *string, status IssueStatus,
-	onHold bool, holdReason *HoldReason, holdSince *time.Time, holdNote *string,
-	priority IssuePriority, estimate IssueEstimate,
-	reporterID, ownerID, parentID, milestoneID, sprintID *uuid.UUID,
-	sprintCarryCount int, triaged bool, refined bool, visibility IssueVisibility,
-	customerEmail, customerName *string, customerToken *uuid.UUID,
-	rank *string, cancelReason *string,
-	checklist []ChecklistItem, assignees, labels, restrictedViewers []uuid.UUID,
-) *Issue {
+// IssueFromDBParams holds all fields needed to reconstruct an Issue from a database row.
+type IssueFromDBParams struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Version   any
+
+	ProjectID uuid.UUID
+	Number    int
+
+	IssueType   IssueType
+	Title       string
+	Description *string
+	Status      IssueStatus
+
+	OnHold     bool
+	HoldReason *HoldReason
+	HoldSince  *time.Time
+	HoldNote   *string
+
+	Priority IssuePriority
+	Estimate IssueEstimate
+
+	ReporterID  *uuid.UUID
+	OwnerID     *uuid.UUID
+	ParentID    *uuid.UUID
+	MilestoneID *uuid.UUID
+	SprintID    *uuid.UUID
+
+	SprintCarryCount int
+	Triaged          bool
+	Refined          bool
+	Visibility       IssueVisibility
+
+	CustomerEmail *string
+	CustomerName  *string
+	CustomerToken *uuid.UUID
+
+	Rank         *string
+	CancelReason *string
+
+	Checklist         []ChecklistItem
+	Assignees         []uuid.UUID
+	Labels            []uuid.UUID
+	RestrictedViewers []uuid.UUID
+}
+
+func NewIssueFromDB(p IssueFromDBParams) *Issue {
 	return &Issue{
-		BaseModel:         NewBaseModelFromDB(id, createdAt, updatedAt, version),
+		BaseModel:         NewBaseModelFromDB(p.ID, p.CreatedAt, p.UpdatedAt, p.Version),
 		List:              change.NewList[IssueChange](),
-		projectID:         projectID,
-		number:            number,
-		issueType:         issueType,
-		title:             title,
-		description:       description,
-		status:            status,
-		onHold:            onHold,
-		holdReason:        holdReason,
-		holdSince:         holdSince,
-		holdNote:          holdNote,
-		priority:          priority,
-		estimate:          estimate,
-		reporterID:        reporterID,
-		ownerID:           ownerID,
-		parentID:          parentID,
-		milestoneID:       milestoneID,
-		sprintID:          sprintID,
-		sprintCarryCount:  sprintCarryCount,
-		triaged:           triaged,
-		refined:           refined,
-		visibility:        visibility,
-		customerEmail:     customerEmail,
-		customerName:      customerName,
-		customerToken:     customerToken,
-		rank:              rank,
-		cancelReason:      cancelReason,
-		checklist:         checklist,
-		assignees:         assignees,
-		labels:            labels,
-		restrictedViewers: restrictedViewers,
+		projectID:         p.ProjectID,
+		number:            p.Number,
+		issueType:         p.IssueType,
+		title:             p.Title,
+		description:       p.Description,
+		status:            p.Status,
+		onHold:            p.OnHold,
+		holdReason:        p.HoldReason,
+		holdSince:         p.HoldSince,
+		holdNote:          p.HoldNote,
+		priority:          p.Priority,
+		estimate:          p.Estimate,
+		reporterID:        p.ReporterID,
+		ownerID:           p.OwnerID,
+		parentID:          p.ParentID,
+		milestoneID:       p.MilestoneID,
+		sprintID:          p.SprintID,
+		sprintCarryCount:  p.SprintCarryCount,
+		triaged:           p.Triaged,
+		refined:           p.Refined,
+		visibility:        p.Visibility,
+		customerEmail:     p.CustomerEmail,
+		customerName:      p.CustomerName,
+		customerToken:     p.CustomerToken,
+		rank:              p.Rank,
+		cancelReason:      p.CancelReason,
+		checklist:         p.Checklist,
+		assignees:         p.Assignees,
+		labels:            p.Labels,
+		restrictedViewers: p.RestrictedViewers,
 	}
 }
 

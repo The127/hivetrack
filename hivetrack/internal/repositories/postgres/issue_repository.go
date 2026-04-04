@@ -528,16 +528,41 @@ func buildIssue(
 	assignees := parseUUIDArray(assigneeArr)
 	labels := parseUUIDArray(labelArr)
 
-	return models.NewIssueFromDB(
-		id, createdAt, updatedAt, version,
-		projectID, number, issueType, title, descPtr, status,
-		onHold, holdReasonPtr, holdSincePtr, holdNotePtr,
-		priority, estimate,
-		reporterIDPtr, ownerIDPtr, parentIDPtr, milestoneIDPtr, sprintIDPtr,
-		sprintCarryCount, triaged, refined, visibility,
-		customerEmailPtr, customerNamePtr, customerTokenPtr,
-		rankPtr, cancelReasonPtr, checklist, assignees, labels, nil,
-	)
+	return models.NewIssueFromDB(models.IssueFromDBParams{
+		ID:               id,
+		CreatedAt:        createdAt,
+		UpdatedAt:        updatedAt,
+		Version:          version,
+		ProjectID:        projectID,
+		Number:           number,
+		IssueType:        issueType,
+		Title:            title,
+		Description:      descPtr,
+		Status:           status,
+		OnHold:           onHold,
+		HoldReason:       holdReasonPtr,
+		HoldSince:        holdSincePtr,
+		HoldNote:         holdNotePtr,
+		Priority:         priority,
+		Estimate:         estimate,
+		ReporterID:       reporterIDPtr,
+		OwnerID:          ownerIDPtr,
+		ParentID:         parentIDPtr,
+		MilestoneID:      milestoneIDPtr,
+		SprintID:         sprintIDPtr,
+		SprintCarryCount: sprintCarryCount,
+		Triaged:          triaged,
+		Refined:          refined,
+		Visibility:       visibility,
+		CustomerEmail:    customerEmailPtr,
+		CustomerName:     customerNamePtr,
+		CustomerToken:    customerTokenPtr,
+		Rank:             rankPtr,
+		CancelReason:     cancelReasonPtr,
+		Checklist:        checklist,
+		Assignees:        assignees,
+		Labels:           labels,
+	})
 }
 
 // parseUUIDArray parses postgres UUID array format like {uuid1,uuid2} or {} into []uuid.UUID.
