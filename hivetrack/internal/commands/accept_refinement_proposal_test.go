@@ -41,7 +41,7 @@ func TestAcceptRefinementProposal_Success(t *testing.T) {
 	require.NoError(t, db.Refinements().AddMessage(context.Background(), proposalMsg))
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
-	_, err := commands.HandleAcceptRefinementProposal(ctx, commands.AcceptRefinementProposalCommand{
+	_, err := commands.HandleAcceptRefinementProposal(&spyPublisher{})(ctx, commands.AcceptRefinementProposalCommand{
 		IssueID: issue.GetId(),
 	})
 	require.NoError(t, err)
@@ -78,7 +78,7 @@ func TestAcceptRefinementProposal_NoActiveSession(t *testing.T) {
 	require.NoError(t, db.SaveChanges(context.Background()))
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
-	_, err := commands.HandleAcceptRefinementProposal(ctx, commands.AcceptRefinementProposalCommand{
+	_, err := commands.HandleAcceptRefinementProposal(&spyPublisher{})(ctx, commands.AcceptRefinementProposalCommand{
 		IssueID: issue.GetId(),
 	})
 	require.ErrorIs(t, err, models.ErrNotFound)
@@ -109,7 +109,7 @@ func TestAcceptRefinementProposal_NoProposalMessage(t *testing.T) {
 	require.NoError(t, db.Refinements().AddMessage(context.Background(), msg))
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
-	_, err := commands.HandleAcceptRefinementProposal(ctx, commands.AcceptRefinementProposalCommand{
+	_, err := commands.HandleAcceptRefinementProposal(&spyPublisher{})(ctx, commands.AcceptRefinementProposalCommand{
 		IssueID: issue.GetId(),
 	})
 	require.ErrorIs(t, err, models.ErrNotFound)

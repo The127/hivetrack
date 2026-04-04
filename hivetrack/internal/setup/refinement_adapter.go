@@ -3,6 +3,8 @@ package setup
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/the127/hivetrack/internal/commands"
 	"github.com/the127/hivetrack/internal/infrastructure"
 )
@@ -28,4 +30,8 @@ func (a *refinementPublisherAdapter) PublishRefinementRequest(ctx context.Contex
 		Description: req.Description,
 		Messages:    msgs,
 	})
+}
+
+func (a *refinementPublisherAdapter) PublishRefinementAccept(ctx context.Context, sessionID uuid.UUID) error {
+	return a.pub.PublishRefinementAccept(ctx, sessionID)
 }

@@ -47,3 +47,24 @@ func (p *NatsPublisher) PublishRefinementRequest(ctx context.Context, req Refine
 	}
 	return nil
 }
+
+// RefinementAccept signals to Hivemind that the user accepted a proposal.
+type RefinementAccept struct {
+	SessionID uuid.UUID `json:"session_id"`
+	Action    string    `json:"action"`
+}
+
+func (p *NatsPublisher) PublishRefinementAccept(ctx context.Context, sessionID uuid.UUID) error {
+	data, err := json.Marshal(RefinementAccept{
+		SessionID: sessionID,
+		Action:    "accept",
+	})
+	if err != nil {
+		return fmt.Errorf("marshaling refinement accept: %w", err)
+	}
+
+	if _, err := p.js.Publish(ctx, SubjectRefinementRequest, data); err != nil {
+		return fmt.Errorf("publishing refinement accept: %w", err)
+	}
+	return nil
+}

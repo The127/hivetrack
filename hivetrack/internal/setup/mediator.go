@@ -45,12 +45,11 @@ func Mediator(dc *ioc.DependencyCollection, publisher ...commands.RefinementPubl
 	mediatr.RegisterHandler(m, commands.HandleCreateComment)
 	mediatr.RegisterHandler(m, commands.HandleUpdateComment)
 	mediatr.RegisterHandler(m, commands.HandleDeleteComment)
-	mediatr.RegisterHandler(m, commands.HandleAcceptRefinementProposal)
-
 	// Refinement commands (require Hivemind/NATS)
 	if len(publisher) > 0 && publisher[0] != nil {
 		mediatr.RegisterHandler(m, commands.NewStartRefinementSessionHandler(publisher[0]))
 		mediatr.RegisterHandler(m, commands.NewSendRefinementMessageHandler(publisher[0]))
+		mediatr.RegisterHandler(m, commands.HandleAcceptRefinementProposal(publisher[0]))
 	}
 
 	// Queries

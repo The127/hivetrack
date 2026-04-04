@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -19,6 +20,10 @@ type spyPublisher struct {
 
 func (s *spyPublisher) PublishRefinementRequest(_ context.Context, req commands.RefinementPublishRequest) error {
 	s.published = append(s.published, req)
+	return nil
+}
+
+func (s *spyPublisher) PublishRefinementAccept(_ context.Context, _ uuid.UUID) error {
 	return nil
 }
 
