@@ -357,7 +357,12 @@ const issueSelectQuery = `
 		COALESCE((SELECT array_agg(label_id) FROM issue_labels WHERE issue_id=i.id), '{}')
 	FROM issues i`
 
-func scanIssue(row *sql.Row) (*models.Issue, error) {
+// scanner is the common interface between *sql.Row and *sql.Rows.
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+func doScanIssue(s scanner) (*models.Issue, error) {
 	var id, projectID uuid.UUID
 	var number int
 	var issueType models.IssueType
@@ -378,7 +383,7 @@ func scanIssue(row *sql.Row) (*models.Issue, error) {
 	var version int
 	var assigneeArr, labelArr []byte
 
-	err := row.Scan(
+	err := s.Scan(
 		&id, &projectID, &number, &issueType, &title, &desc, &status,
 		&onHold, &holdReason, &holdSince, &holdNote,
 		&priority, &estimate, &reporterID, &ownerID, &parentID, &milestoneID, &sprintID, &sprintCarryCount,
@@ -386,11 +391,8 @@ func scanIssue(row *sql.Row) (*models.Issue, error) {
 		&rankStr, &cancelReason, &checklistJSON, &createdAt, &updatedAt, &version,
 		&assigneeArr, &labelArr,
 	)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
 	if err != nil {
-		return nil, fmt.Errorf("scanning issue: %w", err)
+		return nil, err
 	}
 
 	return buildIssue(
@@ -405,49 +407,23 @@ func scanIssue(row *sql.Row) (*models.Issue, error) {
 	), nil
 }
 
-func scanIssueRow(rows *sql.Rows) (*models.Issue, error) {
-	var id, projectID uuid.UUID
-	var number int
-	var issueType models.IssueType
-	var title string
-	var desc, holdReason, holdNote, customerEmail, customerName, rankStr, cancelReason sql.NullString
-	var status models.IssueStatus
-	var onHold bool
-	var holdSince sql.NullTime
-	var priority models.IssuePriority
-	var estimate models.IssueEstimate
-	var reporterID, ownerID, parentID, milestoneID, sprintID uuid.NullUUID
-	var customerToken uuid.NullUUID
-	var sprintCarryCount int
-	var triaged, refined bool
-	var visibility models.IssueVisibility
-	var checklistJSON []byte
-	var createdAt, updatedAt time.Time
-	var version int
-	var assigneeArr, labelArr []byte
+func scanIssue(row *sql.Row) (*models.Issue, error) {
+	issue, err := doScanIssue(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("scanning issue: %w", err)
+	}
+	return issue, nil
+}
 
-	err := rows.Scan(
-		&id, &projectID, &number, &issueType, &title, &desc, &status,
-		&onHold, &holdReason, &holdSince, &holdNote,
-		&priority, &estimate, &reporterID, &ownerID, &parentID, &milestoneID, &sprintID, &sprintCarryCount,
-		&triaged, &refined, &visibility, &customerEmail, &customerName, &customerToken,
-		&rankStr, &cancelReason, &checklistJSON, &createdAt, &updatedAt, &version,
-		&assigneeArr, &labelArr,
-	)
+func scanIssueRow(rows *sql.Rows) (*models.Issue, error) {
+	issue, err := doScanIssue(rows)
 	if err != nil {
 		return nil, fmt.Errorf("scanning issue row: %w", err)
 	}
-
-	return buildIssue(
-		id, projectID, number, issueType, title,
-		desc, holdReason, holdNote, customerEmail, customerName,
-		status, onHold, holdSince, customerToken,
-		priority, estimate,
-		reporterID, ownerID, parentID, milestoneID, sprintID,
-		sprintCarryCount, triaged, refined, visibility,
-		rankStr, cancelReason, checklistJSON, createdAt, updatedAt, version,
-		assigneeArr, labelArr,
-	), nil
+	return issue, nil
 }
 
 func buildIssue(
