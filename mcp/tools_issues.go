@@ -3,7 +3,6 @@ package mcp
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	htclient "github.com/the127/hivetrack/client"
@@ -535,18 +534,9 @@ func makeBatchUpdateIssues(client *Client) server.ToolHandlerFunc {
 			return errResult(errMissing("slug, numbers")), nil
 		}
 
-		// Parse issue numbers.
-		var numbers []int
-		for _, s := range strings.Split(numbersStr, ",") {
-			s = strings.TrimSpace(s)
-			if s == "" {
-				continue
-			}
-			n, err := strconv.Atoi(s)
-			if err != nil {
-				return errResult(fmt.Errorf("invalid issue number: %q", s)), nil
-			}
-			numbers = append(numbers, n)
+		numbers, err := parseIssueNumbers(numbersStr)
+		if err != nil {
+			return errResult(err), nil
 		}
 		if len(numbers) == 0 {
 			return errResult(fmt.Errorf("no valid issue numbers provided")), nil
