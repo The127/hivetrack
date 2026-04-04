@@ -14,6 +14,7 @@ import Spinner from '@/components/ui/Spinner.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import { fetchSprints } from '@/api/sprints'
+import { formatDate } from '@/composables/useDate'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug)
@@ -35,14 +36,11 @@ const completedSprints = computed(() => {
     })
 })
 
-function formatDate(dateStr) {
-  if (!dateStr) return null
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
+const YEAR = { year: true }
 
 function dateRange(sprint) {
-  const start = formatDate(sprint.start_date)
-  const end = formatDate(sprint.end_date)
+  const start = formatDate(sprint.start_date, YEAR)
+  const end = formatDate(sprint.end_date, YEAR)
   if (start && end) return `${start} – ${end}`
   if (start) return `Started ${start}`
   if (end) return `Ended ${end}`
