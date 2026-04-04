@@ -9,6 +9,7 @@
 <script setup>
 import { computed, ref, nextTick, useId } from "vue";
 import { useRoute, RouterLink } from "vue-router";
+import { ESTIMATE_LABEL } from "@/composables/issueConstants";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { ArrowLeftIcon, LayersIcon, ZapIcon, ScissorsIcon, LinkIcon, SparklesIcon } from "lucide-vue-next";
 import MainLayout from "@/layouts/MainLayout.vue";
@@ -78,14 +79,6 @@ const { data: issue, isLoading } = useQuery({
   enabled: computed(() => !!slug.value && !!number.value),
 });
 
-const ESTIMATE_LABEL = {
-  none: null,
-  xs: "XS",
-  s: "S",
-  m: "M",
-  l: "L",
-  xl: "XL",
-};
 
 // ── Status mutation ───────────────────────────────────────────────────────────
 

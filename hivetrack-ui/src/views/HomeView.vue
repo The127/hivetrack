@@ -13,6 +13,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { priorityBorder } from '@/composables/issueConstants'
 import { useRouter } from 'vue-router'
 import {
   PlusIcon,
@@ -235,17 +236,7 @@ function onCrossColumnDrop(evt, toColKey) {
   })
 }
 
-const PRIORITY_BORDER = {
-  none: 'border-l-slate-200',
-  low: 'border-l-sky-400',
-  medium: 'border-l-amber-400',
-  high: 'border-l-orange-500',
-  critical: 'border-l-red-500',
-}
 
-function priorityBorder(priority) {
-  return PRIORITY_BORDER[priority] ?? 'border-l-slate-200'
-}
 </script>
 
 <template>

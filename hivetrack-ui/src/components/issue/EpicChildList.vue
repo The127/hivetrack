@@ -17,6 +17,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { priorityBorder, estimateLabel } from '@/composables/issueConstants'
 import { VueDraggable } from 'vue-draggable-plus'
 import {
   PlusIcon,
@@ -59,25 +60,6 @@ watch(() => childrenResult.value?.items, (items) => {
   }
 }, { immediate: true })
 
-// ── Priority styling ─────────────────────────────────────────────────────
-
-const PRIORITY_BORDER = {
-  none:     'border-l-slate-200',
-  low:      'border-l-sky-400',
-  medium:   'border-l-amber-400',
-  high:     'border-l-orange-500',
-  critical: 'border-l-red-500',
-}
-
-const ESTIMATE_LABEL = { none: null, xs: 'XS', s: 'S', m: 'M', l: 'L', xl: 'XL' }
-
-function priorityBorder(priority) {
-  return PRIORITY_BORDER[priority] ?? 'border-l-slate-200'
-}
-
-function estimateLabel(estimate) {
-  return ESTIMATE_LABEL[estimate] ?? null
-}
 
 // ── Drag-and-drop ──────────────────────────────────────────────────────────
 

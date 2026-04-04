@@ -10,6 +10,7 @@
   appears on the right edge so sprints don't need to be in view.
 -->
 <script setup>
+import { priorityBorder, estimateLabel } from "@/composables/issueConstants";
 import {
   ref,
   reactive,
@@ -372,32 +373,6 @@ const { mutate: moveIssue } = useMutation({
   },
 });
 
-// ── Priority / estimate display ───────────────────────────────────────────────
-
-const PRIORITY_BORDER = {
-  none: "border-l-slate-200",
-  low: "border-l-sky-400",
-  medium: "border-l-amber-400",
-  high: "border-l-orange-500",
-  critical: "border-l-red-500",
-};
-
-const ESTIMATE_LABEL = {
-  none: null,
-  xs: "XS",
-  s: "S",
-  m: "M",
-  l: "L",
-  xl: "XL",
-};
-
-function priorityBorder(priority) {
-  return PRIORITY_BORDER[priority] ?? "border-l-slate-200";
-}
-
-function estimateLabel(estimate) {
-  return ESTIMATE_LABEL[estimate] ?? null;
-}
 
 // ── Sprint status mutations ───────────────────────────────────────────────────
 

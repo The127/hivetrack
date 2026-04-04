@@ -7,6 +7,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
+import { priorityBorder, estimateLabel } from '@/composables/issueConstants'
 import { useQuery } from '@tanstack/vue-query'
 import { ArrowLeftIcon } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
@@ -82,20 +83,8 @@ const STATUS_COLOR = {
   closed: 'gray',
 }
 
-const PRIORITY_BORDER = {
-  none:     'border-l-slate-200',
-  low:      'border-l-sky-400',
-  medium:   'border-l-amber-400',
-  high:     'border-l-orange-500',
-  critical: 'border-l-red-500',
-}
-
-const ESTIMATE_LABEL = { none: null, xs: 'XS', s: 'S', m: 'M', l: 'L', xl: 'XL' }
-
 function statusLabel(s) { return STATUS_LABEL[s] ?? s }
 function statusColor(s) { return STATUS_COLOR[s] ?? 'gray' }
-function priorityBorder(p) { return PRIORITY_BORDER[p] ?? 'border-l-slate-200' }
-function estimateLabel(e) { return ESTIMATE_LABEL[e] ?? null }
 
 function formatDate(dateStr) {
   if (!dateStr) return null
