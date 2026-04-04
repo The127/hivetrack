@@ -8,6 +8,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
+import { isTerminalStatus } from '@/composables/issueConstants'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import {
   KanbanIcon,
@@ -217,8 +218,6 @@ const statusCounts = computed(() => {
   return counts
 })
 
-const TERMINAL = { software: new Set(['done', 'cancelled']), support: new Set(['resolved', 'closed']) }
-
 const sprintIssues = computed(() => {
   if (!activeSprint.value) return []
   return allIssues.value.filter((i) => i.sprint_id === activeSprint.value.id)
@@ -226,8 +225,8 @@ const sprintIssues = computed(() => {
 
 const sprintDone = computed(() => {
   if (!activeSprint.value) return 0
-  const terminal = TERMINAL[project.value?.archetype] ?? TERMINAL.software
-  return sprintIssues.value.filter((i) => terminal.has(i.status)).length
+  const arch = project.value?.archetype ?? 'software'
+  return sprintIssues.value.filter((i) => isTerminalStatus(i.status, arch)).length
 })
 
 const SCHEME_ICON_CLASS = {

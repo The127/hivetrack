@@ -10,7 +10,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { priorityBorder, estimateLabel } from '@/composables/issueConstants'
+import { priorityBorder, estimateLabel, isTerminalStatus } from '@/composables/issueConstants'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { VueDraggable } from 'vue-draggable-plus'
 import {
@@ -51,9 +51,8 @@ const { data: epicsResult, isLoading: loadingEpics } = useQuery({
   enabled: computed(() => !!slug.value),
 })
 
-const TERMINAL_STATUSES = ['done', 'cancelled', 'closed']
 const epics = computed(() =>
-  (epicsResult.value?.items ?? []).filter(e => !TERMINAL_STATUSES.includes(e.status))
+  (epicsResult.value?.items ?? []).filter(e => !isTerminalStatus(e.status, 'software'))
 )
 
 // ── Unassigned tasks (no parent epic) ────────────────────────────────────────

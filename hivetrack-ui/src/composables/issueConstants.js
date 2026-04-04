@@ -22,3 +22,12 @@ export function priorityBorder(priority) {
 export function estimateLabel(estimate) {
   return ESTIMATE_LABEL[estimate] ?? null
 }
+
+export const TERMINAL_STATUSES = {
+  software: new Set(['done', 'cancelled']),
+  support: new Set(['resolved', 'closed']),
+}
+
+export function isTerminalStatus(status, archetype = 'software') {
+  return (TERMINAL_STATUSES[archetype] ?? TERMINAL_STATUSES.software).has(status)
+}

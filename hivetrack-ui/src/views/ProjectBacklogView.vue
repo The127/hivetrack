@@ -10,7 +10,7 @@
   appears on the right edge so sprints don't need to be in view.
 -->
 <script setup>
-import { priorityBorder, estimateLabel } from "@/composables/issueConstants";
+import { priorityBorder, estimateLabel, isTerminalStatus } from "@/composables/issueConstants";
 import {
   ref,
   reactive,
@@ -164,16 +164,10 @@ const isLoading = computed(
 
 // ── Grouping ──────────────────────────────────────────────────────────────────
 
-const TERMINAL_STATUSES_SOFTWARE = new Set(["done", "cancelled"]);
-const TERMINAL_STATUSES_SUPPORT = new Set(["resolved", "closed"]);
-
 const allIssues = computed(() => {
-  const terminal =
-    project.value?.archetype === "support"
-      ? TERMINAL_STATUSES_SUPPORT
-      : TERMINAL_STATUSES_SOFTWARE;
+  const arch = project.value?.archetype ?? 'software';
   return (issuesResult.value?.items ?? []).filter(
-    (i) => !terminal.has(i.status),
+    (i) => !isTerminalStatus(i.status, arch),
   );
 });
 const allSprints = computed(() => sprintsResult.value?.sprints ?? []);

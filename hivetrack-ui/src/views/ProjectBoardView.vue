@@ -13,7 +13,7 @@
 -->
 <script setup>
 import { ref, computed, watch, nextTick } from "vue";
-import { priorityBorder, estimateLabel } from "@/composables/issueConstants";
+import { priorityBorder, estimateLabel, isTerminalStatus } from "@/composables/issueConstants";
 import { useRoute, RouterLink } from "vue-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { VueDraggable } from "vue-draggable-plus";
@@ -107,15 +107,9 @@ const boardIssues = computed(() => {
 
 const showCompleteSprintModal = ref(false);
 
-const TERMINAL_STATUSES_SOFTWARE = new Set(["done", "cancelled"]);
-const TERMINAL_STATUSES_SUPPORT = new Set(["resolved", "closed"]);
-
 const openIssuesInSprint = computed(() => {
-  const terminal =
-    project.value?.archetype === "support"
-      ? TERMINAL_STATUSES_SUPPORT
-      : TERMINAL_STATUSES_SOFTWARE;
-  return boardIssues.value.filter((i) => !terminal.has(i.status));
+  const arch = project.value?.archetype ?? 'software';
+  return boardIssues.value.filter((i) => !isTerminalStatus(i.status, arch));
 });
 
 const doneInSprint = computed(
