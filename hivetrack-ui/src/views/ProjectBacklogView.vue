@@ -11,30 +11,21 @@
 -->
 <script setup>
 import { priorityBorder, estimateLabel, isTerminalStatus } from "@/composables/issueConstants";
-import {
-  ref,
-  reactive,
-  computed,
-  watch,
-  nextTick,
-  onMounted,
-  onBeforeUnmount,
-} from "vue";
+import { ref, reactive, computed, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { VueDraggable } from "vue-draggable-plus";
 import { useDragReorder } from "@/composables/useDragReorder";
+import { useInlineCreate } from "@/composables/useInlineCreate";
 import { formatDateRange } from "@/composables/useDate";
 import {
   PlusIcon,
   ListIcon,
   LayersIcon,
-  ChevronDownIcon,
   PlayIcon,
   CheckIcon,
   Trash2Icon,
   ArrowRightIcon,
-  SearchIcon,
   PencilIcon,
 } from "lucide-vue-next";
 import MainLayout from "@/layouts/MainLayout.vue";
@@ -48,8 +39,10 @@ import CompleteSprintModal from "@/components/sprint/CompleteSprintModal.vue";
 import StatusSelect from "@/components/issue/StatusSelect.vue";
 import PrioritySelect from "@/components/issue/PrioritySelect.vue";
 import ProgressBar from "@/components/ui/ProgressBar.vue";
+import BacklogEpicFilter from "@/components/backlog/BacklogEpicFilter.vue";
+import BacklogSprintForm from "@/components/backlog/BacklogSprintForm.vue";
 import { fetchProject } from "@/api/projects";
-import { fetchIssues, createIssue, updateIssue } from "@/api/issues";
+import { fetchIssues, updateIssue } from "@/api/issues";
 import {
   fetchSprints,
   createSprint,
@@ -64,63 +57,6 @@ const queryClient = useQueryClient();
 // ── Epic filter ──────────────────────────────────────────────────────────────
 
 const selectedEpicId = ref(null);
-const epicFilterOpen = ref(false);
-const epicFilterRoot = ref(null);
-const epicFilterDropdownEl = ref(null);
-const epicFilterTrigger = ref(null);
-const epicFilterStyle = ref({});
-const epicFilterSearch = ref("");
-const epicFilterSearchInput = ref(null);
-
-function positionEpicFilter() {
-  if (!epicFilterTrigger.value) return;
-  const rect = epicFilterTrigger.value.getBoundingClientRect();
-  epicFilterStyle.value = {
-    position: "fixed",
-    top: `${rect.bottom + 4}px`,
-    left: `${rect.right}px`,
-    transform: "translateX(-100%)",
-    zIndex: 9999,
-  };
-}
-
-function toggleEpicFilter() {
-  epicFilterOpen.value = !epicFilterOpen.value;
-  if (epicFilterOpen.value) {
-    epicFilterSearch.value = "";
-    nextTick(() => {
-      positionEpicFilter();
-      epicFilterSearchInput.value?.focus();
-    });
-  }
-}
-
-function selectEpicFilter(epicId) {
-  selectedEpicId.value = epicId;
-  epicFilterOpen.value = false;
-}
-
-function onEpicFilterClickOutside(e) {
-  if (!epicFilterOpen.value) return;
-  if (epicFilterRoot.value?.contains(e.target)) return;
-  if (epicFilterDropdownEl.value?.contains(e.target)) return;
-  epicFilterOpen.value = false;
-}
-
-onMounted(() =>
-  document.addEventListener("pointerdown", onEpicFilterClickOutside, true),
-);
-onBeforeUnmount(() =>
-  document.removeEventListener("pointerdown", onEpicFilterClickOutside, true),
-);
-
-const filteredEpicOptions = computed(() => {
-  if (!epicFilterSearch.value) return epics.value;
-  const q = epicFilterSearch.value.toLowerCase();
-  return epics.value.filter(
-    (e) => e.title.toLowerCase().includes(q) || String(e.number).includes(q),
-  );
-});
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -414,7 +350,6 @@ const { mutate: doDeleteSprint } = useMutation({
 // ── New sprint form ───────────────────────────────────────────────────────────
 
 const showNewSprintForm = ref(false);
-const newSprint = ref({ name: "", start_date: "", end_date: "", goal: "" });
 const newSprintError = ref("");
 
 const { mutate: submitNewSprint, isPending: creatingSprintPending } =
@@ -422,7 +357,6 @@ const { mutate: submitNewSprint, isPending: creatingSprintPending } =
     mutationFn: (data) => createSprint(slug.value, data),
     onSuccess: () => {
       showNewSprintForm.value = false;
-      newSprint.value = { name: "", start_date: "", end_date: "", goal: "" };
       newSprintError.value = "";
       queryClient.invalidateQueries({ queryKey: ["sprints", slug.value] });
     },
@@ -431,24 +365,23 @@ const { mutate: submitNewSprint, isPending: creatingSprintPending } =
     },
   });
 
-function handleCreateSprint() {
-  if (!newSprint.value.name.trim()) {
+function handleCreateSprint(formData) {
+  if (!formData.name.trim()) {
     newSprintError.value = "Name is required.";
     return;
   }
-  const data = { name: newSprint.value.name.trim() };
-  if (newSprint.value.start_date)
-    data.start_date = newSprint.value.start_date + "T00:00:00Z";
-  if (newSprint.value.end_date)
-    data.end_date = newSprint.value.end_date + "T00:00:00Z";
-  if (newSprint.value.goal.trim()) data.goal = newSprint.value.goal.trim();
+  const data = { name: formData.name.trim() };
+  if (formData.start_date)
+    data.start_date = formData.start_date + "T00:00:00Z";
+  if (formData.end_date)
+    data.end_date = formData.end_date + "T00:00:00Z";
+  if (formData.goal.trim()) data.goal = formData.goal.trim();
   submitNewSprint(data);
 }
 
 // ── Edit sprint ───────────────────────────────────────────────────────────────
 
 const editingSprintId = ref(null);
-const editSprintForm = ref({ name: "", start_date: "", end_date: "", goal: "" });
 const editSprintError = ref("");
 
 function isoToDateInput(iso) {
@@ -456,14 +389,17 @@ function isoToDateInput(iso) {
   return iso.slice(0, 10);
 }
 
-function startEditSprint(sprint) {
-  editingSprintId.value = sprint.id;
-  editSprintForm.value = {
+function editSprintInitialData(sprint) {
+  return {
     name: sprint.name,
     start_date: isoToDateInput(sprint.start_date),
     end_date: isoToDateInput(sprint.end_date),
     goal: sprint.goal ?? "",
   };
+}
+
+function startEditSprint(sprint) {
+  editingSprintId.value = sprint.id;
   editSprintError.value = "";
 }
 
@@ -485,18 +421,18 @@ const { mutate: submitEditSprint, isPending: editingSprintPending } =
     },
   });
 
-function handleEditSprint() {
-  if (!editSprintForm.value.name.trim()) {
+function handleEditSprint(formData) {
+  if (!formData.name.trim()) {
     editSprintError.value = "Name is required.";
     return;
   }
-  const data = { name: editSprintForm.value.name.trim() };
-  if (editSprintForm.value.start_date)
-    data.start_date = editSprintForm.value.start_date + "T00:00:00Z";
-  if (editSprintForm.value.end_date)
-    data.end_date = editSprintForm.value.end_date + "T00:00:00Z";
-  if (editSprintForm.value.goal.trim())
-    data.goal = editSprintForm.value.goal.trim();
+  const data = { name: formData.name.trim() };
+  if (formData.start_date)
+    data.start_date = formData.start_date + "T00:00:00Z";
+  if (formData.end_date)
+    data.end_date = formData.end_date + "T00:00:00Z";
+  if (formData.goal.trim())
+    data.goal = formData.goal.trim();
   submitEditSprint({ id: editingSprintId.value, data });
 }
 
@@ -529,70 +465,23 @@ function updatePriority(issue, newPriority) {
 
 // ── Inline issue creation (per-section) ─────────────────────────────────────
 
-const activeInlineCreate = ref(null); // section ID currently being edited
-const inlineCreateTitle = ref("");
-const inlineCreateError = ref("");
-const inlineCreateInputs = ref({});
+const projectArchetype = computed(() => project.value?.archetype ?? "software");
 
-function setInlineCreateRef(sectionId) {
-  return (el) => {
-    inlineCreateInputs.value[sectionId] = el;
-  };
-}
-
-function activateInlineCreate(sectionId) {
-  activeInlineCreate.value = sectionId;
-  inlineCreateTitle.value = "";
-  inlineCreateError.value = "";
-  nextTick(() => {
-    const el = inlineCreateInputs.value[sectionId];
-    if (!el) return;
-    el.scrollIntoView({ behavior: "instant", block: "nearest" });
-    el.focus();
-  });
-}
-
-const { mutate: inlineCreate, isPending: inlineCreatePending } = useMutation({
-  mutationFn: (data) => createIssue(slug.value, data),
-  onSuccess: (_result, _variables) => {
-    inlineCreateTitle.value = "";
-    inlineCreateError.value = "";
-    queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
-    nextTick(() => {
-      if (activeInlineCreate.value) {
-        const el = inlineCreateInputs.value[activeInlineCreate.value];
-        if (!el) return;
-        el.scrollIntoView({ behavior: "instant", block: "nearest" });
-        el.focus();
-      }
-    });
-  },
-  onError: () => {
-    inlineCreateError.value = "Failed";
-  },
-});
-
-function submitInlineCreate(sectionId) {
-  const title = inlineCreateTitle.value.trim();
-  if (!title) return;
-  if (inlineCreatePending.value) return;
-  const status = project.value?.archetype === "support" ? "open" : "todo";
-  const sprintId = sectionId === BACKLOG_KEY ? undefined : sectionId;
-  inlineCreate({ title, type: "task", status, sprint_id: sprintId });
-}
-
-function cancelInlineCreate() {
-  if (inlineCreatePending.value) return;
-  activeInlineCreate.value = null;
-  inlineCreateTitle.value = "";
-  inlineCreateError.value = "";
-}
+const {
+  activeInlineCreate,
+  inlineCreateTitle,
+  inlineCreateError,
+  setInlineCreateRef,
+  activateInlineCreate,
+  submitInlineCreate,
+  cancelInlineCreate,
+} = useInlineCreate(slug, projectArchetype, queryClient);
 
 // ── Default status for issue creation (modal — header button) ───────────────
 
 const defaultCreateStatus = computed(() => {
   if (!project.value) return null;
-  return project.value.archetype === "support" ? "open" : "todo";
+  return projectArchetype.value === "support" ? "open" : "todo";
 });
 
 const showCreateIssue = ref(false);
@@ -623,111 +512,12 @@ const showCreateIssue = ref(false);
 
         <div class="flex items-center gap-3">
           <!-- Epic filter -->
-          <div v-if="epics.length" ref="epicFilterRoot" class="relative">
-            <button
-              ref="epicFilterTrigger"
-              class="flex items-center gap-1.5 cursor-pointer rounded-md border border-slate-200 dark:border-slate-700 px-2.5 h-8 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
-              @click="toggleEpicFilter"
-            >
-              <LayersIcon class="size-3.5 text-violet-400 flex-shrink-0" />
-              <span
-                class="text-sm"
-                :class="
-                  selectedEpic ? 'text-slate-700 dark:text-slate-200 font-medium' : 'text-slate-500 dark:text-slate-400'
-                "
-              >
-                {{ selectedEpic ? selectedEpic.title : "All issues" }}
-              </span>
-              <ChevronDownIcon class="size-3 text-slate-400 ml-0.5" />
-            </button>
-
-            <Teleport to="body">
-              <Transition
-                enter-active-class="transition-opacity duration-75"
-                enter-from-class="opacity-0"
-                leave-active-class="transition-opacity duration-75"
-                leave-to-class="opacity-0"
-              >
-                <div
-                  v-if="epicFilterOpen"
-                  ref="epicFilterDropdownEl"
-                  :style="epicFilterStyle"
-                  class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden min-w-52"
-                >
-                  <!-- Search (when many epics) -->
-                  <div
-                    v-if="epics.length > 5"
-                    class="p-2 border-b border-slate-100 dark:border-slate-700"
-                  >
-                    <div class="relative">
-                      <SearchIcon
-                        class="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-slate-400"
-                      />
-                      <input
-                        ref="epicFilterSearchInput"
-                        v-model="epicFilterSearch"
-                        type="text"
-                        placeholder="Search epics..."
-                        class="w-full pl-7 pr-2 py-1 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 bg-slate-50 dark:bg-slate-700 rounded border-none focus:outline-none"
-                        @keydown.escape="epicFilterOpen = false"
-                      />
-                    </div>
-                  </div>
-
-                  <div class="max-h-52 overflow-y-auto py-1">
-                    <!-- All issues option -->
-                    <button
-                      class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left cursor-pointer transition-colors"
-                      :class="
-                        !selectedEpicId
-                          ? 'bg-slate-50 dark:bg-slate-700 font-medium text-slate-900 dark:text-slate-100'
-                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
-                      "
-                      @click="selectEpicFilter(null)"
-                    >
-                      <CheckIcon
-                        v-if="!selectedEpicId"
-                        class="size-3.5 text-blue-500 flex-shrink-0"
-                      />
-                      <span v-else class="size-3.5 flex-shrink-0" />
-                      <span>All issues</span>
-                    </button>
-
-                    <button
-                      v-for="epic in filteredEpicOptions"
-                      :key="epic.id"
-                      class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left cursor-pointer transition-colors"
-                      :class="
-                        epic.id === selectedEpicId
-                          ? 'bg-slate-50 dark:bg-slate-700 font-medium text-slate-900 dark:text-slate-100'
-                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-                      "
-                      @click="selectEpicFilter(epic.id)"
-                    >
-                      <CheckIcon
-                        v-if="epic.id === selectedEpicId"
-                        class="size-3.5 text-blue-500 flex-shrink-0"
-                      />
-                      <LayersIcon
-                        v-else
-                        class="size-3.5 text-violet-400 flex-shrink-0"
-                      />
-                      <span class="flex-1 min-w-0 truncate">{{
-                        epic.title
-                      }}</span>
-                    </button>
-
-                    <p
-                      v-if="epicFilterSearch && !filteredEpicOptions.length"
-                      class="px-3 py-2 text-xs text-slate-400 dark:text-slate-500"
-                    >
-                      No epics match "{{ epicFilterSearch }}"
-                    </p>
-                  </div>
-                </div>
-              </Transition>
-            </Teleport>
-          </div>
+          <BacklogEpicFilter
+            v-if="epics.length"
+            :epics="epics"
+            :model-value="selectedEpicId"
+            @update:model-value="selectedEpicId = $event"
+          />
 
           <button
             class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 h-8 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 transition-colors cursor-pointer"
@@ -836,62 +626,14 @@ const showCreateIssue = ref(false);
             v-if="editingSprintId === activeSprint.id"
             class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-blue-50/40 dark:bg-blue-900/10"
           >
-            <div class="max-w-lg space-y-3">
-              <div class="text-sm font-medium text-slate-700 dark:text-slate-300">Edit sprint</div>
-
-              <input
-                v-model="editSprintForm.name"
-                type="text"
-                placeholder="Sprint name (required)"
-                class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-
-              <div class="flex gap-3">
-                <div class="flex-1">
-                  <label class="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Start date</label>
-                  <input
-                    v-model="editSprintForm.start_date"
-                    type="date"
-                    class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div class="flex-1">
-                  <label class="text-xs text-slate-500 dark:text-slate-400 mb-1 block">End date</label>
-                  <input
-                    v-model="editSprintForm.end_date"
-                    type="date"
-                    class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              <input
-                v-model="editSprintForm.goal"
-                type="text"
-                placeholder="Sprint goal (optional)"
-                class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-
-              <div v-if="editSprintError" class="text-xs text-red-600">
-                {{ editSprintError }}
-              </div>
-
-              <div class="flex items-center gap-2">
-                <button
-                  class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 h-7 text-xs font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer disabled:opacity-50"
-                  :disabled="editingSprintPending"
-                  @click="handleEditSprint"
-                >
-                  Save
-                </button>
-                <button
-                  class="inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 h-7 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus-visible:outline-none transition-colors cursor-pointer"
-                  @click="cancelEditSprint"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+            <BacklogSprintForm
+              mode="edit"
+              :initial-data="editSprintInitialData(activeSprint)"
+              :loading="editingSprintPending"
+              :error="editSprintError"
+              @submit="handleEditSprint"
+              @cancel="cancelEditSprint"
+            />
           </div>
 
           <VueDraggable
@@ -1067,62 +809,14 @@ const showCreateIssue = ref(false);
             v-if="editingSprintId === sprint.id"
             class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50"
           >
-            <div class="max-w-lg space-y-3">
-              <div class="text-sm font-medium text-slate-700 dark:text-slate-300">Edit sprint</div>
-
-              <input
-                v-model="editSprintForm.name"
-                type="text"
-                placeholder="Sprint name (required)"
-                class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-
-              <div class="flex gap-3">
-                <div class="flex-1">
-                  <label class="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Start date</label>
-                  <input
-                    v-model="editSprintForm.start_date"
-                    type="date"
-                    class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div class="flex-1">
-                  <label class="text-xs text-slate-500 dark:text-slate-400 mb-1 block">End date</label>
-                  <input
-                    v-model="editSprintForm.end_date"
-                    type="date"
-                    class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              <input
-                v-model="editSprintForm.goal"
-                type="text"
-                placeholder="Sprint goal (optional)"
-                class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-
-              <div v-if="editSprintError" class="text-xs text-red-600">
-                {{ editSprintError }}
-              </div>
-
-              <div class="flex items-center gap-2">
-                <button
-                  class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 h-7 text-xs font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer disabled:opacity-50"
-                  :disabled="editingSprintPending"
-                  @click="handleEditSprint"
-                >
-                  Save
-                </button>
-                <button
-                  class="inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 h-7 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus-visible:outline-none transition-colors cursor-pointer"
-                  @click="cancelEditSprint"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+            <BacklogSprintForm
+              mode="edit"
+              :initial-data="editSprintInitialData(sprint)"
+              :loading="editingSprintPending"
+              :error="editSprintError"
+              @submit="handleEditSprint"
+              @cancel="cancelEditSprint"
+            />
           </div>
 
           <VueDraggable
@@ -1264,69 +958,13 @@ const showCreateIssue = ref(false);
           v-if="showNewSprintForm"
           class="px-6 py-4 border-b border-slate-100 bg-slate-50"
         >
-          <div class="max-w-lg space-y-3">
-            <div class="text-sm font-medium text-slate-700 dark:text-slate-300">New sprint</div>
-
-            <input
-              v-model="newSprint.name"
-              type="text"
-              placeholder="Sprint name (required)"
-              class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-
-            <div class="flex gap-3">
-              <div class="flex-1">
-                <label class="text-xs text-slate-500 mb-1 block"
-                  >Start date</label
-                >
-                <input
-                  v-model="newSprint.start_date"
-                  type="date"
-                  class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div class="flex-1">
-                <label class="text-xs text-slate-500 mb-1 block"
-                  >End date</label
-                >
-                <input
-                  v-model="newSprint.end_date"
-                  type="date"
-                  class="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <input
-              v-model="newSprint.goal"
-              type="text"
-              placeholder="Sprint goal (optional)"
-              class="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-
-            <div v-if="newSprintError" class="text-xs text-red-600">
-              {{ newSprintError }}
-            </div>
-
-            <div class="flex items-center gap-2">
-              <button
-                class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 h-7 text-xs font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors cursor-pointer disabled:opacity-50"
-                :disabled="creatingSprintPending"
-                @click="handleCreateSprint"
-              >
-                Create sprint
-              </button>
-              <button
-                class="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 h-7 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-none transition-colors cursor-pointer"
-                @click="
-                  showNewSprintForm = false;
-                  newSprintError = '';
-                "
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+          <BacklogSprintForm
+            mode="create"
+            :loading="creatingSprintPending"
+            :error="newSprintError"
+            @submit="handleCreateSprint"
+            @cancel="showNewSprintForm = false; newSprintError = ''"
+          />
         </div>
 
         <!-- Backlog issues -->
