@@ -94,6 +94,46 @@ func fieldFromArgsNoNull(args map[string]any, key string) htclient.Field[string]
 	return htclient.Field[string]{}
 }
 
+// parseNullableUUIDList parses a comma-separated UUID list argument that supports
+// "null" to clear the field. Returns an absent Field if the key is missing/empty.
+func parseNullableUUIDList(args map[string]any, key string) (htclient.Field[[]string], error) {
+	v, ok := args[key].(string)
+	if !ok || v == "" {
+		return htclient.Field[[]string]{}, nil
+	}
+	if v == "null" {
+		return htclient.Null[[]string](), nil
+	}
+	ids, err := parseUUIDList(args, key)
+	if err != nil {
+		return htclient.Field[[]string]{}, fmt.Errorf("invalid %s: %w", key, err)
+	}
+	if ids != nil {
+		return htclient.Set(ids), nil
+	}
+	return htclient.Field[[]string]{}, nil
+}
+
+// resolveLabelsField resolves label_ids or label_names into a Field[[]string].
+// If label_ids is present it takes precedence; otherwise label_names are resolved.
+func resolveLabelsField(client *Client, slug string, args map[string]any) (htclient.Field[[]string], error) {
+	field, err := parseNullableUUIDList(args, "label_ids")
+	if err != nil {
+		return htclient.Field[[]string]{}, err
+	}
+	if !field.IsAbsent() {
+		return field, nil
+	}
+	ids, err := resolveLabelNames(client, slug, args, "label_names")
+	if err != nil {
+		return htclient.Field[[]string]{}, fmt.Errorf("resolving label names: %w", err)
+	}
+	if ids != nil {
+		return htclient.Set(ids), nil
+	}
+	return htclient.Field[[]string]{}, nil
+}
+
 // resolveIssueID takes a value that is either a UUID or an issue number string,
 // and returns the UUID. If it's a number, it fetches the issue to get its ID.
 func resolveIssueID(client *Client, slug, value string) (string, error) {
