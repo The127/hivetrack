@@ -6,11 +6,11 @@
   no dedicated overview endpoint needed.
 -->
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { isTerminalStatus, statusColumns } from '@/composables/issueConstants'
 import { formatDateRange } from '@/composables/useDate'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { useQuery } from '@tanstack/vue-query'
 import {
   KanbanIcon,
   ListIcon,
@@ -20,33 +20,22 @@ import {
   CodeIcon,
   HeadphonesIcon,
   CalendarIcon,
-  UsersIcon,
-  TagIcon,
-  CircleDotIcon,
-  GitPullRequestIcon,
-  XCircleIcon,
-  Trash2Icon,
-  SlidersHorizontalIcon,
-  CpuIcon,
-  PlusIcon,
 } from 'lucide-vue-next'
 import MainLayout from '@/layouts/MainLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Spinner from '@/components/ui/Spinner.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import SprintBurndownChart from '@/components/sprint/SprintBurndownChart.vue'
-import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
-import AddDroneModal from '@/components/project/AddDroneModal.vue'
-import RelativeTime from '@/components/ui/RelativeTime.vue'
-import { fetchProject, removeProjectMember, updateProject } from '@/api/projects'
-import { fetchDrones, deleteDrone, revokeToken } from '@/api/drones'
-import { fetchLabels, deleteLabel } from '@/api/labels'
+import OverviewMembers from '@/components/overview/OverviewMembers.vue'
+import OverviewLabels from '@/components/overview/OverviewLabels.vue'
+import OverviewWipSettings from '@/components/overview/OverviewWipSettings.vue'
+import OverviewDrones from '@/components/overview/OverviewDrones.vue'
+import { fetchProject } from '@/api/projects'
 import { fetchIssues } from '@/api/issues'
 import { fetchSprints, fetchSprintBurndown } from '@/api/sprints'
 
 const route = useRoute()
 const slug = computed(() => route.params.slug)
-const queryClient = useQueryClient()
 
 // ── Queries ───────────────────────────────────────────────────────────────────
 
@@ -72,107 +61,6 @@ const { data: inboxResult } = useQuery({
   queryFn: () => fetchIssues(slug.value, { triaged: false, limit: 1 }),
   enabled: computed(() => !!slug.value),
 })
-
-const { data: labelsData } = useQuery({
-  queryKey: ['labels', slug],
-  queryFn: () => fetchLabels(slug.value),
-  enabled: computed(() => !!slug.value),
-})
-
-const labels = computed(() => labelsData.value?.labels ?? [])
-
-// ── Drones (Hivemind integration) ────────────────────────────────────────────
-
-const { data: dronesData } = useQuery({
-  queryKey: ['drones', slug],
-  queryFn: () => fetchDrones(slug.value),
-  enabled: computed(() => !!slug.value),
-  refetchInterval: 10000,
-  retry: false,
-})
-
-const drones = computed(() => dronesData.value?.drones ?? [])
-const pendingTokens = computed(() => dronesData.value?.pending_tokens ?? [])
-const hivemindAvailable = computed(() => dronesData.value !== undefined)
-const showAddDroneModal = ref(false)
-const droneToDelete = ref(null)
-const tokenToRevoke = ref(null)
-
-const { mutate: doDeleteDrone, isPending: deleteDronePending } = useMutation({
-  mutationFn: (droneId) => deleteDrone(slug.value, droneId),
-  onSuccess: () => {
-    droneToDelete.value = null
-    queryClient.invalidateQueries({ queryKey: ['drones', slug.value] })
-  },
-})
-
-const { mutate: doRevokeToken, isPending: revokeTokenPending } = useMutation({
-  mutationFn: (token) => revokeToken(slug.value, token),
-  onSuccess: () => {
-    tokenToRevoke.value = null
-    queryClient.invalidateQueries({ queryKey: ['drones', slug.value] })
-  },
-})
-
-// ── Mutations ─────────────────────────────────────────────────────────────────
-
-const memberToRemove = ref(null)
-const labelToDelete = ref(null)
-
-const { mutate: doRemoveMember, isPending: removeMemberPending } = useMutation({
-  mutationFn: (userId) => removeProjectMember(slug.value, userId),
-  onSuccess: () => {
-    memberToRemove.value = null
-    queryClient.invalidateQueries({ queryKey: ['project', slug.value] })
-  },
-})
-
-const { mutate: doDeleteLabel, isPending: deleteLabelPending } = useMutation({
-  mutationFn: (labelId) => deleteLabel(slug.value, labelId),
-  onSuccess: () => {
-    labelToDelete.value = null
-    queryClient.invalidateQueries({ queryKey: ['labels', slug.value] })
-  },
-})
-
-// ── WIP limit settings ────────────────────────────────────────────────────────
-
-const wipInProgressInput = ref(null)
-const wipInReviewInput = ref(null)
-
-watch(project, (p) => {
-  if (p) {
-    wipInProgressInput.value = p.wip_limit_in_progress ?? ''
-    wipInReviewInput.value = p.wip_limit_in_review ?? ''
-  }
-}, { immediate: true })
-
-const { mutate: saveWipLimits, isPending: savingWip } = useMutation({
-  mutationFn: ({ field, value }) => {
-    const body = {}
-    body[field] = value
-    return updateProject(project.value.id, body)
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['project', slug.value] })
-  },
-})
-
-function saveWipInProgress() {
-  const raw = wipInProgressInput.value
-  const parsed = raw === '' || raw === null ? null : parseInt(raw, 10)
-  if (parsed === null || !isNaN(parsed)) {
-    saveWipLimits({ field: 'wip_limit_in_progress', value: parsed })
-  }
-}
-
-function saveWipInReview() {
-  const raw = wipInReviewInput.value
-  const parsed = raw === '' || raw === null ? null : parseInt(raw, 10)
-  if (parsed === null || !isNaN(parsed)) {
-    saveWipLimits({ field: 'wip_limit_in_review', value: parsed })
-  }
-}
 
 // ── Derived state ─────────────────────────────────────────────────────────────
 
@@ -361,229 +249,12 @@ const SCHEME_ICON_CLASS = {
         </div>
       </section>
 
-      <!-- ── Members ─────────────────────────────────────────────────────────── -->
-      <section v-if="project.members?.length">
-        <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
-          <UsersIcon class="size-4 text-slate-500 dark:text-slate-400" />
-          Members
-          <span class="text-xs font-normal text-slate-500 dark:text-slate-400">{{ project.members.length }}</span>
-        </h2>
-        <div class="flex flex-wrap gap-2">
-          <div
-            v-for="m in project.members"
-            :key="m.user_id"
-            class="group flex items-center gap-2 rounded-md border border-slate-200 dark:border-slate-700 px-2.5 py-1.5"
-          >
-            <span class="text-sm text-slate-700 dark:text-slate-300">{{ m.display_name }}</span>
-            <Badge colorScheme="gray" compact>{{ m.role.replace('project_', '') }}</Badge>
-            <button
-              class="opacity-0 group-hover:opacity-100 ml-0.5 rounded p-0.5 text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all cursor-pointer"
-              title="Remove member"
-              @click="memberToRemove = m"
-            >
-              <Trash2Icon class="size-3" />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── Labels ─────────────────────────────────────────────────────────── -->
-      <section v-if="labels.length">
-        <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
-          <TagIcon class="size-4 text-slate-500 dark:text-slate-400" />
-          Labels
-          <span class="text-xs font-normal text-slate-500">{{ labels.length }}</span>
-        </h2>
-        <div class="flex flex-wrap gap-2">
-          <div
-            v-for="label in labels"
-            :key="label.id"
-            class="group flex items-center gap-1.5 rounded-full border px-2.5 py-0.5"
-            :style="{ borderColor: label.color + '66', backgroundColor: label.color + '22' }"
-          >
-            <span class="text-xs font-medium" :style="{ color: label.color }">{{ label.name }}</span>
-            <button
-              class="opacity-0 group-hover:opacity-100 rounded-full p-0.5 text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all cursor-pointer"
-              title="Delete label"
-              @click="labelToDelete = label"
-            >
-              <XCircleIcon class="size-3" />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── Board settings (WIP limits, software only) ──────────────────── -->
-      <section v-if="project.archetype === 'software'">
-        <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
-          <SlidersHorizontalIcon class="size-4 text-slate-500 dark:text-slate-400" />
-          Board
-        </h2>
-        <div class="rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
-          <div class="flex items-center gap-3 px-4 py-2.5">
-            <CircleDotIcon class="size-4 flex-shrink-0 text-blue-500" />
-            <span class="text-sm text-slate-700 dark:text-slate-300 flex-1">In Progress limit</span>
-            <input
-              v-model="wipInProgressInput"
-              type="number"
-              min="1"
-              placeholder="None"
-              class="w-20 text-sm text-right border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded px-2 py-0.5 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
-              :disabled="savingWip"
-              @blur="saveWipInProgress"
-              @keydown.enter="$event.target.blur()"
-            />
-          </div>
-          <div class="flex items-center gap-3 px-4 py-2.5">
-            <GitPullRequestIcon class="size-4 flex-shrink-0 text-violet-500" />
-            <span class="text-sm text-slate-700 dark:text-slate-300 flex-1">In Review limit</span>
-            <input
-              v-model="wipInReviewInput"
-              type="number"
-              min="1"
-              placeholder="None"
-              class="w-20 text-sm text-right border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded px-2 py-0.5 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
-              :disabled="savingWip"
-              @blur="saveWipInReview"
-              @keydown.enter="$event.target.blur()"
-            />
-          </div>
-        </div>
-        <p class="text-xs text-slate-400 dark:text-slate-500 mt-1.5">Informational only — the board highlights columns that exceed these limits.</p>
-      </section>
-
-      <!-- ── Drones (Hivemind) ────────────────────────────────────────────── -->
-      <section v-if="hivemindAvailable">
-        <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
-          <CpuIcon class="size-4 text-slate-500 dark:text-slate-400" />
-          Drones
-          <span v-if="drones.length" class="text-xs font-normal text-slate-500 dark:text-slate-400">{{ drones.length }}</span>
-          <button
-            class="ml-auto rounded-md p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors cursor-pointer"
-            title="Add drone"
-            @click="showAddDroneModal = true"
-          >
-            <PlusIcon class="size-4" />
-          </button>
-        </h2>
-
-        <!-- Empty state -->
-        <div v-if="!drones.length && !pendingTokens.length" class="rounded-lg border border-dashed border-slate-200 dark:border-slate-700 px-4 py-6 text-center">
-          <CpuIcon class="size-6 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-          <p class="text-sm text-slate-500 dark:text-slate-400">No drones connected.</p>
-          <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Add a drone to enable Hivemind-powered features.</p>
-        </div>
-
-        <!-- Drone list -->
-        <div v-else class="rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
-          <!-- Connected drones -->
-          <div
-            v-for="drone in drones"
-            :key="drone.drone_id"
-            class="group flex items-center gap-3 px-4 py-2.5"
-          >
-            <span class="text-sm font-mono text-slate-700 dark:text-slate-300 flex-1 truncate">{{ drone.drone_id }}</span>
-            <Badge
-              :color-scheme="drone.status === 'available' ? 'green' : drone.status === 'busy' ? 'yellow' : 'red'"
-              compact
-            >
-              {{ drone.status }}
-            </Badge>
-            <span v-for="cap in drone.capabilities" :key="cap" class="text-[10px] rounded-full bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-slate-500 dark:text-slate-400">
-              {{ cap }}
-            </span>
-            <span v-if="drone.last_heartbeat" class="text-xs text-slate-400 dark:text-slate-500">
-              <RelativeTime :date="drone.last_heartbeat" />
-            </span>
-            <button
-              class="opacity-0 group-hover:opacity-100 rounded-md p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all cursor-pointer"
-              title="Delete drone"
-              @click="droneToDelete = drone"
-            >
-              <Trash2Icon class="size-3.5" />
-            </button>
-          </div>
-
-          <!-- Pending tokens (not yet connected) -->
-          <div
-            v-for="(token, i) in pendingTokens"
-            :key="'pending-' + i"
-            class="group flex items-center gap-3 px-4 py-2.5 opacity-50 hover:opacity-75"
-          >
-            <span class="text-sm text-slate-400 dark:text-slate-500 flex-1">Waiting for drone...</span>
-            <Badge color-scheme="gray" compact>Pending</Badge>
-            <span v-for="cap in token.capabilities" :key="cap" class="text-[10px] rounded-full bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-slate-500 dark:text-slate-400">
-              {{ cap }}
-            </span>
-            <span class="text-xs text-slate-400 dark:text-slate-500">
-              <RelativeTime :date="token.created_at" />
-            </span>
-            <button
-              class="opacity-0 group-hover:opacity-100 rounded-md p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all cursor-pointer"
-              title="Revoke token"
-              @click="tokenToRevoke = token"
-            >
-              <Trash2Icon class="size-3.5" />
-            </button>
-          </div>
-        </div>
-      </section>
+      <!-- ── Extracted sections ──────────────────────────────────────────────── -->
+      <OverviewMembers :slug="slug" />
+      <OverviewLabels :slug="slug" />
+      <OverviewWipSettings :slug="slug" />
+      <OverviewDrones :slug="slug" />
 
     </div>
-
-    <!-- Remove member confirmation -->
-    <ConfirmDialog
-      v-if="memberToRemove"
-      :open="!!memberToRemove"
-      title="Remove member?"
-      :message="`Remove ${memberToRemove.display_name} from this project? They will lose access immediately.`"
-      confirm-text="Remove member"
-      :loading="removeMemberPending"
-      @confirm="doRemoveMember(memberToRemove.user_id)"
-      @cancel="memberToRemove = null"
-    />
-
-    <!-- Delete label confirmation -->
-    <ConfirmDialog
-      v-if="labelToDelete"
-      :open="!!labelToDelete"
-      title="Delete label?"
-      :message="`Delete '${labelToDelete.name}'? It will be removed from all issues.`"
-      confirm-text="Delete label"
-      :loading="deleteLabelPending"
-      @confirm="doDeleteLabel(labelToDelete.id)"
-      @cancel="labelToDelete = null"
-    />
-
-    <!-- Add drone modal -->
-    <AddDroneModal
-      :open="showAddDroneModal"
-      :slug="slug"
-      @close="showAddDroneModal = false"
-    />
-
-    <!-- Delete drone confirmation -->
-    <ConfirmDialog
-      v-if="droneToDelete"
-      :open="!!droneToDelete"
-      title="Delete drone?"
-      :message="`Delete '${droneToDelete.drone_id}'? It will be disconnected and its registration purged.`"
-      confirm-text="Delete"
-      :loading="deleteDronePending"
-      @confirm="doDeleteDrone(droneToDelete.drone_id)"
-      @cancel="droneToDelete = null"
-    />
-
-    <!-- Revoke token confirmation -->
-    <ConfirmDialog
-      v-if="tokenToRevoke"
-      :open="!!tokenToRevoke"
-      title="Revoke token?"
-      message="Revoke this pending drone token? Any drone attempting to register with it will be rejected."
-      confirm-text="Revoke token"
-      :loading="revokeTokenPending"
-      @confirm="doRevokeToken(tokenToRevoke.token)"
-      @cancel="tokenToRevoke = null"
-    />
   </MainLayout>
 </template>
