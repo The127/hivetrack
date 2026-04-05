@@ -379,7 +379,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
             <InboxIcon class="size-4 flex-shrink-0" />
             <span v-if="!collapsed" class="flex-1">Triage</span>
             <span
-              v-if="triageCount > 0"
+              v-if="triageCount > 0 && !collapsed"
               class="flex-shrink-0 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums bg-amber-500 text-white px-1"
               :title="`${triageCount} untriaged`"
             >
