@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -315,13 +317,39 @@ func (r *IssueRepository) applyIssueFilters(w *whereBuilder, filter *repositorie
 	w.eq(`i.refined`, filter.Refined != nil, filter.Refined)
 	w.clause(`EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.user_id=$%d)`, filter.AssigneeID != nil, filter.AssigneeID)
 	w.eq(`i.owner_id`, filter.OwnerID != nil, filter.OwnerID)
-	w.clause(`to_tsvector('english', i.title || ' ' || coalesce(i.description, '')) @@ plainto_tsquery('english', $%d)`, filter.Text != nil && *filter.Text != "", filter.Text)
+	if filter.Text != nil && *filter.Text != "" {
+		number := extractIssueNumber(*filter.Text)
+		if number > 0 {
+			w.query += fmt.Sprintf(` AND (to_tsvector('english', i.title || ' ' || coalesce(i.description, '')) @@ plainto_tsquery('english', $%d) OR i.title ILIKE $%d OR i.number = %d)`, w.argIdx, w.argIdx+1, number)
+			w.args = append(w.args, *filter.Text, "%"+*filter.Text+"%")
+			w.argIdx += 2
+		} else {
+			w.query += fmt.Sprintf(` AND (to_tsvector('english', i.title || ' ' || coalesce(i.description, '')) @@ plainto_tsquery('english', $%d) OR i.title ILIKE $%d)`, w.argIdx, w.argIdx+1)
+			w.args = append(w.args, *filter.Text, "%"+*filter.Text+"%")
+			w.argIdx += 2
+		}
+	}
 	w.eq(`i.type`, filter.Type != nil, filter.Type)
 	w.eq(`i.parent_id`, filter.ParentID != nil, filter.ParentID)
 	w.raw(filter.HasNoParent != nil && *filter.HasNoParent, `i.parent_id IS NULL`)
 	w.clause(`EXISTS (SELECT 1 FROM issue_labels il WHERE il.issue_id = i.id AND il.label_id=$%d)`, filter.LabelID != nil, filter.LabelID)
 	w.clause(`NOT EXISTS (SELECT 1 FROM issue_labels il WHERE il.issue_id = i.id AND il.label_id=$%d)`, filter.ExcludeLabelID != nil, filter.ExcludeLabelID)
 	w.eq(`i.on_hold`, filter.OnHold != nil, filter.OnHold)
+}
+
+var issueKeyPattern = regexp.MustCompile(`^[a-zA-Z][\w-]*-(\d+)$`)
+
+// extractIssueNumber returns the issue number from a search string.
+// Matches plain numbers ("42") or issue keys ("HT-42").
+func extractIssueNumber(text string) int {
+	if n, err := strconv.Atoi(text); err == nil && n > 0 {
+		return n
+	}
+	if m := issueKeyPattern.FindStringSubmatch(text); m != nil {
+		n, _ := strconv.Atoi(m[1])
+		return n
+	}
+	return 0
 }
 
 func (r *IssueRepository) syncAssignees(ctx context.Context, tx *sql.Tx, issueID uuid.UUID, assignees []uuid.UUID) error {
