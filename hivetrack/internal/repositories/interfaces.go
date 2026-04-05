@@ -133,6 +133,7 @@ type IssueFilter struct {
 	ParentID       *uuid.UUID
 	HasNoParent    *bool
 	LabelID        *uuid.UUID
+	OwnerID        *uuid.UUID
 	ExcludeLabelID *uuid.UUID
 	OnHold         *bool
 	Limit          int
@@ -207,6 +208,11 @@ func (f *IssueFilter) ByParentID(id uuid.UUID) *IssueFilter {
 func (f *IssueFilter) WithNoParent() *IssueFilter {
 	v := true
 	f.HasNoParent = &v
+	return f
+}
+
+func (f *IssueFilter) ByOwnerID(id uuid.UUID) *IssueFilter {
+	f.OwnerID = &id
 	return f
 }
 

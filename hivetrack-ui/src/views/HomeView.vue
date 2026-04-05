@@ -20,6 +20,7 @@ import {
   InboxIcon,
   FolderKanbanIcon,
   CircleDotIcon,
+  UserIcon,
 } from "lucide-vue-next";
 import MainLayout from "@/layouts/MainLayout.vue";
 import AssigneePopover from "@/components/issue/AssigneePopover.vue";
@@ -57,6 +58,11 @@ const userName =
 const { data: myIssues, isLoading: loadingIssues } = useQuery({
   queryKey: ["me", "issues"],
   queryFn: () => apiFetch("/api/v1/me/issues"),
+});
+
+const { data: myCreatedIssues, isLoading: loadingCreated } = useQuery({
+  queryKey: ["me", "created-issues"],
+  queryFn: () => apiFetch("/api/v1/me/created-issues"),
 });
 
 const { data: projects, isLoading: loadingProjects } = useQuery({
@@ -209,6 +215,69 @@ const { mutate: updateMyIssuePriority } = useMutation({
         >
           <template #icon>
             <CircleDotIcon class="size-8" />
+          </template>
+        </EmptyState>
+      </section>
+
+      <!-- ── Created by me ───────────────────────────────────────────── -->
+      <section class="mb-8">
+        <div class="max-w-3xl mx-auto flex items-center gap-3 mb-3">
+          <h2
+            class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2"
+          >
+            <UserIcon class="size-4 text-violet-500" />
+            Created by me
+            <span
+              v-if="myCreatedIssues?.items?.length"
+              class="text-xs font-normal text-slate-500"
+            >
+              {{ myCreatedIssues.items.length }}
+            </span>
+          </h2>
+        </div>
+
+        <div
+          v-if="loadingCreated"
+          class="h-32 flex items-center justify-center"
+        >
+          <Spinner class="size-5 text-slate-400" />
+        </div>
+
+        <template v-else-if="myCreatedIssues?.items?.length">
+          <div
+            class="max-w-3xl mx-auto rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden"
+          >
+            <div
+              v-for="issue in myCreatedIssues.items"
+              :key="issue.id"
+              class="flex items-center gap-3 px-4 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
+            >
+              <span
+                class="text-xs font-mono text-slate-400 dark:text-slate-500 flex-shrink-0 w-14 text-right"
+              >
+                {{ issue.project_slug?.toUpperCase() }}-{{ issue.number }}
+              </span>
+              <span
+                class="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-slate-900 dark:group-hover:text-slate-100"
+              >
+                {{ issue.title }}
+              </span>
+              <Badge :color-scheme="statusScheme(issue.status)" compact>
+                {{ formatStatus(issue.status) }}
+              </Badge>
+              <AssigneePopover :assignees="issue.assignees ?? []" />
+            </div>
+          </div>
+        </template>
+
+        <EmptyState
+          v-else
+          class="max-w-3xl mx-auto"
+          title="No open issues created by you"
+          description="Issues you create across all projects will appear here."
+        >
+          <template #icon>
+            <UserIcon class="size-8" />
           </template>
         </EmptyState>
       </section>

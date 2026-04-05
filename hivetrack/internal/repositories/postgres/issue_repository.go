@@ -314,6 +314,7 @@ func (r *IssueRepository) applyIssueFilters(w *whereBuilder, filter *repositorie
 	w.eq(`i.triaged`, filter.Triaged != nil, filter.Triaged)
 	w.eq(`i.refined`, filter.Refined != nil, filter.Refined)
 	w.clause(`EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.user_id=$%d)`, filter.AssigneeID != nil, filter.AssigneeID)
+	w.eq(`i.owner_id`, filter.OwnerID != nil, filter.OwnerID)
 	w.clause(`to_tsvector('english', i.title || ' ' || coalesce(i.description, '')) @@ plainto_tsquery('english', $%d)`, filter.Text != nil && *filter.Text != "", filter.Text)
 	w.eq(`i.type`, filter.Type != nil, filter.Type)
 	w.eq(`i.parent_id`, filter.ParentID != nil, filter.ParentID)

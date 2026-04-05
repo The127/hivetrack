@@ -534,6 +534,15 @@ func (h *IssueHandler) GetMyIssues(w http.ResponseWriter, r *http.Request) {
 	RespondJSON(w, http.StatusOK, result)
 }
 
+func (h *IssueHandler) GetMyCreatedIssues(w http.ResponseWriter, r *http.Request) {
+	result, err := mediatr.Send[*queries.GetMyCreatedIssuesResult](r.Context(), h.mediator, queries.GetMyCreatedIssuesQuery{})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	RespondJSON(w, http.StatusOK, result)
+}
+
 func (h *IssueHandler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 	slug := mux.Vars(r)["slug"]
 

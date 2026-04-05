@@ -59,6 +59,7 @@ func Mediator(dc *ioc.DependencyCollection, publisher ...commands.RefinementPubl
 	mediatr.RegisterHandler(m, queries.HandleGetIssues)
 	mediatr.RegisterHandler(m, queries.HandleGetIssue)
 	mediatr.RegisterHandler(m, queries.HandleGetMyIssues)
+	mediatr.RegisterHandler(m, queries.HandleGetMyCreatedIssues)
 	mediatr.RegisterHandler(m, queries.HandleGetSprints)
 	mediatr.RegisterHandler(m, queries.HandleGetSprintBurndown)
 	mediatr.RegisterHandler(m, queries.HandleGetMilestones)
