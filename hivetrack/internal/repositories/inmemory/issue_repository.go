@@ -153,7 +153,9 @@ func matchesIssueFilter(issue *models.Issue, filter *repositories.IssueFilter) b
 	}
 	if filter.Text != nil && *filter.Text != "" {
 		text := strings.ToLower(*filter.Text)
-		if !strings.Contains(strings.ToLower(issue.GetTitle()), text) {
+		titleMatch := strings.Contains(strings.ToLower(issue.GetTitle()), text)
+		numberMatch := fmt.Sprintf("%d", issue.GetNumber()) == *filter.Text
+		if !titleMatch && !numberMatch {
 			return false
 		}
 	}
