@@ -13,12 +13,13 @@
     close — modal dismissed (triggers drone list refresh in parent)
 -->
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { useMutation, useQueryClient } from "@tanstack/vue-query";
 import { CopyIcon, CheckIcon } from "lucide-vue-next";
 import Modal from "@/components/ui/Modal.vue";
 import Button from "@/components/ui/Button.vue";
 import { createDroneToken } from "@/api/drones";
+import { apiFetch } from "@/composables/useApi";
 
 const props = defineProps({
   open: { type: Boolean, required: true },
@@ -46,10 +47,38 @@ const AVAILABLE_CAPS = [
   },
 ];
 
+const TARGETS = [
+  { value: "claude", label: "Claude" },
+  { value: "ollama", label: "Ollama" },
+  { value: "local", label: "Local (OpenAI-compatible)" },
+];
+
 const selectedCaps = ref(new Set());
+const selectedTarget = ref("claude");
 const maxConcurrency = ref(1);
 const generatedToken = ref(null);
 const copied = ref(false);
+const grpcURL = ref("");
+
+// Fetch hivemind gRPC URL when modal opens
+watch(
+  () => props.open,
+  async (isOpen) => {
+    if (isOpen && !grpcURL.value) {
+      try {
+        const cfg = await apiFetch("/api/v1/hivemind/config");
+        grpcURL.value = cfg.grpc_url || "";
+      } catch {
+        grpcURL.value = "";
+      }
+    }
+  },
+);
+
+const droneCommand = computed(() => {
+  const url = grpcURL.value || "<HIVEMIND_GRPC_URL>";
+  return `hivemind-drone ${selectedTarget.value} --hivemind-url ${url} --token ${generatedToken.value}`;
+});
 
 function toggleCap(cap) {
   if (selectedCaps.value.has(cap)) {
@@ -87,6 +116,7 @@ function close() {
   }
   generatedToken.value = null;
   selectedCaps.value = new Set();
+  selectedTarget.value = "claude";
   maxConcurrency.value = 1;
   copied.value = false;
   emit("close");
@@ -135,6 +165,31 @@ function close() {
         </div>
       </div>
       <div class="flex flex-col gap-1.5">
+        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
+          Target
+        </span>
+        <div class="flex gap-2">
+          <label
+            v-for="t in TARGETS"
+            :key="t.value"
+            class="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm cursor-pointer transition-colors"
+            :class="
+              selectedTarget === t.value
+                ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-medium'
+                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+            "
+          >
+            <input
+              v-model="selectedTarget"
+              type="radio"
+              :value="t.value"
+              class="sr-only"
+            />
+            {{ t.label }}
+          </label>
+        </div>
+      </div>
+      <div class="flex flex-col gap-1.5">
         <label
           class="text-sm font-medium text-slate-700 dark:text-slate-300"
           for="drone-concurrency"
@@ -175,22 +230,11 @@ function close() {
         class="rounded-md bg-slate-50 dark:bg-slate-800/60 p-3 flex flex-col gap-2"
       >
         <p class="text-xs text-slate-500 dark:text-slate-400">
-          Run the drone with one of:
+          Run the drone with:
         </p>
         <code
-          class="text-xs text-slate-700 dark:text-slate-300 font-mono break-all block"
-          >hivemind-drone claude --hivemind-url &lt;HIVEMIND_GRPC_URL&gt;
-          --token {{ generatedToken }}</code
-        >
-        <code
-          class="text-xs text-slate-700 dark:text-slate-300 font-mono break-all block"
-          >hivemind-drone ollama --hivemind-url &lt;HIVEMIND_GRPC_URL&gt;
-          --token {{ generatedToken }}</code
-        >
-        <code
-          class="text-xs text-slate-700 dark:text-slate-300 font-mono break-all block"
-          >hivemind-drone local --hivemind-url &lt;HIVEMIND_GRPC_URL&gt; --token
-          {{ generatedToken }}</code
+          class="text-xs text-slate-700 dark:text-slate-300 font-mono break-all block select-all"
+          >{{ droneCommand }}</code
         >
       </div>
     </div>

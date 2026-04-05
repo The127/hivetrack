@@ -115,6 +115,7 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 	// Drones (Hivemind integration — proxy to Hivemind management API)
 	if cfg.Hivemind.Enabled {
 		droneH := handlers.NewDroneHandler(&cfg.Hivemind)
+		protected.HandleFunc("/hivemind/config", droneH.GetHivemindConfig).Methods("GET")
 		protected.HandleFunc("/projects/{slug}/drones", droneH.ListDrones).Methods("GET")
 		protected.HandleFunc("/projects/{slug}/drones/tokens", droneH.CreateToken).Methods("POST")
 		protected.HandleFunc("/projects/{slug}/drones/{drone_id}", droneH.GetDrone).Methods("GET")

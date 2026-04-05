@@ -83,6 +83,7 @@ type HivemindConfig struct {
 	NatsURL         string `koanf:"nats_url"`
 	ManagementURL   string `koanf:"management_url"`
 	ManagementToken string `koanf:"management_token"`
+	GrpcURL         string `koanf:"grpc_url"`
 }
 
 type InitialAdminConfig struct {
