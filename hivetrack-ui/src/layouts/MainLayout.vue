@@ -131,7 +131,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
         class="fixed inset-y-0 left-0 z-50 w-64 flex flex-col bg-gray-50 dark:bg-slate-900 text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-800 overflow-y-auto lg:hidden"
       >
         <!-- Header with close button -->
-        <div class="flex items-center gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800">
+        <div class="flex items-center gap-2 px-3 py-4 border-b border-gray-200 dark:border-gray-800">
           <img src="@/assets/logo.svg" alt="Hivetrack" class="size-6 flex-shrink-0" />
           <span class="font-semibold tracking-tight text-gray-900 dark:text-gray-100 text-sm flex-1">Hivetrack</span>
           <button
@@ -241,7 +241,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
       <!-- Expanded: single row with logo, title, chevron -->
       <div
         v-if="!collapsed"
-        class="flex items-center gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800"
+        class="flex items-center gap-2 px-3 py-4 border-b border-gray-200 dark:border-gray-800"
       >
         <img src="@/assets/logo.svg" alt="Hivetrack" class="size-6 flex-shrink-0" />
         <span class="font-semibold tracking-tight text-gray-900 dark:text-gray-100 text-sm flex-1">Hivetrack</span>
@@ -253,12 +253,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           <ChevronLeftIcon class="size-4" />
         </button>
       </div>
-      <!-- Collapsed: logo above chevron, centered -->
+      <!-- Collapsed: just the expand chevron, same height as expanded header -->
       <div
         v-else
-        class="flex flex-col items-center gap-1 px-2 py-3 border-b border-gray-200 dark:border-gray-800"
+        class="flex items-center justify-center px-2 py-4 border-b border-gray-200 dark:border-gray-800"
       >
-        <img src="@/assets/logo.svg" alt="Hivetrack" class="size-6" />
         <button
           class="flex items-center justify-center size-6 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 cursor-pointer"
           title="Expand sidebar"
