@@ -22,7 +22,7 @@ const draft = ref("");
 const editorEl = ref(null);
 
 function handleDescriptionClick() {
-  if (window.getSelection().toString()) return;
+  if (window.getSelection()?.toString()) return;
   startEditing();
 }
 
@@ -71,7 +71,7 @@ function saveDescription() {
       @save="saveDescription"
       @cancel="cancelEditing"
     />
-    <div v-else-if="description" @click="handleDescriptionClick" class="cursor-pointer">
+    <div v-else-if="description" @mouseup="handleDescriptionClick" class="cursor-pointer">
       <MdPreview :id="previewId" :model-value="description" language="en-US" :theme="editorTheme" />
     </div>
     <button
