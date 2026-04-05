@@ -21,6 +21,8 @@ import {
   FolderKanbanIcon,
   CircleDotIcon,
   UserIcon,
+  SearchIcon,
+  XIcon,
 } from "lucide-vue-next";
 import MainLayout from "@/layouts/MainLayout.vue";
 import AssigneePopover from "@/components/issue/AssigneePopover.vue";
@@ -86,6 +88,68 @@ function formatStatus(s) {
   );
 }
 
+const PRIORITIES = ["none", "low", "medium", "high", "critical"];
+
+// ── Filters (my open issues) ────────────────────────────────────────────────
+const assignedSearch = ref("");
+const assignedStatus = ref("");
+const assignedPriority = ref("");
+
+const filteredAssigned = computed(() => {
+  let items = myIssues.value?.items ?? [];
+  if (assignedSearch.value) {
+    const q = assignedSearch.value.toLowerCase();
+    items = items.filter(
+      (i) =>
+        i.title.toLowerCase().includes(q) ||
+        `${i.project_slug}-${i.number}`.toLowerCase().includes(q),
+    );
+  }
+  if (assignedStatus.value)
+    items = items.filter((i) => i.status === assignedStatus.value);
+  if (assignedPriority.value)
+    items = items.filter(
+      (i) => (i.priority ?? "none") === assignedPriority.value,
+    );
+  return items;
+});
+
+const assignedStatuses = computed(() => {
+  const set = new Set((myIssues.value?.items ?? []).map((i) => i.status));
+  return [...set];
+});
+
+// ── Filters (created by me) ─────────────────────────────────────────────────
+const createdSearch = ref("");
+const createdStatus = ref("");
+const createdPriority = ref("");
+
+const filteredCreated = computed(() => {
+  let items = myCreatedIssues.value?.items ?? [];
+  if (createdSearch.value) {
+    const q = createdSearch.value.toLowerCase();
+    items = items.filter(
+      (i) =>
+        i.title.toLowerCase().includes(q) ||
+        `${i.project_slug}-${i.number}`.toLowerCase().includes(q),
+    );
+  }
+  if (createdStatus.value)
+    items = items.filter((i) => i.status === createdStatus.value);
+  if (createdPriority.value)
+    items = items.filter(
+      (i) => (i.priority ?? "none") === createdPriority.value,
+    );
+  return items;
+});
+
+const createdStatuses = computed(() => {
+  const set = new Set(
+    (myCreatedIssues.value?.items ?? []).map((i) => i.status),
+  );
+  return [...set];
+});
+
 // ── Priority mutation (list view) ─────────────────────────────────────────────
 
 const { mutate: updateMyIssuePriority } = useMutation({
@@ -141,7 +205,6 @@ const { mutate: updateMyIssuePriority } = useMutation({
 
       <!-- ── My open issues ────────────────────────────────────────────── -->
       <section class="mb-8">
-        <!-- Section header with view toggle -->
         <div class="max-w-3xl mx-auto flex items-center gap-3 mb-3">
           <h2
             class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2"
@@ -155,6 +218,46 @@ const { mutate: updateMyIssuePriority } = useMutation({
               {{ myIssues.items.length }}
             </span>
           </h2>
+          <div class="ml-auto flex items-center gap-2">
+            <div
+              class="flex items-center gap-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 h-7"
+            >
+              <SearchIcon class="size-3 text-slate-400" />
+              <input
+                v-model="assignedSearch"
+                type="text"
+                placeholder="Filter..."
+                class="w-24 text-xs bg-transparent text-slate-700 dark:text-slate-300 placeholder:text-slate-400 focus:outline-none"
+              />
+              <button
+                v-if="assignedSearch"
+                class="text-slate-400 hover:text-slate-600 cursor-pointer"
+                @click="assignedSearch = ''"
+              >
+                <XIcon class="size-3" />
+              </button>
+            </div>
+            <select
+              v-model="assignedStatus"
+              class="h-7 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 px-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value="">All statuses</option>
+              <option v-for="s in assignedStatuses" :key="s" :value="s">
+                {{ formatStatus(s) }}
+              </option>
+            </select>
+            <select
+              v-model="assignedPriority"
+              class="h-7 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 px-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value="">All priorities</option>
+              <option v-for="p in PRIORITIES" :key="p" :value="p">
+                {{
+                  p === "none" ? "None" : p.charAt(0).toUpperCase() + p.slice(1)
+                }}
+              </option>
+            </select>
+          </div>
         </div>
 
         <div v-if="loadingIssues" class="h-32 flex items-center justify-center">
@@ -163,28 +266,25 @@ const { mutate: updateMyIssuePriority } = useMutation({
 
         <template v-else-if="myIssues?.items?.length">
           <div
+            v-if="filteredAssigned.length"
             class="max-w-3xl mx-auto rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden"
           >
-            <div
-              v-for="issue in myIssues.items"
+            <router-link
+              v-for="issue in filteredAssigned"
               :key="issue.id"
+              :to="`/projects/${issue.project_slug}/issues/${issue.number}`"
               class="flex items-center gap-3 px-4 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
             >
-              <!-- Issue number -->
               <span
                 class="text-xs font-mono text-slate-400 dark:text-slate-500 flex-shrink-0 w-14 text-right"
               >
                 {{ issue.project_slug?.toUpperCase() }}-{{ issue.number }}
               </span>
-
-              <!-- Title -->
               <span
                 class="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-slate-900 dark:group-hover:text-slate-100"
               >
                 {{ issue.title }}
               </span>
-
-              <!-- Priority -->
               <PrioritySelect
                 :priority="issue.priority ?? 'none'"
                 @update:priority="
@@ -195,16 +295,18 @@ const { mutate: updateMyIssuePriority } = useMutation({
                   })
                 "
               />
-
-              <!-- Status -->
               <Badge :color-scheme="statusScheme(issue.status)" compact>
                 {{ formatStatus(issue.status) }}
               </Badge>
-
-              <!-- Assignees -->
               <AssigneePopover :assignees="issue.assignees ?? []" />
-            </div>
+            </router-link>
           </div>
+          <p
+            v-else
+            class="max-w-3xl mx-auto text-sm text-slate-400 dark:text-slate-500 text-center py-6"
+          >
+            No issues match the current filters.
+          </p>
         </template>
 
         <EmptyState
@@ -234,6 +336,46 @@ const { mutate: updateMyIssuePriority } = useMutation({
               {{ myCreatedIssues.items.length }}
             </span>
           </h2>
+          <div class="ml-auto flex items-center gap-2">
+            <div
+              class="flex items-center gap-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 h-7"
+            >
+              <SearchIcon class="size-3 text-slate-400" />
+              <input
+                v-model="createdSearch"
+                type="text"
+                placeholder="Filter..."
+                class="w-24 text-xs bg-transparent text-slate-700 dark:text-slate-300 placeholder:text-slate-400 focus:outline-none"
+              />
+              <button
+                v-if="createdSearch"
+                class="text-slate-400 hover:text-slate-600 cursor-pointer"
+                @click="createdSearch = ''"
+              >
+                <XIcon class="size-3" />
+              </button>
+            </div>
+            <select
+              v-model="createdStatus"
+              class="h-7 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 px-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value="">All statuses</option>
+              <option v-for="s in createdStatuses" :key="s" :value="s">
+                {{ formatStatus(s) }}
+              </option>
+            </select>
+            <select
+              v-model="createdPriority"
+              class="h-7 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 px-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value="">All priorities</option>
+              <option v-for="p in PRIORITIES" :key="p" :value="p">
+                {{
+                  p === "none" ? "None" : p.charAt(0).toUpperCase() + p.slice(1)
+                }}
+              </option>
+            </select>
+          </div>
         </div>
 
         <div
@@ -245,11 +387,13 @@ const { mutate: updateMyIssuePriority } = useMutation({
 
         <template v-else-if="myCreatedIssues?.items?.length">
           <div
+            v-if="filteredCreated.length"
             class="max-w-3xl mx-auto rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden"
           >
-            <div
-              v-for="issue in myCreatedIssues.items"
+            <router-link
+              v-for="issue in filteredCreated"
               :key="issue.id"
+              :to="`/projects/${issue.project_slug}/issues/${issue.number}`"
               class="flex items-center gap-3 px-4 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
             >
               <span
@@ -266,8 +410,14 @@ const { mutate: updateMyIssuePriority } = useMutation({
                 {{ formatStatus(issue.status) }}
               </Badge>
               <AssigneePopover :assignees="issue.assignees ?? []" />
-            </div>
+            </router-link>
           </div>
+          <p
+            v-else
+            class="max-w-3xl mx-auto text-sm text-slate-400 dark:text-slate-500 text-center py-6"
+          >
+            No issues match the current filters.
+          </p>
         </template>
 
         <EmptyState
