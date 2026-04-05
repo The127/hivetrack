@@ -140,6 +140,11 @@ func matchesIssueFilter(issue *models.Issue, filter *repositories.IssueFilter) b
 			return false
 		}
 	}
+	if filter.OwnerID != nil {
+		if issue.GetOwnerID() == nil || *issue.GetOwnerID() != *filter.OwnerID {
+			return false
+		}
+	}
 	if filter.Triaged != nil && issue.GetTriaged() != *filter.Triaged {
 		return false
 	}
