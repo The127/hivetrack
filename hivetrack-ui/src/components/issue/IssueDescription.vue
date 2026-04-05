@@ -21,6 +21,11 @@ const editing = ref(false);
 const draft = ref("");
 const editorEl = ref(null);
 
+function handleDescriptionClick() {
+  if (window.getSelection().toString()) return;
+  startEditing();
+}
+
 function startEditing() {
   draft.value = props.description ?? "";
   editing.value = true;
@@ -66,7 +71,7 @@ function saveDescription() {
       @save="saveDescription"
       @cancel="cancelEditing"
     />
-    <div v-else-if="description" @click="startEditing" class="cursor-pointer">
+    <div v-else-if="description" @click="handleDescriptionClick" class="cursor-pointer">
       <MdPreview :id="previewId" :model-value="description" language="en-US" :theme="editorTheme" />
     </div>
     <button
