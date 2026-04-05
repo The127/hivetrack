@@ -36,6 +36,7 @@ import {
   XIcon,
 } from "lucide-vue-next";
 import Avatar from "@/components/ui/Avatar.vue";
+import SearchDialog from "@/components/search/SearchDialog.vue";
 import { useAuth } from "@/composables/useAuth";
 import { useQuery } from "@tanstack/vue-query";
 import { fetchIssues } from "@/api/issues";
@@ -48,7 +49,11 @@ const projectSlug = computed(() => route.params.slug ?? null);
 
 // Untriaged count for the triage nav badge.
 const { data: triageCountResult } = useQuery({
-  queryKey: computed(() => ["issues", projectSlug.value, { triaged: false, limit: 1 }]),
+  queryKey: computed(() => [
+    "issues",
+    projectSlug.value,
+    { triaged: false, limit: 1 },
+  ]),
   queryFn: () => fetchIssues(projectSlug.value, { triaged: false, limit: 1 }),
   enabled: computed(() => !!projectSlug.value),
 });
@@ -61,21 +66,40 @@ const userName = computed(
 
 // ── Sidebar collapsed state ────────────────────────────────────────────────────
 
-const collapsed = ref(localStorage.getItem('hivetrack:sidebar:collapsed') === 'true');
-watch(collapsed, (v) => localStorage.setItem('hivetrack:sidebar:collapsed', String(v)));
+const collapsed = ref(
+  localStorage.getItem("hivetrack:sidebar:collapsed") === "true",
+);
+watch(collapsed, (v) =>
+  localStorage.setItem("hivetrack:sidebar:collapsed", String(v)),
+);
+
+// ── Search dialog ────────────────────────────────────────────────────────────
+const searchOpen = ref(false);
 
 // ── Mobile sidebar drawer ─────────────────────────────────────────────────────
 const mobileOpen = ref(false);
 
 // Close mobile drawer on route change.
-watch(() => route.fullPath, () => { mobileOpen.value = false; });
+watch(
+  () => route.fullPath,
+  () => {
+    mobileOpen.value = false;
+  },
+);
 
 // ── Keyboard shortcuts ────────────────────────────────────────────────────────
 
 const emit = defineEmits(["create-issue"]);
 
 function handleKeydown(e) {
-  // Ignore shortcuts when focus is inside an input, textarea, or contenteditable.
+  // Ctrl+K / Cmd+K always opens search, even from inputs.
+  if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+    e.preventDefault();
+    searchOpen.value = true;
+    return;
+  }
+
+  // Remaining shortcuts are ignored when focus is inside an input/textarea.
   const tag = document.activeElement?.tagName;
   if (
     tag === "INPUT" ||
@@ -84,9 +108,9 @@ function handleKeydown(e) {
   )
     return;
 
-  if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+  if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
     e.preventDefault();
-    // TODO: open command palette
+    searchOpen.value = true;
     return;
   }
 
@@ -131,9 +155,18 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
         class="fixed inset-y-0 left-0 z-50 w-64 flex flex-col bg-gray-50 dark:bg-slate-900 text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-800 overflow-y-auto lg:hidden"
       >
         <!-- Header with close button -->
-        <div class="flex items-center gap-2 px-3 py-4 border-b border-gray-200 dark:border-gray-800">
-          <img src="@/assets/logo.svg" alt="Hivetrack" class="size-6 flex-shrink-0" />
-          <span class="font-semibold tracking-tight text-gray-900 dark:text-gray-100 text-sm flex-1">Hivetrack</span>
+        <div
+          class="flex items-center gap-2 px-3 py-4 border-b border-gray-200 dark:border-gray-800"
+        >
+          <img
+            src="@/assets/logo.svg"
+            alt="Hivetrack"
+            class="size-6 flex-shrink-0"
+          />
+          <span
+            class="font-semibold tracking-tight text-gray-900 dark:text-gray-100 text-sm flex-1"
+            >Hivetrack</span
+          >
           <button
             class="flex items-center justify-center size-6 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 cursor-pointer flex-shrink-0"
             title="Close menu"
@@ -147,7 +180,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
         <nav class="flex-1 px-2 py-2 space-y-0.5">
           <RouterLink
             to="/"
-            :class="route.path === '/' ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : ''"
+            :class="
+              route.path === '/'
+                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+                : ''
+            "
             class="flex items-center gap-2.5 px-2 w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
             exact-active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           >
@@ -172,21 +209,53 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
               >
                 Projects
               </RouterLink>
-              <ChevronRightIcon class="size-3 text-gray-400 dark:text-gray-600" />
-              <span class="text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 truncate max-w-24">
+              <ChevronRightIcon
+                class="size-3 text-gray-400 dark:text-gray-600"
+              />
+              <span
+                class="text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 truncate max-w-24"
+              >
                 {{ projectSlug }}
               </span>
             </div>
 
             <RouterLink
               v-for="item in [
-                { to: `/projects/${projectSlug}/overview`, icon: LayoutIcon, label: 'Overview' },
-                { to: `/projects/${projectSlug}/board`, icon: KanbanIcon, label: 'Board' },
-                { to: `/projects/${projectSlug}/backlog`, icon: ListIcon, label: 'Backlog' },
-                { to: `/projects/${projectSlug}/sprints`, icon: TimerIcon, label: 'Sprints' },
-                { to: `/projects/${projectSlug}/epics`, icon: LayersIcon, label: 'Epics' },
-                { to: `/projects/${projectSlug}/triage`, icon: InboxIcon, label: 'Triage' },
-                { to: `/projects/${projectSlug}/milestones`, icon: FlagIcon, label: 'Milestones' },
+                {
+                  to: `/projects/${projectSlug}/overview`,
+                  icon: LayoutIcon,
+                  label: 'Overview',
+                },
+                {
+                  to: `/projects/${projectSlug}/board`,
+                  icon: KanbanIcon,
+                  label: 'Board',
+                },
+                {
+                  to: `/projects/${projectSlug}/backlog`,
+                  icon: ListIcon,
+                  label: 'Backlog',
+                },
+                {
+                  to: `/projects/${projectSlug}/sprints`,
+                  icon: TimerIcon,
+                  label: 'Sprints',
+                },
+                {
+                  to: `/projects/${projectSlug}/epics`,
+                  icon: LayersIcon,
+                  label: 'Epics',
+                },
+                {
+                  to: `/projects/${projectSlug}/triage`,
+                  icon: InboxIcon,
+                  label: 'Triage',
+                },
+                {
+                  to: `/projects/${projectSlug}/milestones`,
+                  icon: FlagIcon,
+                  label: 'Milestones',
+                },
               ]"
               :key="item.to"
               :to="item.to"
@@ -199,14 +268,16 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
                 v-if="item.label === 'Triage' && triageCount > 0"
                 class="flex-shrink-0 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums bg-amber-500 text-white px-1"
               >
-                {{ triageCount > 99 ? '99+' : triageCount }}
+                {{ triageCount > 99 ? "99+" : triageCount }}
               </span>
             </RouterLink>
           </template>
         </nav>
 
         <!-- Bottom section -->
-        <div class="px-2 py-2 border-t border-gray-200 dark:border-gray-800 space-y-0.5">
+        <div
+          class="px-2 py-2 border-t border-gray-200 dark:border-gray-800 space-y-0.5"
+        >
           <RouterLink
             to="/settings"
             class="flex items-center gap-2.5 px-2 w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
@@ -218,9 +289,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
         </div>
 
         <!-- User profile -->
-        <div class="px-3 py-2.5 border-t border-gray-200 dark:border-gray-800 flex items-center gap-2.5 min-w-0">
+        <div
+          class="px-3 py-2.5 border-t border-gray-200 dark:border-gray-800 flex items-center gap-2.5 min-w-0"
+        >
           <Avatar :name="userName" size="sm" :src="user?.profile?.picture" />
-          <span class="text-sm text-gray-700 dark:text-gray-300 truncate flex-1 min-w-0">{{ userName }}</span>
+          <span
+            class="text-sm text-gray-700 dark:text-gray-300 truncate flex-1 min-w-0"
+            >{{ userName }}</span
+          >
           <button
             class="flex-shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors duration-100 cursor-pointer"
             title="Sign out"
@@ -243,8 +319,15 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
         v-if="!collapsed"
         class="flex items-center gap-2 px-3 py-4 border-b border-gray-200 dark:border-gray-800"
       >
-        <img src="@/assets/logo.svg" alt="Hivetrack" class="size-6 flex-shrink-0" />
-        <span class="font-semibold tracking-tight text-gray-900 dark:text-gray-100 text-sm flex-1">Hivetrack</span>
+        <img
+          src="@/assets/logo.svg"
+          alt="Hivetrack"
+          class="size-6 flex-shrink-0"
+        />
+        <span
+          class="font-semibold tracking-tight text-gray-900 dark:text-gray-100 text-sm flex-1"
+          >Hivetrack</span
+        >
         <button
           class="flex items-center justify-center size-6 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 cursor-pointer flex-shrink-0"
           title="Collapse sidebar"
@@ -273,7 +356,9 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           to="/"
           :class="[
             collapsed ? 'justify-center px-0' : 'gap-2.5 px-2',
-            route.path === '/' ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : '',
+            route.path === '/'
+              ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+              : '',
           ]"
           class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100"
           exact-active-class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
@@ -383,7 +468,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
               class="flex-shrink-0 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums bg-amber-500 text-white px-1"
               :title="`${triageCount} untriaged`"
             >
-              {{ triageCount > 99 ? '99+' : triageCount }}
+              {{ triageCount > 99 ? "99+" : triageCount }}
             </span>
           </RouterLink>
 
@@ -397,21 +482,18 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
             <FlagIcon class="size-4 flex-shrink-0" />
             <span v-if="!collapsed">Milestones</span>
           </RouterLink>
-
         </template>
       </nav>
 
       <!-- Search hint + bottom section -->
-      <div class="px-2 py-2 border-t border-gray-200 dark:border-gray-800 space-y-0.5">
+      <div
+        class="px-2 py-2 border-t border-gray-200 dark:border-gray-800 space-y-0.5"
+      >
         <button
           :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
           class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 text-left cursor-pointer"
           title="Press / to search"
-          @click="
-            () => {
-              /* TODO: open search */
-            }
-          "
+          @click="searchOpen = true"
         >
           <SearchIcon class="size-4 flex-shrink-0" />
           <span v-if="!collapsed" class="flex-1">Search</span>
@@ -439,9 +521,17 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
         :class="collapsed ? 'justify-center px-2' : 'px-3 gap-2.5'"
         class="py-2.5 border-t border-gray-200 dark:border-gray-800 flex items-center min-w-0"
       >
-        <Avatar :name="userName" size="sm" :src="user?.profile?.picture" :title="collapsed ? userName : undefined" />
+        <Avatar
+          :name="userName"
+          size="sm"
+          :src="user?.profile?.picture"
+          :title="collapsed ? userName : undefined"
+        />
         <template v-if="!collapsed">
-          <span class="text-sm text-gray-700 dark:text-gray-300 truncate flex-1 min-w-0">{{ userName }}</span>
+          <span
+            class="text-sm text-gray-700 dark:text-gray-300 truncate flex-1 min-w-0"
+            >{{ userName }}</span
+          >
           <button
             class="flex-shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded transition-colors duration-100 cursor-pointer"
             title="Sign out"
@@ -456,7 +546,9 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
     <!-- ── Main content ────────────────────────────────────────────────── -->
     <div class="flex-1 flex flex-col min-w-0">
       <!-- Mobile top bar with hamburger -->
-      <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-slate-900 lg:hidden">
+      <div
+        class="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-slate-900 lg:hidden"
+      >
         <button
           class="flex items-center justify-center size-8 rounded text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 cursor-pointer"
           title="Open menu"
@@ -465,12 +557,21 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           <MenuIcon class="size-5" />
         </button>
         <img src="@/assets/logo.svg" alt="Hivetrack" class="size-5" />
-        <span class="font-semibold tracking-tight text-gray-900 dark:text-gray-100 text-sm">Hivetrack</span>
+        <span
+          class="font-semibold tracking-tight text-gray-900 dark:text-gray-100 text-sm"
+          >Hivetrack</span
+        >
       </div>
 
       <main class="flex-1 overflow-y-auto min-w-0 bg-white dark:bg-slate-950">
         <slot />
       </main>
     </div>
+
+    <SearchDialog
+      :open="searchOpen"
+      :project-slug="projectSlug"
+      @close="searchOpen = false"
+    />
   </div>
 </template>
