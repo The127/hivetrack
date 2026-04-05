@@ -64,6 +64,9 @@ const userName = computed(
   () => user.value?.profile?.name ?? user.value?.profile?.email ?? "You",
 );
 
+// ── Platform detection ────────────────────────────────────────────────────────
+const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+
 // ── Sidebar collapsed state ────────────────────────────────────────────────────
 
 const collapsed = ref(
@@ -492,7 +495,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
         <button
           :class="collapsed ? 'justify-center px-0' : 'gap-2.5 px-2'"
           class="flex items-center w-full rounded-md py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors duration-100 text-left cursor-pointer"
-          title="Press / to search"
+          :title="isMac ? '⌘K to search' : 'Ctrl+K to search'"
           @click="searchOpen = true"
         >
           <SearchIcon class="size-4 flex-shrink-0" />
@@ -500,7 +503,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
           <kbd
             v-if="!collapsed"
             class="text-[10px] font-mono text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1 rounded"
-            >/</kbd
+            >{{ isMac ? "⌘K" : "Ctrl+K" }}</kbd
           >
         </button>
 
