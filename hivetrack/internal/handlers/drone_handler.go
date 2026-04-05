@@ -18,6 +18,7 @@ import (
 type DroneHandler struct {
 	managementURL   string
 	managementToken string
+	grpcURL         string
 	client          *http.Client
 }
 
@@ -25,6 +26,7 @@ func NewDroneHandler(cfg *config.HivemindConfig) *DroneHandler {
 	return &DroneHandler{
 		managementURL:   cfg.ManagementURL,
 		managementToken: cfg.ManagementToken,
+		grpcURL:         cfg.GrpcURL,
 		client:          &http.Client{},
 	}
 }
@@ -72,6 +74,13 @@ func (h *DroneHandler) DeleteDrone(w http.ResponseWriter, r *http.Request) {
 func (h *DroneHandler) RevokeToken(w http.ResponseWriter, r *http.Request) {
 	token := mux.Vars(r)["token"]
 	h.proxyTo(w, "DELETE", fmt.Sprintf("/api/v1/drones/tokens/%s", token), nil)
+}
+
+// GetHivemindConfig returns the hivemind gRPC URL for drone setup instructions.
+func (h *DroneHandler) GetHivemindConfig(w http.ResponseWriter, _ *http.Request) {
+	RespondJSON(w, http.StatusOK, map[string]string{
+		"grpc_url": h.grpcURL,
+	})
 }
 
 func (h *DroneHandler) proxyTo(w http.ResponseWriter, method, path string, body io.Reader) {
