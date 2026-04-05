@@ -28,18 +28,43 @@ const props = defineProps({
 const emit = defineEmits(["close"]);
 const queryClient = useQueryClient();
 
-const capabilities = ref("llm-inference");
+const AVAILABLE_CAPS = [
+  {
+    value: "refinement",
+    label: "Refinement",
+    description: "Refine issue descriptions into structured user stories",
+  },
+  {
+    value: "implementation",
+    label: "Implementation",
+    description: "Write code to implement issues, create commits and PRs",
+  },
+  {
+    value: "code-review",
+    label: "Code Review",
+    description: "Review pull requests and provide feedback",
+  },
+];
+
+const selectedCaps = ref(new Set());
 const maxConcurrency = ref(1);
 const generatedToken = ref(null);
 const copied = ref(false);
 
+function toggleCap(cap) {
+  if (selectedCaps.value.has(cap)) {
+    selectedCaps.value.delete(cap);
+  } else {
+    selectedCaps.value.add(cap);
+  }
+}
+
+const hasAnyCap = computed(() => selectedCaps.value.size > 0);
+
 const { mutate: doGenerate, isPending: generating } = useMutation({
   mutationFn: () =>
     createDroneToken(props.slug, {
-      capabilities: capabilities.value
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
+      capabilities: [...selectedCaps.value],
       max_concurrency: maxConcurrency.value,
     }),
   onSuccess: (data) => {
@@ -61,7 +86,7 @@ function close() {
     queryClient.invalidateQueries({ queryKey: ["drones", props.slug] });
   }
   generatedToken.value = null;
-  capabilities.value = "llm-inference";
+  selectedCaps.value = new Set();
   maxConcurrency.value = 1;
   copied.value = false;
   emit("close");
@@ -77,22 +102,37 @@ function close() {
     <!-- Step 1: form -->
     <div v-if="!showingToken" class="flex flex-col gap-4">
       <div class="flex flex-col gap-1.5">
-        <label
-          class="text-sm font-medium text-slate-700 dark:text-slate-300"
-          for="drone-caps"
-        >
+        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
           Capabilities
-        </label>
-        <input
-          id="drone-caps"
-          v-model="capabilities"
-          type="text"
-          placeholder="llm-inference"
-          class="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        />
-        <p class="text-xs text-slate-400 dark:text-slate-500">
-          Comma-separated list of capabilities this drone will provide.
-        </p>
+        </span>
+        <div class="flex flex-col gap-2">
+          <label
+            v-for="cap in AVAILABLE_CAPS"
+            :key="cap.value"
+            class="flex items-start gap-2.5 rounded-md border px-3 py-2.5 cursor-pointer transition-colors"
+            :class="
+              selectedCaps.has(cap.value)
+                ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
+                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'
+            "
+          >
+            <input
+              type="checkbox"
+              :checked="selectedCaps.has(cap.value)"
+              class="mt-0.5 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              @change="toggleCap(cap.value)"
+            />
+            <div>
+              <span
+                class="text-sm font-medium text-slate-700 dark:text-slate-300"
+                >{{ cap.label }}</span
+              >
+              <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                {{ cap.description }}
+              </p>
+            </div>
+          </label>
+        </div>
       </div>
       <div class="flex flex-col gap-1.5">
         <label
@@ -167,6 +207,7 @@ function close() {
         v-if="!showingToken"
         variant="primary"
         :loading="generating"
+        :disabled="!hasAnyCap"
         @click="doGenerate"
         >Generate token</Button
       >
