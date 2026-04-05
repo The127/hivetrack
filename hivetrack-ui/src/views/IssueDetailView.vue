@@ -73,6 +73,11 @@ const editingTitle = ref(false);
 const titleDraft = ref("");
 const titleInputEl = ref(null);
 
+function handleTitleClick() {
+  if (window.getSelection().toString()) return;
+  startEditingTitle();
+}
+
 function startEditingTitle() {
   titleDraft.value = issue.value.title;
   editingTitle.value = true;
@@ -182,7 +187,7 @@ const isTerminal = computed(() =>
             <h1
               v-if="!editingTitle"
               class="text-2xl font-semibold text-slate-900 dark:text-slate-100 cursor-pointer hover:text-slate-700 dark:hover:text-slate-300 group"
-              @click="startEditingTitle"
+              @click="handleTitleClick"
             >
               {{ issue.title }}
             </h1>
