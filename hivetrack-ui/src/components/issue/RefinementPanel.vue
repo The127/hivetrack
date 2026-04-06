@@ -21,6 +21,9 @@ import Button from "@/components/ui/Button.vue";
 import MarkdownContent from "@/components/ui/MarkdownContent.vue";
 import Spinner from "@/components/ui/Spinner.vue";
 import { REFINEMENT_PHASES } from "@/composables/useRefinement";
+import { usePlatform } from "@/composables/usePlatform";
+
+const { modKey } = usePlatform();
 
 const props = defineProps({
   open: { type: Boolean, required: true },
@@ -797,7 +800,7 @@ const PHASE_ICONS = {
                     v-if="!isConfirmationQuestion || waitingForResponse"
                     class="text-[11px] text-slate-400 dark:text-slate-500"
                   >
-                    Ctrl+Enter to send
+                    {{ modKey }}+Enter to send
                   </p>
                 </div>
               </div>

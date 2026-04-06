@@ -3,7 +3,7 @@
 
   @prop {String} modelValue — markdown source
   @emits update:modelValue
-  @emits save   — Ctrl+Enter (via onSave)
+  @emits save   — Ctrl+Enter / ⌘+Enter (via onSave)
   @emits cancel — Escape
 -->
 <script setup>
@@ -24,7 +24,7 @@ const editorTheme = computed(() => isDark.value ? "dark" : "light");
 
 function onKeydown(e) {
   if (e.key === "Escape") emit("cancel");
-  if (e.key === "Enter" && e.ctrlKey) emit("save");
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) emit("save");
 }
 </script>
 
