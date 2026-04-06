@@ -5,6 +5,9 @@ import MarkdownEditor from "@/components/ui/MarkdownEditor.vue";
 import { MdPreview } from "md-editor-v3";
 import { useTheme } from "@/composables/useTheme";
 import { updateIssue } from "@/api/issues";
+import { usePlatform } from "@/composables/usePlatform";
+
+const { modKey } = usePlatform();
 
 const props = defineProps({
   slug: { type: String, required: true },
@@ -94,7 +97,7 @@ function saveDescription() {
       >
         Cancel
       </button>
-      <span class="text-xs text-slate-400 dark:text-slate-500 ml-1">Ctrl+Enter to save · Esc to cancel</span>
+      <span class="text-xs text-slate-400 dark:text-slate-500 ml-1">{{ modKey }}+Enter to save · Esc to cancel</span>
     </div>
   </div>
 </template>

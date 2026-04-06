@@ -15,6 +15,9 @@ import Avatar from '@/components/ui/Avatar.vue'
 import Button from '@/components/ui/Button.vue'
 import MarkdownContent from '@/components/ui/MarkdownContent.vue'
 import RelativeTime from '@/components/ui/RelativeTime.vue'
+import { usePlatform } from '@/composables/usePlatform'
+
+const { modKey } = usePlatform()
 
 const props = defineProps({
   projectSlug: { type: String, required: true },
@@ -168,7 +171,7 @@ const { mutate: removeComment } = useMutation({
         @keydown.ctrl.enter="handleSubmit"
       />
       <div class="flex items-center justify-between">
-        <span class="text-xs text-slate-400 dark:text-slate-500">Ctrl+Enter to submit</span>
+        <span class="text-xs text-slate-400 dark:text-slate-500">{{ modKey }}+Enter to submit</span>
         <Button size="sm" :loading="isSubmitting" :disabled="!newBody.trim()" @click="handleSubmit">
           Comment
         </Button>
