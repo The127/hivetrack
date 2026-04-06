@@ -45,6 +45,11 @@ const AVAILABLE_CAPS = [
     label: "Code Review",
     description: "Review pull requests and provide feedback",
   },
+  {
+    value: "bdd_scenario",
+    label: "BDD Scenarios",
+    description: "Decompose user stories into behavioral GIVEN/WHEN/THEN scenarios",
+  },
 ];
 
 const TARGETS = [
