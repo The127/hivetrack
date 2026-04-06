@@ -18,6 +18,7 @@ type RefinementRequest struct {
 	ProjectSlug string                  `json:"project_slug"`
 	Title       string                  `json:"title"`
 	Description *string                 `json:"description"`
+	Phase       string                  `json:"phase"`
 	Messages    []RefinementChatMessage `json:"messages"`
 }
 
@@ -52,6 +53,33 @@ func (p *NatsPublisher) PublishRefinementRequest(ctx context.Context, req Refine
 type RefinementAccept struct {
 	SessionID uuid.UUID `json:"session_id"`
 	Action    string    `json:"action"`
+}
+
+// StoryRefinedEvent is the message published when a refinement is accepted.
+type StoryRefinedEvent struct {
+	StoryID             string   `json:"story_id"`
+	ProjectID           string   `json:"project_id"`
+	ProjectSlug         string   `json:"project_slug"`
+	IssueNumber         int      `json:"issue_number"`
+	Title               string   `json:"title"`
+	Actor               string   `json:"actor"`
+	Goal                string   `json:"goal"`
+	MainSuccessScenario []string `json:"main_success_scenario"`
+	Preconditions       []string `json:"preconditions"`
+	AcceptanceCriteria  []string `json:"acceptance_criteria"`
+	Extensions          []string `json:"extensions"`
+}
+
+func (p *NatsPublisher) PublishStoryRefined(ctx context.Context, event StoryRefinedEvent) error {
+	data, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("marshaling story refined event: %w", err)
+	}
+
+	if _, err := p.js.Publish(ctx, "hivetrack-events.story.refined", data); err != nil {
+		return fmt.Errorf("publishing story refined event: %w", err)
+	}
+	return nil
 }
 
 func (p *NatsPublisher) PublishRefinementAccept(ctx context.Context, sessionID uuid.UUID) error {

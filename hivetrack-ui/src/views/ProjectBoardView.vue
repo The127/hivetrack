@@ -231,6 +231,14 @@ const { isDragging, onDragStart, onDragEnd, handleDrag } = useDragReorder(
   (item, data) => reorderIssue({ issueNumber: item.number, data }),
 );
 
+rebuildColumnIssues();
+watch(
+  [boardIssues, columns, searchQuery],
+  () => {
+    if (!isDragging.value) rebuildColumnIssues();
+  },
+);
+
 function onWithinColumnDrag(evt, colKey) {
   handleDrag(evt, colKey);
 }

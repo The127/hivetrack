@@ -82,6 +82,7 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/message", refinementH.SendMessage).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/session", refinementH.GetSession).Methods("GET")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/accept", refinementH.AcceptProposal).Methods("POST")
+	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/advance-phase", refinementH.AdvancePhase).Methods("POST")
 
 	// Comments
 	commentH := handlers.NewCommentHandler(med)

@@ -1,11 +1,19 @@
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import {
   startRefinementSession,
   sendRefinementMessage,
   getRefinementSession,
   acceptRefinementProposal,
+  advanceRefinementPhase,
 } from '@/api/refinement'
+
+export const REFINEMENT_PHASES = [
+  { id: 'actor_goal', label: 'Actor & Goal' },
+  { id: 'main_scenario', label: 'Main Scenario' },
+  { id: 'extensions', label: 'Extensions' },
+  { id: 'acceptance_criteria', label: 'Acceptance Criteria' },
+]
 
 export function useRefinement(slug, number) {
   const queryClient = useQueryClient()
@@ -44,11 +52,21 @@ export function useRefinement(slug, number) {
     mutationFn: () => acceptRefinementProposal(slug.value, number.value),
     onSuccess: () => {
       stopPolling()
+      isOpen.value = false
       refetchSession()
       queryClient.invalidateQueries({ queryKey: ['issue', slug.value, number.value] })
       queryClient.invalidateQueries({ queryKey: ['issues', slug.value] })
     },
   })
+
+  const { mutate: doAdvance, isPending: advancePending } = useMutation({
+    mutationFn: (targetPhase) => advanceRefinementPhase(slug.value, number.value, targetPhase),
+    onSuccess: () => {
+      refetchSession()
+    },
+  })
+
+  const currentPhase = computed(() => session.value?.current_phase ?? 'actor_goal')
 
   function open() {
     isOpen.value = true
@@ -96,10 +114,13 @@ export function useRefinement(slug, number) {
     startPending,
     sendPending,
     acceptPending,
+    advancePending,
+    currentPhase,
     open,
     close,
     startSession: doStart,
     sendMessage: doSend,
     acceptProposal: doAccept,
+    advancePhase: doAdvance,
   }
 }

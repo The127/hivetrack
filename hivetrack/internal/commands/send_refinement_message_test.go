@@ -52,6 +52,7 @@ func TestSendRefinementMessage_Success(t *testing.T) {
 	require.Len(t, msgs, 1)
 	assert.Equal(t, "What about edge cases?", msgs[0].Content)
 	assert.Equal(t, models.RefinementRoleUser, msgs[0].Role)
+	assert.Equal(t, models.RefinementPhaseActorGoal, msgs[0].Phase)
 
 	// NATS request was published with message history
 	require.Len(t, pub.published, 1)
@@ -61,6 +62,7 @@ func TestSendRefinementMessage_Success(t *testing.T) {
 	require.Len(t, req.Messages, 1)
 	assert.Equal(t, "user", req.Messages[0].Role)
 	assert.Equal(t, "What about edge cases?", req.Messages[0].Content)
+	assert.Equal(t, "actor_goal", req.Phase)
 }
 
 func TestSendRefinementMessage_NoActiveSession(t *testing.T) {

@@ -96,6 +96,24 @@ ui-dev:
 ui-build:
     cd hivetrack-ui && npm run build
 
+# Run Playwright E2E tests (requires Hivetrack backend, Hivemind runner, and mock drone running)
+ui-e2e:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd hivetrack-ui
+    [ -d node_modules ] || npm install
+    npx playwright install --with-deps chromium 2>/dev/null || true
+    npm run e2e
+
+# Run Playwright E2E tests with interactive UI
+ui-e2e-ui:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd hivetrack-ui
+    [ -d node_modules ] || npm install
+    npx playwright install --with-deps chromium 2>/dev/null || true
+    npm run e2e:ui
+
 # Run frontend type checking
 ui-check:
     cd hivetrack-ui && npm run type-check

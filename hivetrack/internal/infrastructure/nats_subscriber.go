@@ -18,11 +18,13 @@ const SubjectRefinementResponse = "hivemind-refinement.response"
 
 // RefinementResponse is the message received from Hivemind via NATS.
 type RefinementResponse struct {
-	SessionID uuid.UUID           `json:"session_id"`
-	IssueID   uuid.UUID           `json:"issue_id"`
-	Type      string              `json:"type"` // "question" or "proposal"
-	Content   string              `json:"content"`
-	Proposal  *RefinementProposal `json:"proposal"`
+	SessionID uuid.UUID              `json:"session_id"`
+	IssueID   uuid.UUID              `json:"issue_id"`
+	Phase     string                 `json:"phase"`
+	Type      string                 `json:"type"` // "question", "proposal", or "phase_result"
+	Content   string                 `json:"content"`
+	Proposal  *RefinementProposal    `json:"proposal"`
+	PhaseData map[string]interface{} `json:"phase_data"`
 }
 
 // RefinementProposal is the proposed title/description from Hivemind.
@@ -74,8 +76,11 @@ func (s *NatsSubscriber) Start(ctx context.Context) error {
 			for msg := range msgs.Messages() {
 				if err := s.handleMessage(ctx, msg); err != nil {
 					s.logger.Error("handling refinement response", zap.Error(err))
-					if nakErr := msg.Nak(); nakErr != nil {
-						s.logger.Error("naking message", zap.Error(nakErr))
+					// ACK rather than NAK — stale messages (e.g. deleted sessions)
+					// would loop forever on NAK. Transient errors are rare enough
+					// that discarding is acceptable.
+					if ackErr := msg.Ack(); ackErr != nil {
+						s.logger.Error("acking failed message", zap.Error(ackErr))
 					}
 				} else {
 					if ackErr := msg.Ack(); ackErr != nil {
@@ -101,12 +106,22 @@ func (s *NatsSubscriber) handleMessage(ctx context.Context, msg jetstream.Msg) e
 
 	msgType := models.RefinementMessageTypeMessage
 	var proposal *models.RefinementProposal
-	if resp.Type == "proposal" && resp.Proposal != nil {
-		msgType = models.RefinementMessageTypeProposal
-		proposal = &models.RefinementProposal{
-			Title:       resp.Proposal.Title,
-			Description: resp.Proposal.Description,
+	switch resp.Type {
+	case "proposal":
+		if resp.Proposal != nil {
+			msgType = models.RefinementMessageTypeProposal
+			proposal = &models.RefinementProposal{
+				Title:       resp.Proposal.Title,
+				Description: resp.Proposal.Description,
+			}
 		}
+	case "phase_result":
+		msgType = models.RefinementMessageTypePhaseResult
+	}
+
+	phase := models.RefinementPhase(resp.Phase)
+	if !models.ValidPhase(resp.Phase) {
+		phase = models.RefinementPhaseActorGoal
 	}
 
 	refinementMsg := models.NewRefinementMessage(
@@ -114,8 +129,10 @@ func (s *NatsSubscriber) handleMessage(ctx context.Context, msg jetstream.Msg) e
 		models.RefinementRoleAssistant,
 		resp.Content,
 		msgType,
+		phase,
 		proposal,
 	)
+	refinementMsg.PhaseData = resp.PhaseData
 
 	repo := s.newRepo()
 	if err := repo.AddMessage(ctx, refinementMsg); err != nil {

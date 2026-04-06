@@ -11,7 +11,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-markdown': ['marked', 'dompurify', 'highlight.js'],
+          "vendor-markdown": ["marked", "dompurify", "highlight.js"],
         },
       },
     },

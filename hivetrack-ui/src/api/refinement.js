@@ -18,3 +18,9 @@ export const acceptRefinementProposal = (slug, number) =>
   apiFetch(`/api/v1/projects/${slug}/issues/${number}/refinement/accept`, {
     method: 'POST',
   })
+
+export const advanceRefinementPhase = (slug, number, targetPhase = null) =>
+  apiFetch(`/api/v1/projects/${slug}/issues/${number}/refinement/advance-phase`, {
+    method: 'POST',
+    body: JSON.stringify({ target_phase: targetPhase }),
+  })

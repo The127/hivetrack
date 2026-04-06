@@ -182,6 +182,29 @@ const { isDragging, onDragStart: onSectionDragStart, onDragEnd: onSectionDragEnd
   (item, data) => reorderIssue({ issueNumber: item.number, data }),
 );
 
+rebuildSectionIssues();
+watch(
+  [allIssues, allSprints],
+  () => {
+    if (!isDragging.value) rebuildSectionIssues();
+  },
+);
+
+watch(
+  targetSprints,
+  (sprints) => {
+    for (const sprint of sprints) {
+      if (!overlayDropZones[sprint.id]) {
+        overlayDropZones[sprint.id] = [];
+      }
+    }
+    if (!overlayDropZones[BACKLOG_KEY]) {
+      overlayDropZones[BACKLOG_KEY] = [];
+    }
+  },
+  { immediate: true },
+);
+
 function onWithinSectionDrag(evt, sectionId) {
   handleDrag(evt, sectionId);
 }

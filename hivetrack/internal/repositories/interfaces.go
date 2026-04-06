@@ -308,4 +308,5 @@ type RefinementRepository interface {
 	GetSessionWithMessages(ctx context.Context, sessionID uuid.UUID) (*models.RefinementSession, []*models.RefinementMessage, error)
 	AddMessage(ctx context.Context, msg *models.RefinementMessage) error
 	CompleteSession(ctx context.Context, sessionID uuid.UUID) error
+	UpdateSessionPhase(ctx context.Context, sessionID uuid.UUID, phase models.RefinementPhase) error
 }

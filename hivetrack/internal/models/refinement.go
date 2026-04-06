@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,9 +26,47 @@ const (
 type RefinementMessageType string
 
 const (
-	RefinementMessageTypeMessage  RefinementMessageType = "message"
-	RefinementMessageTypeProposal RefinementMessageType = "proposal"
+	RefinementMessageTypeMessage     RefinementMessageType = "message"
+	RefinementMessageTypeProposal    RefinementMessageType = "proposal"
+	RefinementMessageTypePhaseResult RefinementMessageType = "phase_result"
 )
+
+type RefinementPhase string
+
+const (
+	RefinementPhaseActorGoal          RefinementPhase = "actor_goal"
+	RefinementPhaseMainScenario       RefinementPhase = "main_scenario"
+	RefinementPhaseExtensions         RefinementPhase = "extensions"
+	RefinementPhaseAcceptanceCriteria RefinementPhase = "acceptance_criteria"
+)
+
+// RefinementPhases is the ordered list of refinement phases.
+var RefinementPhases = []RefinementPhase{
+	RefinementPhaseActorGoal,
+	RefinementPhaseMainScenario,
+	RefinementPhaseExtensions,
+	RefinementPhaseAcceptanceCriteria,
+}
+
+// NextPhase returns the phase after the given one, or an error if already at the last phase.
+func NextPhase(current RefinementPhase) (RefinementPhase, error) {
+	for i, p := range RefinementPhases {
+		if p == current && i+1 < len(RefinementPhases) {
+			return RefinementPhases[i+1], nil
+		}
+	}
+	return "", fmt.Errorf("no next phase after %q: %w", current, ErrBadRequest)
+}
+
+// ValidPhase returns true if s is a recognized refinement phase.
+func ValidPhase(s string) bool {
+	for _, p := range RefinementPhases {
+		if string(p) == s {
+			return true
+		}
+	}
+	return false
+}
 
 type RefinementProposal struct {
 	Title       string `json:"title"`
@@ -35,11 +74,12 @@ type RefinementProposal struct {
 }
 
 type RefinementSession struct {
-	ID        uuid.UUID
-	IssueID   uuid.UUID
-	Status    RefinementSessionStatus
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID           uuid.UUID
+	IssueID      uuid.UUID
+	Status       RefinementSessionStatus
+	CurrentPhase RefinementPhase
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type RefinementMessage struct {
@@ -48,28 +88,32 @@ type RefinementMessage struct {
 	Role        RefinementMessageRole
 	Content     string
 	MessageType RefinementMessageType
+	Phase       RefinementPhase
 	Proposal    *RefinementProposal
+	PhaseData   map[string]interface{}
 	CreatedAt   time.Time
 }
 
 func NewRefinementSession(issueID uuid.UUID) *RefinementSession {
 	now := time.Now()
 	return &RefinementSession{
-		ID:        uuid.New(),
-		IssueID:   issueID,
-		Status:    RefinementSessionActive,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:           uuid.New(),
+		IssueID:      issueID,
+		Status:       RefinementSessionActive,
+		CurrentPhase: RefinementPhaseActorGoal,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 }
 
-func NewRefinementMessage(sessionID uuid.UUID, role RefinementMessageRole, content string, messageType RefinementMessageType, proposal *RefinementProposal) *RefinementMessage {
+func NewRefinementMessage(sessionID uuid.UUID, role RefinementMessageRole, content string, messageType RefinementMessageType, phase RefinementPhase, proposal *RefinementProposal) *RefinementMessage {
 	return &RefinementMessage{
 		ID:          uuid.New(),
 		SessionID:   sessionID,
 		Role:        role,
 		Content:     content,
 		MessageType: messageType,
+		Phase:       phase,
 		Proposal:    proposal,
 		CreatedAt:   time.Now(),
 	}
@@ -81,4 +125,12 @@ func (m *RefinementMessage) ProposalJSON() ([]byte, error) {
 		return nil, nil
 	}
 	return json.Marshal(m.Proposal)
+}
+
+// PhaseDataJSON returns the phase data as raw JSON bytes, or nil if none.
+func (m *RefinementMessage) PhaseDataJSON() ([]byte, error) {
+	if m.PhaseData == nil {
+		return nil, nil
+	}
+	return json.Marshal(m.PhaseData)
 }
