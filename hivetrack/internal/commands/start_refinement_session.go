@@ -19,17 +19,17 @@ type RefinementPublisher interface {
 
 // StoryRefinedEvent is published when a user accepts a refinement proposal.
 type StoryRefinedEvent struct {
-	StoryID              string   `json:"story_id"`
-	ProjectID            string   `json:"project_id"`
-	ProjectSlug          string   `json:"project_slug"`
-	IssueNumber          int      `json:"issue_number"`
-	Title                string   `json:"title"`
-	Actor                string   `json:"actor"`
-	Goal                 string   `json:"goal"`
-	MainSuccessScenario  []string `json:"main_success_scenario"`
-	Preconditions        []string `json:"preconditions"`
-	AcceptanceCriteria   []string `json:"acceptance_criteria"`
-	Extensions           []string `json:"extensions"`
+	StoryID             string   `json:"story_id"`
+	ProjectID           string   `json:"project_id"`
+	ProjectSlug         string   `json:"project_slug"`
+	IssueNumber         int      `json:"issue_number"`
+	Title               string   `json:"title"`
+	Actor               string   `json:"actor"`
+	Goal                string   `json:"goal"`
+	MainSuccessScenario []string `json:"main_success_scenario"`
+	Preconditions       []string `json:"preconditions"`
+	AcceptanceCriteria  []string `json:"acceptance_criteria"`
+	Extensions          []string `json:"extensions"`
 }
 
 // RefinementPublishRequest is the data sent to Hivemind for refinement.

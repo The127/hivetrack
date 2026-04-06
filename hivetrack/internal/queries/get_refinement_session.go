@@ -20,7 +20,7 @@ type RefinementSessionDetail struct {
 	ID           uuid.UUID                      `json:"id"`
 	IssueID      uuid.UUID                      `json:"issue_id"`
 	Status       models.RefinementSessionStatus `json:"status"`
-	CurrentPhase models.RefinementPhase          `json:"current_phase"`
+	CurrentPhase models.RefinementPhase         `json:"current_phase"`
 	Messages     []RefinementMessageDetail      `json:"messages"`
 	CreatedAt    time.Time                      `json:"created_at"`
 	UpdatedAt    time.Time                      `json:"updated_at"`
@@ -31,7 +31,7 @@ type RefinementMessageDetail struct {
 	Role        models.RefinementMessageRole `json:"role"`
 	Content     string                       `json:"content"`
 	MessageType models.RefinementMessageType `json:"message_type"`
-	Phase       models.RefinementPhase        `json:"phase"`
+	Phase       models.RefinementPhase       `json:"phase"`
 	Proposal    *models.RefinementProposal   `json:"proposal,omitempty"`
 	PhaseData   map[string]interface{}       `json:"phase_data,omitempty"`
 	CreatedAt   time.Time                    `json:"created_at"`
