@@ -144,29 +144,6 @@ function rebuildSectionIssues() {
   sectionIssues.value = sections;
 }
 
-watch(
-  [allIssues, allSprints],
-  () => {
-    if (!isDragging.value) rebuildSectionIssues();
-  },
-  { immediate: true },
-);
-
-watch(
-  targetSprints,
-  (sprints) => {
-    for (const sprint of sprints) {
-      if (!overlayDropZones[sprint.id]) {
-        overlayDropZones[sprint.id] = [];
-      }
-    }
-    if (!overlayDropZones[BACKLOG_KEY]) {
-      overlayDropZones[BACKLOG_KEY] = [];
-    }
-  },
-  { immediate: true },
-);
-
 // ── Drag-and-drop ──────────────────────────────────────────────────────────
 
 const { mutate: reorderIssue } = useMutation({
@@ -204,6 +181,29 @@ const { mutate: reorderIssue } = useMutation({
 const { isDragging, onDragStart: onSectionDragStart, onDragEnd: onSectionDragEnd, handleDrag } = useDragReorder(
   sectionIssues,
   (item, data) => reorderIssue({ issueNumber: item.number, data }),
+);
+
+rebuildSectionIssues();
+watch(
+  [allIssues, allSprints],
+  () => {
+    if (!isDragging.value) rebuildSectionIssues();
+  },
+);
+
+watch(
+  targetSprints,
+  (sprints) => {
+    for (const sprint of sprints) {
+      if (!overlayDropZones[sprint.id]) {
+        overlayDropZones[sprint.id] = [];
+      }
+    }
+    if (!overlayDropZones[BACKLOG_KEY]) {
+      overlayDropZones[BACKLOG_KEY] = [];
+    }
+  },
+  { immediate: true },
 );
 
 function onWithinSectionDrag(evt, sectionId) {

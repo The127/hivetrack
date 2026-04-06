@@ -27,6 +27,10 @@ func (s *spyPublisher) PublishRefinementAccept(_ context.Context, _ uuid.UUID) e
 	return nil
 }
 
+func (s *spyPublisher) PublishStoryRefined(_ context.Context, _ commands.StoryRefinedEvent) error {
+	return nil
+}
+
 func TestStartRefinementSession_Success(t *testing.T) {
 	db := inmemory.NewDbContext()
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
@@ -70,6 +74,7 @@ func TestStartRefinementSession_Success(t *testing.T) {
 	assert.Equal(t, "myproject", req.ProjectSlug)
 	assert.Equal(t, "Fix the bug", req.Title)
 	assert.Equal(t, &desc, req.Description)
+	assert.Equal(t, "actor_goal", req.Phase)
 	assert.Nil(t, req.Messages)
 }
 

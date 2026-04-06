@@ -27,9 +27,9 @@ var _ repositories.RefinementRepository = (*RefinementRepository)(nil)
 func (r *RefinementRepository) CreateSession(ctx context.Context, session *models.RefinementSession) error {
 	return r.ctx.execDirect(ctx, func(tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
-			`INSERT INTO refinement_sessions (id, issue_id, status, created_at, updated_at)
-			 VALUES ($1, $2, $3, $4, $5)`,
-			session.ID, session.IssueID, session.Status, session.CreatedAt, session.UpdatedAt,
+			`INSERT INTO refinement_sessions (id, issue_id, status, current_phase, created_at, updated_at)
+			 VALUES ($1, $2, $3, $4, $5, $6)`,
+			session.ID, session.IssueID, session.Status, session.CurrentPhase, session.CreatedAt, session.UpdatedAt,
 		)
 		if err != nil {
 			return fmt.Errorf("inserting refinement session: %w", err)
@@ -40,7 +40,7 @@ func (r *RefinementRepository) CreateSession(ctx context.Context, session *model
 
 func (r *RefinementRepository) GetActiveSession(ctx context.Context, issueID uuid.UUID) (*models.RefinementSession, error) {
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
-		`SELECT id, issue_id, status, created_at, updated_at
+		`SELECT id, issue_id, status, current_phase, created_at, updated_at
 		 FROM refinement_sessions
 		 WHERE issue_id = $1 AND status = 'active'`, issueID)
 
@@ -50,7 +50,7 @@ func (r *RefinementRepository) GetActiveSession(ctx context.Context, issueID uui
 func (r *RefinementRepository) GetSessionWithMessages(ctx context.Context, sessionID uuid.UUID) (*models.RefinementSession, []*models.RefinementMessage, error) {
 	// Get session
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
-		`SELECT id, issue_id, status, created_at, updated_at
+		`SELECT id, issue_id, status, current_phase, created_at, updated_at
 		 FROM refinement_sessions WHERE id = $1`, sessionID)
 
 	session, err := scanRefinementSession(row)
@@ -63,7 +63,7 @@ func (r *RefinementRepository) GetSessionWithMessages(ctx context.Context, sessi
 
 	// Get messages
 	rows, err := r.ctx.queryContext(ctx).QueryContext(ctx,
-		`SELECT id, session_id, role, content, message_type, proposal, created_at
+		`SELECT id, session_id, role, content, message_type, phase, proposal, phase_data, created_at
 		 FROM refinement_messages
 		 WHERE session_id = $1
 		 ORDER BY created_at ASC`, sessionID)
@@ -93,17 +93,26 @@ func (r *RefinementRepository) AddMessage(ctx context.Context, msg *models.Refin
 		return fmt.Errorf("marshaling proposal: %w", err)
 	}
 
+	phaseDataJSON, err := msg.PhaseDataJSON()
+	if err != nil {
+		return fmt.Errorf("marshaling phase data: %w", err)
+	}
+
 	// For JSONB columns, nil []byte must be passed as explicit SQL NULL, not empty.
 	var proposalArg any
 	if proposalJSON != nil {
 		proposalArg = proposalJSON
 	}
+	var phaseDataArg any
+	if phaseDataJSON != nil {
+		phaseDataArg = phaseDataJSON
+	}
 
 	return r.ctx.execDirect(ctx, func(tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
-			`INSERT INTO refinement_messages (id, session_id, role, content, message_type, proposal, created_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-			msg.ID, msg.SessionID, msg.Role, msg.Content, msg.MessageType, proposalArg, msg.CreatedAt,
+			`INSERT INTO refinement_messages (id, session_id, role, content, message_type, phase, proposal, phase_data, created_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			msg.ID, msg.SessionID, msg.Role, msg.Content, msg.MessageType, msg.Phase, proposalArg, phaseDataArg, msg.CreatedAt,
 		)
 		if err != nil {
 			return fmt.Errorf("inserting refinement message: %w", err)
@@ -129,9 +138,26 @@ func (r *RefinementRepository) CompleteSession(ctx context.Context, sessionID uu
 	})
 }
 
+func (r *RefinementRepository) UpdateSessionPhase(ctx context.Context, sessionID uuid.UUID, phase models.RefinementPhase) error {
+	return r.ctx.execDirect(ctx, func(tx *sql.Tx) error {
+		result, err := tx.ExecContext(ctx,
+			`UPDATE refinement_sessions SET current_phase = $1, updated_at = $2 WHERE id = $3 AND status = 'active'`,
+			phase, time.Now(), sessionID,
+		)
+		if err != nil {
+			return fmt.Errorf("updating refinement session phase: %w", err)
+		}
+		rows, _ := result.RowsAffected()
+		if rows == 0 {
+			return fmt.Errorf("refinement session %s: %w", sessionID, models.ErrNotFound)
+		}
+		return nil
+	})
+}
+
 func scanRefinementSession(row *sql.Row) (*models.RefinementSession, error) {
 	var s models.RefinementSession
-	err := row.Scan(&s.ID, &s.IssueID, &s.Status, &s.CreatedAt, &s.UpdatedAt)
+	err := row.Scan(&s.ID, &s.IssueID, &s.Status, &s.CurrentPhase, &s.CreatedAt, &s.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -148,7 +174,8 @@ type rowScanner interface {
 func scanRefinementMessageRow(row rowScanner) (*models.RefinementMessage, error) {
 	var msg models.RefinementMessage
 	var proposalJSON []byte
-	err := row.Scan(&msg.ID, &msg.SessionID, &msg.Role, &msg.Content, &msg.MessageType, &proposalJSON, &msg.CreatedAt)
+	var phaseDataJSON []byte
+	err := row.Scan(&msg.ID, &msg.SessionID, &msg.Role, &msg.Content, &msg.MessageType, &msg.Phase, &proposalJSON, &phaseDataJSON, &msg.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("scanning refinement message: %w", err)
 	}
@@ -158,6 +185,13 @@ func scanRefinementMessageRow(row rowScanner) (*models.RefinementMessage, error)
 			return nil, fmt.Errorf("unmarshaling proposal: %w", err)
 		}
 		msg.Proposal = &p
+	}
+	if phaseDataJSON != nil {
+		var pd map[string]interface{}
+		if err := json.Unmarshal(phaseDataJSON, &pd); err != nil {
+			return nil, fmt.Errorf("unmarshaling phase data: %w", err)
+		}
+		msg.PhaseData = pd
 	}
 	return &msg, nil
 }

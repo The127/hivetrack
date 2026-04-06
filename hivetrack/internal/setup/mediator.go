@@ -50,6 +50,7 @@ func Mediator(dc *ioc.DependencyCollection, publisher ...commands.RefinementPubl
 		mediatr.RegisterHandler(m, commands.NewStartRefinementSessionHandler(publisher[0]))
 		mediatr.RegisterHandler(m, commands.NewSendRefinementMessageHandler(publisher[0]))
 		mediatr.RegisterHandler(m, commands.HandleAcceptRefinementProposal(publisher[0]))
+		mediatr.RegisterHandler(m, commands.NewAdvanceRefinementPhaseHandler(publisher[0]))
 	}
 
 	// Queries

@@ -192,14 +192,6 @@ function rebuildColumnIssues() {
   columnIssues.value = newMap;
 }
 
-watch(
-  [boardIssues, columns, searchQuery],
-  () => {
-    if (!isDragging.value) rebuildColumnIssues();
-  },
-  { immediate: true },
-);
-
 // ── Drag-and-drop ──────────────────────────────────────────────────────────
 
 const { mutate: reorderIssue } = useMutation({
@@ -237,6 +229,14 @@ const { mutate: reorderIssue } = useMutation({
 const { isDragging, onDragStart, onDragEnd, handleDrag } = useDragReorder(
   columnIssues,
   (item, data) => reorderIssue({ issueNumber: item.number, data }),
+);
+
+rebuildColumnIssues();
+watch(
+  [boardIssues, columns, searchQuery],
+  () => {
+    if (!isDragging.value) rebuildColumnIssues();
+  },
 );
 
 function onWithinColumnDrag(evt, colKey) {

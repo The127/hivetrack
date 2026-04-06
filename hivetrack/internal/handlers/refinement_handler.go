@@ -112,6 +112,30 @@ func (h *RefinementHandler) AcceptProposal(w http.ResponseWriter, r *http.Reques
 	RespondJSON(w, http.StatusNoContent, nil)
 }
 
+func (h *RefinementHandler) AdvancePhase(w http.ResponseWriter, r *http.Request) {
+	issueID, err := h.resolveIssueID(r)
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+
+	var body struct {
+		TargetPhase string `json:"target_phase"`
+	}
+	// Body is optional — empty body means advance to next phase
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	result, err := mediatr.Send[*commands.AdvanceRefinementPhaseResult](r.Context(), h.mediator, commands.AdvanceRefinementPhaseCommand{
+		IssueID:     issueID,
+		TargetPhase: body.TargetPhase,
+	})
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+	RespondJSON(w, http.StatusOK, result)
+}
+
 // resolveIssueID resolves the issue UUID from route params (slug + number).
 func (h *RefinementHandler) resolveIssueID(r *http.Request) (uuid.UUID, error) {
 	vars := mux.Vars(r)

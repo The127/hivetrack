@@ -70,7 +70,7 @@ func main() {
 			logger.Fatal("creating JetStream context", zap.Error(err))
 		}
 		ctx := context.Background()
-		for _, stream := range []string{"hivetrack-refinement", "hivemind-refinement"} {
+		for _, stream := range []string{"hivetrack-refinement", "hivemind-refinement", "hivetrack-events"} {
 			if _, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 				Name:     stream,
 				Subjects: []string{stream + ".>"},

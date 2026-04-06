@@ -75,6 +75,63 @@ func HandleAcceptRefinementProposal(publisher RefinementPublisher) func(context.
 		// Signal Hivemind to clean up its session (best-effort, don't fail the accept)
 		_ = publisher.PublishRefinementAccept(ctx, session.ID)
 
+		// Load project for slug
+		project, err := db.Projects().GetByID(ctx, issue.GetProjectID())
+		if err != nil {
+			return nil, fmt.Errorf("getting project: %w", err)
+		}
+
+		// Publish story.refined event for downstream pipeline (best-effort)
+		event := StoryRefinedEvent{
+			StoryID:     cmd.IssueID.String(),
+			ProjectID:   issue.GetProjectID().String(),
+			ProjectSlug: project.GetSlug(),
+			IssueNumber: issue.GetNumber(),
+			Title:       proposal.Title,
+		}
+		// Extract structured data from the last message's phase_data if available
+		for i := len(messages) - 1; i >= 0; i-- {
+			if messages[i].PhaseData != nil {
+				if v, ok := messages[i].PhaseData["actor"].(string); ok {
+					event.Actor = v
+				}
+				if v, ok := messages[i].PhaseData["goal"].(string); ok {
+					event.Goal = v
+				}
+				if v, ok := messages[i].PhaseData["main_success_scenario"].([]interface{}); ok {
+					for _, s := range v {
+						if str, ok := s.(string); ok {
+							event.MainSuccessScenario = append(event.MainSuccessScenario, str)
+						}
+					}
+				}
+				if v, ok := messages[i].PhaseData["preconditions"].([]interface{}); ok {
+					for _, s := range v {
+						if str, ok := s.(string); ok {
+							event.Preconditions = append(event.Preconditions, str)
+						}
+					}
+				}
+				if v, ok := messages[i].PhaseData["acceptance_criteria"].([]interface{}); ok {
+					for _, s := range v {
+						if str, ok := s.(string); ok {
+							event.AcceptanceCriteria = append(event.AcceptanceCriteria, str)
+						}
+					}
+				}
+				if v, ok := messages[i].PhaseData["extensions"].([]interface{}); ok {
+					for _, s := range v {
+						if str, ok := s.(string); ok {
+							event.Extensions = append(event.Extensions, str)
+						}
+					}
+				}
+				// The final proposal's phase_data should have everything
+				break
+			}
+		}
+		_ = publisher.PublishStoryRefined(ctx, event)
+
 		return &AcceptRefinementProposalResult{}, nil
 	}
 }

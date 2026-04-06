@@ -301,10 +301,13 @@ const isTerminal = computed(() =>
       :loading="refinement.sessionLoading.value"
       :send-pending="refinement.sendPending.value"
       :accept-pending="refinement.acceptPending.value"
+      :advance-pending="refinement.advancePending.value"
+      :current-phase="refinement.currentPhase.value"
       @close="refinement.close()"
       @start="refinement.startSession()"
       @send="(content) => refinement.sendMessage(content)"
       @accept="refinement.acceptProposal()"
+      @advance-phase="(targetPhase) => refinement.advancePhase(targetPhase)"
     />
   </MainLayout>
 </template>

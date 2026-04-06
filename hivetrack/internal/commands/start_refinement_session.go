@@ -14,6 +14,22 @@ import (
 type RefinementPublisher interface {
 	PublishRefinementRequest(ctx context.Context, req RefinementPublishRequest) error
 	PublishRefinementAccept(ctx context.Context, sessionID uuid.UUID) error
+	PublishStoryRefined(ctx context.Context, event StoryRefinedEvent) error
+}
+
+// StoryRefinedEvent is published when a user accepts a refinement proposal.
+type StoryRefinedEvent struct {
+	StoryID              string   `json:"story_id"`
+	ProjectID            string   `json:"project_id"`
+	ProjectSlug          string   `json:"project_slug"`
+	IssueNumber          int      `json:"issue_number"`
+	Title                string   `json:"title"`
+	Actor                string   `json:"actor"`
+	Goal                 string   `json:"goal"`
+	MainSuccessScenario  []string `json:"main_success_scenario"`
+	Preconditions        []string `json:"preconditions"`
+	AcceptanceCriteria   []string `json:"acceptance_criteria"`
+	Extensions           []string `json:"extensions"`
 }
 
 // RefinementPublishRequest is the data sent to Hivemind for refinement.
@@ -23,6 +39,7 @@ type RefinementPublishRequest struct {
 	ProjectSlug string
 	Title       string
 	Description *string
+	Phase       string
 	Messages    []RefinementChatMessage
 }
 
@@ -82,6 +99,7 @@ func NewStartRefinementSessionHandler(publisher RefinementPublisher) func(contex
 			ProjectSlug: project.GetSlug(),
 			Title:       issue.GetTitle(),
 			Description: issue.GetDescription(),
+			Phase:       string(models.RefinementPhaseActorGoal),
 			Messages:    nil,
 		}); err != nil {
 			return nil, fmt.Errorf("publishing refinement request: %w", err)

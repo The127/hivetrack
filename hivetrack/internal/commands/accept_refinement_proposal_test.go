@@ -36,7 +36,7 @@ func TestAcceptRefinementProposal_Success(t *testing.T) {
 	require.NoError(t, db.Refinements().CreateSession(context.Background(), session))
 
 	proposalMsg := models.NewRefinementMessage(session.ID, models.RefinementRoleAssistant,
-		"Here is my proposal", models.RefinementMessageTypeProposal,
+		"Here is my proposal", models.RefinementMessageTypeProposal, models.RefinementPhaseAcceptanceCriteria,
 		&models.RefinementProposal{Title: "New title", Description: "New description"})
 	require.NoError(t, db.Refinements().AddMessage(context.Background(), proposalMsg))
 
@@ -105,7 +105,7 @@ func TestAcceptRefinementProposal_NoProposalMessage(t *testing.T) {
 	// Session exists but only has regular messages, no proposal
 	session := models.NewRefinementSession(issue.GetId())
 	require.NoError(t, db.Refinements().CreateSession(context.Background(), session))
-	msg := models.NewRefinementMessage(session.ID, models.RefinementRoleAssistant, "Just a question", models.RefinementMessageTypeMessage, nil)
+	msg := models.NewRefinementMessage(session.ID, models.RefinementRoleAssistant, "Just a question", models.RefinementMessageTypeMessage, models.RefinementPhaseActorGoal, nil)
 	require.NoError(t, db.Refinements().AddMessage(context.Background(), msg))
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)

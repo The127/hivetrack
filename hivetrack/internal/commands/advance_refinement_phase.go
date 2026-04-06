@@ -10,16 +10,17 @@ import (
 	"github.com/the127/hivetrack/internal/repositories"
 )
 
-type SendRefinementMessageCommand struct {
-	IssueID uuid.UUID
-	Content string
+type AdvanceRefinementPhaseCommand struct {
+	IssueID     uuid.UUID
+	TargetPhase string // optional: if empty, advance to next; if set, jump to that phase
 }
 
-type SendRefinementMessageResult struct{}
+type AdvanceRefinementPhaseResult struct {
+	Phase string `json:"phase"`
+}
 
-// NewSendRefinementMessageHandler returns a handler that depends on a RefinementPublisher.
-func NewSendRefinementMessageHandler(publisher RefinementPublisher) func(context.Context, SendRefinementMessageCommand) (*SendRefinementMessageResult, error) {
-	return func(ctx context.Context, cmd SendRefinementMessageCommand) (*SendRefinementMessageResult, error) {
+func NewAdvanceRefinementPhaseHandler(publisher RefinementPublisher) func(context.Context, AdvanceRefinementPhaseCommand) (*AdvanceRefinementPhaseResult, error) {
+	return func(ctx context.Context, cmd AdvanceRefinementPhaseCommand) (*AdvanceRefinementPhaseResult, error) {
 		db := repositories.GetDbContext(ctx)
 
 		// Load active session
@@ -31,10 +32,24 @@ func NewSendRefinementMessageHandler(publisher RefinementPublisher) func(context
 			return nil, fmt.Errorf("no active refinement session for issue %s: %w", cmd.IssueID, models.ErrNotFound)
 		}
 
-		// Store user message
-		msg := models.NewRefinementMessage(session.ID, models.RefinementRoleUser, cmd.Content, models.RefinementMessageTypeMessage, session.CurrentPhase, nil)
-		if err := db.Refinements().AddMessage(ctx, msg); err != nil {
-			return nil, fmt.Errorf("storing user message: %w", err)
+		// Determine target phase
+		var newPhase models.RefinementPhase
+		if cmd.TargetPhase != "" {
+			if !models.ValidPhase(cmd.TargetPhase) {
+				return nil, fmt.Errorf("invalid phase %q: %w", cmd.TargetPhase, models.ErrBadRequest)
+			}
+			newPhase = models.RefinementPhase(cmd.TargetPhase)
+		} else {
+			next, err := models.NextPhase(session.CurrentPhase)
+			if err != nil {
+				return nil, err
+			}
+			newPhase = next
+		}
+
+		// Update session phase
+		if err := db.Refinements().UpdateSessionPhase(ctx, session.ID, newPhase); err != nil {
+			return nil, fmt.Errorf("updating session phase: %w", err)
 		}
 
 		// Load full message history
@@ -43,13 +58,12 @@ func NewSendRefinementMessageHandler(publisher RefinementPublisher) func(context
 			return nil, fmt.Errorf("loading message history: %w", err)
 		}
 
-		// Load issue
+		// Load issue and project
 		issue, err := db.Issues().GetByID(ctx, cmd.IssueID)
 		if err != nil {
 			return nil, fmt.Errorf("getting issue: %w", err)
 		}
 
-		// Load project for slug
 		project, err := db.Projects().GetByID(ctx, issue.GetProjectID())
 		if err != nil {
 			return nil, fmt.Errorf("getting project: %w", err)
@@ -64,19 +78,19 @@ func NewSendRefinementMessageHandler(publisher RefinementPublisher) func(context
 			}
 		}
 
-		// Publish to NATS with full history
+		// Publish to NATS with new phase
 		if err := publisher.PublishRefinementRequest(ctx, RefinementPublishRequest{
 			SessionID:   session.ID,
 			IssueID:     cmd.IssueID,
 			ProjectSlug: project.GetSlug(),
 			Title:       issue.GetTitle(),
 			Description: issue.GetDescription(),
-			Phase:       string(session.CurrentPhase),
+			Phase:       string(newPhase),
 			Messages:    chatMessages,
 		}); err != nil {
 			return nil, fmt.Errorf("publishing refinement request: %w", err)
 		}
 
-		return &SendRefinementMessageResult{}, nil
+		return &AdvanceRefinementPhaseResult{Phase: string(newPhase)}, nil
 	}
 }

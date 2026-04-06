@@ -77,7 +77,8 @@ watch(
 
 const droneCommand = computed(() => {
   const url = grpcURL.value || "<HIVEMIND_GRPC_URL>";
-  return `hivemind-drone ${selectedTarget.value} --hivemind-url ${url} --token ${generatedToken.value}`;
+  const caps = [...selectedCaps.value].join(",");
+  return `hivemind-drone ${selectedTarget.value} --hivemind-url ${url} --token ${generatedToken.value} --capabilities ${caps}`;
 });
 
 function toggleCap(cap) {

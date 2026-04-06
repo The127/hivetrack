@@ -69,3 +69,16 @@ func (r *RefinementRepository) CompleteSession(_ context.Context, sessionID uuid
 	session.UpdatedAt = time.Now()
 	return nil
 }
+
+func (r *RefinementRepository) UpdateSessionPhase(_ context.Context, sessionID uuid.UUID, phase models.RefinementPhase) error {
+	session, ok := r.sessions[sessionID]
+	if !ok {
+		return models.ErrNotFound
+	}
+	if session.Status != models.RefinementSessionActive {
+		return models.ErrNotFound
+	}
+	session.CurrentPhase = phase
+	session.UpdatedAt = time.Now()
+	return nil
+}
