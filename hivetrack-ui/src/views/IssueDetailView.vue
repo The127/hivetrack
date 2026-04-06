@@ -11,7 +11,12 @@ import { computed, ref, nextTick } from "vue";
 import { useRoute, RouterLink } from "vue-router";
 import { isTerminalStatus } from "@/composables/issueConstants";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
-import { ArrowLeftIcon, LayersIcon, ScissorsIcon, SparklesIcon } from "lucide-vue-next";
+import {
+  ArrowLeftIcon,
+  LayersIcon,
+  ScissorsIcon,
+  SparklesIcon,
+} from "lucide-vue-next";
 import MainLayout from "@/layouts/MainLayout.vue";
 import Badge from "@/components/ui/Badge.vue";
 import Button from "@/components/ui/Button.vue";
@@ -92,7 +97,9 @@ const { mutate: updateTitle } = useMutation({
   mutationFn: (title) => updateIssue(slug.value, number.value, { title }),
   onSuccess: () => {
     editingTitle.value = false;
-    queryClient.invalidateQueries({ queryKey: ["issue", slug.value, number.value] });
+    queryClient.invalidateQueries({
+      queryKey: ["issue", slug.value, number.value],
+    });
     queryClient.invalidateQueries({ queryKey: ["issues", slug.value] });
   },
   onError: () => {
@@ -138,19 +145,20 @@ const isTerminal = computed(() =>
           >
             {{ project.slug.slice(0, 2).toUpperCase() }}
           </span>
-          <span class="text-sm font-medium text-slate-600 dark:text-slate-400">{{
-            project.name
-          }}</span>
+          <span
+            class="text-sm font-medium text-slate-600 dark:text-slate-400"
+            >{{ project.name }}</span
+          >
         </div>
         <div class="ml-auto flex items-center gap-2">
           <Button
-            v-if="issue && issue.type === 'task' && !isTerminal"
+            v-if="issue && issue.type === 'task' && !isTerminal && !issue.refined"
             variant="secondary"
             size="sm"
             @click="refinement.open()"
           >
             <SparklesIcon class="size-3.5" />
-            {{ refinement.session.value ? 'Continue refining' : 'Refine' }}
+            {{ refinement.session.value ? "Continue refining" : "Refine" }}
           </Button>
           <Button
             v-if="issue && issue.type === 'task' && !isTerminal"
@@ -234,7 +242,9 @@ const isTerminal = computed(() =>
             v-if="issue.type === 'task' && issue.checklist?.length"
             class="space-y-2"
           >
-            <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300">Checklist</h2>
+            <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Checklist
+            </h2>
             <div class="space-y-1">
               <div
                 v-for="item in issue.checklist"
@@ -250,7 +260,9 @@ const isTerminal = computed(() =>
                 <span
                   class="text-sm"
                   :class="
-                    item.done ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-700 dark:text-slate-300'
+                    item.done
+                      ? 'text-slate-400 dark:text-slate-500 line-through'
+                      : 'text-slate-700 dark:text-slate-300'
                   "
                   >{{ item.text }}</span
                 >
@@ -259,14 +271,12 @@ const isTerminal = computed(() =>
           </div>
 
           <!-- Links -->
-          <IssueLinks
-            :slug="slug"
-            :number="number"
-            :links="issue.links"
-          />
+          <IssueLinks :slug="slug" :number="number" :links="issue.links" />
 
           <!-- Dates -->
-          <div class="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500">
+          <div
+            class="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500"
+          >
             <span>Created <RelativeTime :datetime="issue.created_at" /></span>
             <span v-if="issue.updated_at !== issue.created_at">
               · Updated <RelativeTime :datetime="issue.updated_at" />
@@ -280,7 +290,9 @@ const isTerminal = computed(() =>
 
       <!-- Not found -->
       <div v-else class="flex-1 flex items-center justify-center">
-        <p class="text-sm text-slate-400 dark:text-slate-500">Issue not found.</p>
+        <p class="text-sm text-slate-400 dark:text-slate-500">
+          Issue not found.
+        </p>
       </div>
     </div>
 
