@@ -5,57 +5,60 @@
   Clicking a sprint navigates to the sprint detail page.
 -->
 <script setup>
-import { computed } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
-import { useQuery } from '@tanstack/vue-query'
-import { ChevronRightIcon } from 'lucide-vue-next'
-import MainLayout from '@/layouts/MainLayout.vue'
-import Spinner from '@/components/ui/Spinner.vue'
-import EmptyState from '@/components/ui/EmptyState.vue'
-import ProgressBar from '@/components/ui/ProgressBar.vue'
-import { fetchSprints } from '@/api/sprints'
-import { formatDate } from '@/composables/useDate'
+import { computed } from "vue";
+import { useRoute, RouterLink } from "vue-router";
+import { useQuery } from "@tanstack/vue-query";
+import { ChevronRightIcon } from "lucide-vue-next";
+import MainLayout from "@/layouts/MainLayout.vue";
+import Spinner from "@/components/ui/Spinner.vue";
+import EmptyState from "@/components/ui/EmptyState.vue";
+import ProgressBar from "@/components/ui/ProgressBar.vue";
+import { fetchSprints } from "@/api/sprints";
+import { formatDate } from "@/composables/useDate";
 
-const route = useRoute()
-const slug = computed(() => route.params.slug)
+const route = useRoute();
+const slug = computed(() => route.params.slug);
 
 const { data: sprintsResult, isLoading } = useQuery({
-  queryKey: ['sprints', slug],
+  queryKey: ["sprints", slug],
   queryFn: () => fetchSprints(slug.value),
   enabled: computed(() => !!slug.value),
-})
+});
 
 const completedSprints = computed(() => {
-  const sprints = sprintsResult.value?.sprints ?? []
+  const sprints = sprintsResult.value?.sprints ?? [];
   return sprints
-    .filter((s) => s.status === 'completed')
+    .filter((s) => s.status === "completed")
     .sort((a, b) => {
-      const aEnd = a.end_date ? new Date(a.end_date) : new Date(0)
-      const bEnd = b.end_date ? new Date(b.end_date) : new Date(0)
-      return bEnd - aEnd
-    })
-})
+      const aEnd = a.end_date ? new Date(a.end_date) : new Date(0);
+      const bEnd = b.end_date ? new Date(b.end_date) : new Date(0);
+      return bEnd - aEnd;
+    });
+});
 
-const YEAR = { year: true }
+const YEAR = { year: true };
 
 function dateRange(sprint) {
-  const start = formatDate(sprint.start_date, YEAR)
-  const end = formatDate(sprint.end_date, YEAR)
-  if (start && end) return `${start} – ${end}`
-  if (start) return `Started ${start}`
-  if (end) return `Ended ${end}`
-  return null
+  const start = formatDate(sprint.start_date, YEAR);
+  const end = formatDate(sprint.end_date, YEAR);
+  if (start && end) return `${start} – ${end}`;
+  if (start) return `Started ${start}`;
+  if (end) return `Ended ${end}`;
+  return null;
 }
 </script>
 
 <template>
   <MainLayout>
     <div class="max-w-3xl mx-auto px-6 py-8">
-
       <!-- Header -->
       <div class="mb-6">
-        <h1 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Completed Sprints</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Readonly history of past sprints.</p>
+        <h1 class="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          Completed Sprints
+        </h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Readonly history of past sprints.
+        </p>
       </div>
 
       <!-- Loading -->
@@ -81,21 +84,39 @@ function dateRange(sprint) {
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1 space-y-1">
               <div class="flex items-center gap-2">
-                <span class="text-xs font-mono text-slate-400">#{{ sprint.number }}</span>
-                <span class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ sprint.name }}</span>
-                <span v-if="dateRange(sprint)" class="text-xs text-slate-400">{{ dateRange(sprint) }}</span>
+                <span class="text-xs font-mono text-slate-400"
+                  >#{{ sprint.number }}</span
+                >
+                <span
+                  class="text-sm font-medium text-slate-900 dark:text-slate-100"
+                  >{{ sprint.name }}</span
+                >
+                <span v-if="dateRange(sprint)" class="text-xs text-slate-400">{{
+                  dateRange(sprint)
+                }}</span>
               </div>
-              <p v-if="sprint.goal" class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ sprint.goal }}</p>
+              <p
+                v-if="sprint.goal"
+                class="text-xs text-slate-500 dark:text-slate-400 truncate"
+              >
+                {{ sprint.goal }}
+              </p>
               <div class="pt-1">
-                <ProgressBar :done="sprint.done_count" :total="sprint.issue_count" />
+                <ProgressBar
+                  :done="sprint.done_count"
+                  :total="sprint.issue_count"
+                />
               </div>
-              <p class="text-xs text-slate-400">{{ sprint.done_count }} / {{ sprint.issue_count }} issues done</p>
+              <p class="text-xs text-slate-400">
+                {{ sprint.done_count }} / {{ sprint.issue_count }} issues done
+              </p>
             </div>
-            <ChevronRightIcon class="size-4 text-slate-400 flex-shrink-0 mt-0.5" />
+            <ChevronRightIcon
+              class="size-4 text-slate-400 flex-shrink-0 mt-0.5"
+            />
           </div>
         </RouterLink>
       </div>
-
     </div>
   </MainLayout>
 </template>
