@@ -54,13 +54,13 @@ const { data: project, isLoading: loadingProject } = useQuery({
   queryFn: () => fetchProject(slug.value),
 });
 
-const { data: sprintsResult, isLoading: loadingSprints } = useQuery({
+const { data: sprintsResult, isLoading: loadingSprints, isFetching: fetchingSprints } = useQuery({
   queryKey: ["sprints", slug],
   queryFn: () => fetchSprints(slug.value),
   enabled: computed(() => !!slug.value),
 });
 
-const { data: issuesResult, isLoading: loadingIssues } = useQuery({
+const { data: issuesResult, isLoading: loadingIssues, isFetching: fetchingIssues } = useQuery({
   queryKey: ["issues", slug, { triaged: true, type: "task" }],
   queryFn: () =>
     fetchIssues(slug.value, { triaged: true, type: "task", limit: 500 }),
@@ -390,7 +390,7 @@ const defaultCreateStatus = computed(() => {
 
       <!-- ── Board columns ──────────────────────────────────────────────── -->
       <div
-        v-else-if="boardIssues.length > 0"
+        v-else-if="boardIssues.length > 0 || fetchingSprints || fetchingIssues"
         class="flex-1 overflow-x-auto overflow-y-hidden"
       >
         <div class="flex h-full gap-3 px-6 py-4" style="min-width: max-content">

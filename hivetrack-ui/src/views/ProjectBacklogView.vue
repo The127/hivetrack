@@ -137,9 +137,8 @@ function rebuildSectionIssues() {
   }
   for (const issue of allIssues.value) {
     const key = issue.sprint_id ?? BACKLOG_KEY;
-    if (sections[key]) {
-      sections[key].push(issue);
-    }
+    const dest = sections[key] ? key : BACKLOG_KEY;
+    sections[dest].push(issue);
   }
   sectionIssues.value = sections;
 }
