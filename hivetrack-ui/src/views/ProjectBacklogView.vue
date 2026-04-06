@@ -143,29 +143,6 @@ function rebuildSectionIssues() {
   sectionIssues.value = sections;
 }
 
-watch(
-  [allIssues, allSprints],
-  () => {
-    if (!isDragging.value) rebuildSectionIssues();
-  },
-  { immediate: true },
-);
-
-watch(
-  targetSprints,
-  (sprints) => {
-    for (const sprint of sprints) {
-      if (!overlayDropZones[sprint.id]) {
-        overlayDropZones[sprint.id] = [];
-      }
-    }
-    if (!overlayDropZones[BACKLOG_KEY]) {
-      overlayDropZones[BACKLOG_KEY] = [];
-    }
-  },
-  { immediate: true },
-);
-
 // ── Drag-and-drop ──────────────────────────────────────────────────────────
 
 const { mutate: reorderIssue } = useMutation({
@@ -213,6 +190,29 @@ function onCrossSectionDrop(evt, toSectionId) {
   const newSprintId = toSectionId === BACKLOG_KEY ? null : toSectionId;
   handleDrag(evt, toSectionId, { sprint_id: newSprintId });
 }
+
+watch(
+  [allIssues, allSprints],
+  () => {
+    if (!isDragging.value) rebuildSectionIssues();
+  },
+  { immediate: true },
+);
+
+watch(
+  targetSprints,
+  (sprints) => {
+    for (const sprint of sprints) {
+      if (!overlayDropZones[sprint.id]) {
+        overlayDropZones[sprint.id] = [];
+      }
+    }
+    if (!overlayDropZones[BACKLOG_KEY]) {
+      overlayDropZones[BACKLOG_KEY] = [];
+    }
+  },
+  { immediate: true },
+);
 
 function onDropToOverlayZone(evt, targetId) {
   const arr = overlayDropZones[targetId];
