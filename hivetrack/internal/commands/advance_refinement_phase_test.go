@@ -85,7 +85,7 @@ func TestAdvanceRefinementPhase_AlreadyAtLastPhase(t *testing.T) {
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
 
 	// Set to last phase
-	require.NoError(t, db.Refinements().UpdateSessionPhase(context.Background(), session.ID, models.RefinementPhaseAcceptanceCriteria))
+	require.NoError(t, db.Refinements().UpdateSessionPhase(context.Background(), session.ID, models.RefinementPhaseBddScenarios))
 
 	handler := commands.NewAdvanceRefinementPhaseHandler(pub)
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)

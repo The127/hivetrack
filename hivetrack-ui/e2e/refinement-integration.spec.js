@@ -11,28 +11,33 @@
  * These tests are intentionally slow — they drive real LLM conversations
  * across all four refinement phases.
  */
-import { test, expect } from '@playwright/test'
+import { test, expect } from "@playwright/test";
 
-const HIVEMIND_MGMT = 'http://localhost:8080'
-const PROJECT_SLUG = 'e2e-test'
+const HIVEMIND_MGMT = "http://localhost:8080";
+const PROJECT_SLUG = "e2e-test";
 
 async function hivemindAvailable() {
   try {
-    const res = await fetch(`${HIVEMIND_MGMT}/api/v1/drones`)
-    return res.ok
+    const res = await fetch(`${HIVEMIND_MGMT}/api/v1/drones`);
+    return res.ok;
   } catch {
-    return false
+    return false;
   }
 }
 
 async function droneAvailableForProject(slug) {
   try {
-    const res = await fetch(`${HIVEMIND_MGMT}/api/v1/drones?project_slug=${slug}`)
-    if (!res.ok) return false
-    const body = await res.json()
-    return Array.isArray(body.drones) && body.drones.some(d => d.status === 'available')
+    const res = await fetch(
+      `${HIVEMIND_MGMT}/api/v1/drones?project_slug=${slug}`,
+    );
+    if (!res.ok) return false;
+    const body = await res.json();
+    return (
+      Array.isArray(body.drones) &&
+      body.drones.some((d) => d.status === "available")
+    );
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -43,28 +48,31 @@ async function droneAvailableForProject(slug) {
  */
 async function createFreshIssue(page, projectSlug) {
   return page.evaluate(async (slug) => {
-    const entry = Object.entries(sessionStorage).find(([k]) => k.startsWith('oidc.'))?.[1]
-    const accessToken = entry ? JSON.parse(entry).access_token : null
-    if (!accessToken) throw new Error('no OIDC access_token in sessionStorage')
+    const entry = Object.entries(sessionStorage).find(([k]) =>
+      k.startsWith("oidc."),
+    )?.[1];
+    const accessToken = entry ? JSON.parse(entry).access_token : null;
+    if (!accessToken) throw new Error("no OIDC access_token in sessionStorage");
 
     const resp = await fetch(`/api/v1/projects/${slug}/issues`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        title: 'PR Review Automation Tool',
-        type: 'task',
+        title: "PR Review Automation Tool",
+        type: "task",
         description:
-          'As a software developer I want to automatically review pull requests ' +
-          'so that code quality checks happen without manual effort.',
+          "As a software developer I want to automatically review pull requests " +
+          "so that code quality checks happen without manual effort.",
       }),
-    })
-    if (!resp.ok) throw new Error(`create issue: ${resp.status} ${await resp.text()}`)
-    const body = await resp.json()
-    return body.Number
-  }, projectSlug)
+    });
+    if (!resp.ok)
+      throw new Error(`create issue: ${resp.status} ${await resp.text()}`);
+    const body = await resp.json();
+    return body.Number;
+  }, projectSlug);
 }
 
 /**
@@ -78,61 +86,63 @@ async function createFreshIssue(page, projectSlug) {
  * checking the next actionable element.
  */
 async function waitForDroneResponse(page) {
-  const thinkingText = page.getByText('Hivemind is thinking...')
+  const thinkingText = page.getByText("Hivemind is thinking...");
 
   // Wait up to 15s for the thinking state to appear.
   const sawThinking = await expect(thinkingText)
     .toBeVisible({ timeout: 15_000 })
     .then(() => true)
-    .catch(() => false)
+    .catch(() => false);
 
   if (sawThinking) {
     // Drone is processing — wait until it's done (generous timeout for LLM).
-    await expect(thinkingText).not.toBeVisible({ timeout: 90_000 })
+    await expect(thinkingText).not.toBeVisible({ timeout: 90_000 });
   } else {
     // Drone responded before the 2s poll could capture the thinking state.
     // The next poll has already updated the UI — nothing more to wait for.
   }
 }
 
-test.describe('Refinement integration (real drone)', () => {
+test.describe("Refinement integration (real drone)", () => {
   // Full LLM conversation across 4 phases: allow generous time.
-  test.setTimeout(15 * 60_000)
+  test.setTimeout(15 * 60_000);
 
-  let issueNumber
+  let issueNumber;
 
   test.beforeEach(async ({ page }) => {
-    if (!await hivemindAvailable()) {
-      test.skip('Hivemind not reachable on :8080')
+    if (!(await hivemindAvailable())) {
+      test.skip("Hivemind not reachable on :8080");
     }
-    if (!await droneAvailableForProject(PROJECT_SLUG)) {
-      test.skip(`No drone registered for project ${PROJECT_SLUG}`)
+    if (!(await droneAvailableForProject(PROJECT_SLUG))) {
+      test.skip(`No drone registered for project ${PROJECT_SLUG}`);
     }
 
     // Navigate first so sessionStorage (OIDC token) is populated.
-    await page.goto(`/projects/${PROJECT_SLUG}/overview`)
-    await page.waitForLoadState('networkidle')
+    await page.goto(`/projects/${PROJECT_SLUG}/overview`);
+    await page.waitForLoadState("networkidle");
 
-    issueNumber = await createFreshIssue(page, PROJECT_SLUG)
-  })
+    issueNumber = await createFreshIssue(page, PROJECT_SLUG);
+  });
 
-  test('full refinement flow from start to accepted proposal', async ({ page }) => {
-    await page.goto(`/projects/${PROJECT_SLUG}/issues/${issueNumber}`)
-    await page.waitForLoadState('networkidle')
+  test("full refinement flow from start to accepted proposal", async ({
+    page,
+  }) => {
+    await page.goto(`/projects/${PROJECT_SLUG}/issues/${issueNumber}`);
+    await page.waitForLoadState("networkidle");
 
     // Open refinement panel.
-    const refineButton = page.getByRole('button', { name: /refine/i })
-    await expect(refineButton).toBeVisible({ timeout: 10_000 })
-    await refineButton.click()
+    const refineButton = page.getByRole("button", { name: /refine/i });
+    await expect(refineButton).toBeVisible({ timeout: 10_000 });
+    await refineButton.click();
 
     // Fresh issue always shows "Start refinement" button.
     await expect(
-      page.getByRole('button', { name: /start refinement/i }),
-    ).toBeVisible({ timeout: 10_000 })
-    await page.getByRole('button', { name: /start refinement/i }).click()
+      page.getByRole("button", { name: /start refinement/i }),
+    ).toBeVisible({ timeout: 10_000 });
+    await page.getByRole("button", { name: /start refinement/i }).click();
 
     // Wait for the drone to deliver the first question before entering the loop.
-    await waitForDroneResponse(page)
+    await waitForDroneResponse(page);
 
     // Drive the full conversation:
     //   - When an answer input is visible → send a concise answer, then wait
@@ -142,30 +152,32 @@ test.describe('Refinement integration (real drone)', () => {
     //   - When "Accept & apply" is visible → accept the proposal and finish.
     //
     // Up to 30 exchanges (well above any realistic 4-phase flow).
-    const ANSWER = 'Software developer who wants to automate code reviews'
+    const ANSWER = "Software developer who wants to automate code reviews";
 
     for (let step = 0; step < 30; step++) {
-      const acceptBtn = page.getByRole('button', { name: /accept.*apply/i })
-      const confirmBtn = page.getByRole('button', { name: /confirm.*continue/i })
-      const answerInput = page.getByPlaceholder(/answer/i).first()
+      const acceptBtn = page.getByRole("button", { name: /accept.*apply/i });
+      const confirmBtn = page.getByRole("button", {
+        name: /confirm.*continue/i,
+      });
+      const answerInput = page.getByPlaceholder(/answer/i).first();
 
       // The next actionable state is already set up by waitForDroneResponse.
       if (await acceptBtn.isVisible()) {
-        await acceptBtn.click()
-        break
+        await acceptBtn.click();
+        break;
       }
 
       if (await confirmBtn.isVisible()) {
-        await confirmBtn.click()
-        await waitForDroneResponse(page)
-        continue
+        await confirmBtn.click();
+        await waitForDroneResponse(page);
+        continue;
       }
 
       // Question is ready — answer it, then wait for drone to respond.
-      await expect(answerInput).toBeVisible({ timeout: 5_000 })
-      await answerInput.fill(ANSWER)
-      await page.keyboard.press('Meta+Enter')
-      await waitForDroneResponse(page)
+      await expect(answerInput).toBeVisible({ timeout: 5_000 });
+      await answerInput.fill(ANSWER);
+      await page.keyboard.press("Meta+Enter");
+      await waitForDroneResponse(page);
     }
 
     // After accepting the proposal:
@@ -173,6 +185,8 @@ test.describe('Refinement integration (real drone)', () => {
     // - issue.refined = true
     // - panel closes automatically
     // - "Refine" button disappears (only shown when !issue.refined)
-    await expect(page.getByRole('button', { name: /refine/i })).not.toBeVisible({ timeout: 30_000 })
-  })
-})
+    await expect(page.getByRole("button", { name: /refine/i })).not.toBeVisible(
+      { timeout: 30_000 },
+    );
+  });
+});
