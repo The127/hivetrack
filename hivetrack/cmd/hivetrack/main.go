@@ -86,7 +86,7 @@ func main() {
 	setup.Database(dc, db)
 	setup.Services(dc, cfg)
 	if nc != nil {
-		pub := setup.Nats(dc, nc, js)
+		pub, _ := setup.Nats(dc, nc, js)
 		setup.Mediator(dc, pub)
 	} else {
 		setup.Mediator(dc)

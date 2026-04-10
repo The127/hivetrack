@@ -12,6 +12,7 @@ import (
 	"github.com/the127/hivetrack/internal/authentication"
 	"github.com/the127/hivetrack/internal/config"
 	"github.com/the127/hivetrack/internal/handlers"
+	"github.com/the127/hivetrack/internal/infrastructure"
 	"github.com/the127/hivetrack/internal/middlewares"
 	"github.com/the127/hivetrack/internal/repositories"
 )
@@ -77,12 +78,21 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 	protected.HandleFunc("/me/created-issues", issueH.GetMyCreatedIssues).Methods("GET")
 
 	// Refinement (Hivemind integration)
-	refinementH := handlers.NewRefinementHandler(med)
+	var tokenBuf *infrastructure.TokenBuffer
+	if cfg.Hivemind.Enabled {
+		tokenBuf = ioc.GetDependency[*infrastructure.TokenBuffer](dp)
+	}
+	refinementH := handlers.NewRefinementHandler(med, tokenBuf)
 	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/start", refinementH.StartSession).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/message", refinementH.SendMessage).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/session", refinementH.GetSession).Methods("GET")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/accept", refinementH.AcceptProposal).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/advance-phase", refinementH.AdvancePhase).Methods("POST")
+
+	// Internal endpoint — called by Hivemind to push streaming tokens (no auth)
+	if cfg.Hivemind.Enabled {
+		r.HandleFunc("/internal/refinement/{inbox}/tokens", refinementH.StreamToken).Methods("POST")
+	}
 
 	// Comments
 	commentH := handlers.NewCommentHandler(med)

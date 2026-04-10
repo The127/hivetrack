@@ -23,7 +23,7 @@ setup('authenticate via Keyline OIDC', async ({ page }) => {
   await page.getByRole('button', { name: 'Sign In', exact: true }).click()
 
   // Wait to be redirected back to the app
-  await page.waitForURL('http://localhost:5399/**', { timeout: 15_000 })
+  await page.waitForURL('http://localhost:5173/**', { timeout: 15_000 })
 
   // Verify we're authenticated — the page should show something meaningful
   await expect(page.locator('body')).not.toContainText('Sign in', { timeout: 10_000 })
@@ -66,7 +66,8 @@ setup('authenticate via Keyline OIDC', async ({ page }) => {
     }
 
     // Create issues (one per test to avoid state leaking)
-    for (let i = 1; i <= 2; i++) {
+    // #1, #2: mocked tests; #3: integration test (real drone)
+    for (let i = 1; i <= 3; i++) {
       const issueResp = await fetch('/api/v1/projects/e2e-test/issues', {
         method: 'POST',
         headers: {
@@ -87,6 +88,7 @@ setup('authenticate via Keyline OIDC', async ({ page }) => {
         }
       }
     }
+
 
     return { ok: true }
   })

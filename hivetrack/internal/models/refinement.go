@@ -38,6 +38,7 @@ const (
 	RefinementPhaseMainScenario       RefinementPhase = "main_scenario"
 	RefinementPhaseExtensions         RefinementPhase = "extensions"
 	RefinementPhaseAcceptanceCriteria RefinementPhase = "acceptance_criteria"
+	RefinementPhaseBddScenarios       RefinementPhase = "bdd_scenarios"
 )
 
 // RefinementPhases is the ordered list of refinement phases.
@@ -46,6 +47,7 @@ var RefinementPhases = []RefinementPhase{
 	RefinementPhaseMainScenario,
 	RefinementPhaseExtensions,
 	RefinementPhaseAcceptanceCriteria,
+	RefinementPhaseBddScenarios,
 }
 
 // NextPhase returns the phase after the given one, or an error if already at the last phase.
@@ -91,6 +93,7 @@ type RefinementMessage struct {
 	Phase       RefinementPhase
 	Proposal    *RefinementProposal
 	PhaseData   map[string]interface{}
+	Suggestions []string
 	CreatedAt   time.Time
 }
 
@@ -133,4 +136,12 @@ func (m *RefinementMessage) PhaseDataJSON() ([]byte, error) {
 		return nil, nil
 	}
 	return json.Marshal(m.PhaseData)
+}
+
+// SuggestionsJSON returns suggestions as raw JSON bytes, or nil if none.
+func (m *RefinementMessage) SuggestionsJSON() ([]byte, error) {
+	if len(m.Suggestions) == 0 {
+		return nil, nil
+	}
+	return json.Marshal(m.Suggestions)
 }

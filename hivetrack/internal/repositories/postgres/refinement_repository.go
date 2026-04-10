@@ -63,7 +63,7 @@ func (r *RefinementRepository) GetSessionWithMessages(ctx context.Context, sessi
 
 	// Get messages
 	rows, err := r.ctx.queryContext(ctx).QueryContext(ctx,
-		`SELECT id, session_id, role, content, message_type, phase, proposal, phase_data, created_at
+		`SELECT id, session_id, role, content, message_type, phase, proposal, phase_data, suggestions, created_at
 		 FROM refinement_messages
 		 WHERE session_id = $1
 		 ORDER BY created_at ASC`, sessionID)
@@ -98,6 +98,11 @@ func (r *RefinementRepository) AddMessage(ctx context.Context, msg *models.Refin
 		return fmt.Errorf("marshaling phase data: %w", err)
 	}
 
+	suggestionsJSON, err := msg.SuggestionsJSON()
+	if err != nil {
+		return fmt.Errorf("marshaling suggestions: %w", err)
+	}
+
 	// For JSONB columns, nil []byte must be passed as explicit SQL NULL, not empty.
 	var proposalArg any
 	if proposalJSON != nil {
@@ -107,12 +112,16 @@ func (r *RefinementRepository) AddMessage(ctx context.Context, msg *models.Refin
 	if phaseDataJSON != nil {
 		phaseDataArg = phaseDataJSON
 	}
+	var suggestionsArg any
+	if suggestionsJSON != nil {
+		suggestionsArg = suggestionsJSON
+	}
 
 	return r.ctx.execDirect(ctx, func(tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
-			`INSERT INTO refinement_messages (id, session_id, role, content, message_type, phase, proposal, phase_data, created_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-			msg.ID, msg.SessionID, msg.Role, msg.Content, msg.MessageType, msg.Phase, proposalArg, phaseDataArg, msg.CreatedAt,
+			`INSERT INTO refinement_messages (id, session_id, role, content, message_type, phase, proposal, phase_data, suggestions, created_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+			msg.ID, msg.SessionID, msg.Role, msg.Content, msg.MessageType, msg.Phase, proposalArg, phaseDataArg, suggestionsArg, msg.CreatedAt,
 		)
 		if err != nil {
 			return fmt.Errorf("inserting refinement message: %w", err)
@@ -175,7 +184,8 @@ func scanRefinementMessageRow(row rowScanner) (*models.RefinementMessage, error)
 	var msg models.RefinementMessage
 	var proposalJSON []byte
 	var phaseDataJSON []byte
-	err := row.Scan(&msg.ID, &msg.SessionID, &msg.Role, &msg.Content, &msg.MessageType, &msg.Phase, &proposalJSON, &phaseDataJSON, &msg.CreatedAt)
+	var suggestionsJSON []byte
+	err := row.Scan(&msg.ID, &msg.SessionID, &msg.Role, &msg.Content, &msg.MessageType, &msg.Phase, &proposalJSON, &phaseDataJSON, &suggestionsJSON, &msg.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("scanning refinement message: %w", err)
 	}
@@ -192,6 +202,11 @@ func scanRefinementMessageRow(row rowScanner) (*models.RefinementMessage, error)
 			return nil, fmt.Errorf("unmarshaling phase data: %w", err)
 		}
 		msg.PhaseData = pd
+	}
+	if suggestionsJSON != nil {
+		if err := json.Unmarshal(suggestionsJSON, &msg.Suggestions); err != nil {
+			return nil, fmt.Errorf("unmarshaling suggestions: %w", err)
+		}
 	}
 	return &msg, nil
 }

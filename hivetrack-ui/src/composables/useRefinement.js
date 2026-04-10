@@ -13,6 +13,7 @@ export const REFINEMENT_PHASES = [
   { id: 'main_scenario', label: 'Main Scenario' },
   { id: 'extensions', label: 'Extensions' },
   { id: 'acceptance_criteria', label: 'Acceptance Criteria' },
+  { id: 'bdd_scenarios', label: 'BDD Scenarios' },
 ]
 
 export function useRefinement(slug, number) {
@@ -29,7 +30,6 @@ export function useRefinement(slug, number) {
   } = useQuery({
     queryKey: sessionQueryKey,
     queryFn: () => getRefinementSession(slug.value, number.value),
-    enabled: isOpen,
     staleTime: 0,
   })
 

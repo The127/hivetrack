@@ -41,8 +41,10 @@ const props = defineProps({
 const imgError = ref(false)
 
 const initials = computed(() => {
-  const parts = props.name.trim().split(/\s+/)
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  const trimmed = props.name?.trim() ?? ''
+  if (!trimmed) return '?'
+  const parts = trimmed.split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase() || '?'
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 })
 
@@ -59,9 +61,11 @@ const PALETTE = [
 ]
 
 const bgColor = computed(() => {
+  const name = props.name ?? ''
+  if (!name) return PALETTE[0]
   let hash = 0
-  for (let i = 0; i < props.name.length; i++) {
-    hash = props.name.charCodeAt(i) + ((hash << 5) - hash)
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
   }
   return PALETTE[Math.abs(hash) % PALETTE.length]
 })

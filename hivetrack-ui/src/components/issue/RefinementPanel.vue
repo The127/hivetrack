@@ -42,9 +42,15 @@ const messagesEnd = ref(null);
 const inputRef = ref(null);
 const forceShowInput = ref(false);
 const collapsedPhases = ref(new Set());
+const viewingPhaseId = ref(null);
 
 const currentPhaseIndex = computed(() =>
   REFINEMENT_PHASES.findIndex((p) => p.id === props.currentPhase),
+);
+
+const displayedPhase = computed(() => viewingPhaseId.value ?? props.currentPhase);
+const isViewingPastPhase = computed(
+  () => viewingPhaseId.value !== null && viewingPhaseId.value !== props.currentPhase,
 );
 
 function sendMessage() {
@@ -80,6 +86,11 @@ watch(
 );
 
 watch(
+  () => props.currentPhase,
+  () => { viewingPhaseId.value = null; },
+);
+
+watch(
   () => props.open,
   (val) => {
     if (val) {
@@ -87,6 +98,9 @@ watch(
         inputRef.value?.focus();
         scrollToBottom();
       });
+    } else {
+      forceShowInput.value = false;
+      viewingPhaseId.value = null;
     }
   },
 );
@@ -105,7 +119,7 @@ function messagesForPhase(phaseId) {
 }
 
 const currentPhaseMessages = computed(() =>
-  messagesForPhase(props.currentPhase),
+  messagesForPhase(displayedPhase.value),
 );
 
 // The latest assistant message in the current phase (the active question)
@@ -139,6 +153,7 @@ const latestProposal = computed(() => {
 });
 
 const waitingForResponse = computed(() => {
+  if (isViewingPastPhase.value) return false;
   if (!hasActiveSession.value) return false;
   const msgs = messages.value;
   if (msgs.length === 0) return true;
@@ -155,7 +170,8 @@ const isLastPhase = computed(
 const isConfirmationQuestion = computed(() => {
   if (!latestAssistantMessage.value) return false;
   if (latestAssistantMessage.value.message_type === "proposal") return false;
-  const content = latestAssistantMessage.value.content.toLowerCase();
+  if (latestAssistantMessage.value.message_type === "phase_result") return true;
+  const content = latestMessageParsed.value.text.toLowerCase();
   return (
     content.includes("does this look right") ||
     content.includes("look correct") ||
@@ -168,28 +184,18 @@ const isConfirmationQuestion = computed(() => {
   );
 });
 
-const canAdvance = computed(() => {
-  if (!hasActiveSession.value || isLastPhase.value || waitingForResponse.value)
-    return false;
-  return currentPhaseMessages.value.some((m) => m.role === "assistant");
-});
 
-// Only show "Next Phase" when the user isn't being asked a question that needs an answer
-const showNextPhase = computed(() => {
-  if (!canAdvance.value) return false;
-  // If Hivemind is asking for confirmation, show Confirm button instead
-  if (isConfirmationQuestion.value) return false;
-  return true;
-});
 
 const canGoBack = computed(
   () => hasActiveSession.value && currentPhaseIndex.value > 0,
 );
 
-// Hide footer when a proposal is showing — it has its own Accept/Request changes buttons
+// Hide footer when a proposal is showing or when viewing a past phase
 const showFooter = computed(() => {
+  if (isViewingPastPhase.value) return false;
   if (!hasActiveSession.value) return false;
   if (latestAssistantMessage.value?.message_type === "proposal") return false;
+  if (latestMessageParsed.value.type === "proposal") return false;
   return true;
 });
 
@@ -220,12 +226,78 @@ function cleanContent(text) {
   return text.replace(/^\[Pass \d+\/\d+\s*[—–-]\s*[^\]]*\]\s*/i, "");
 }
 
+// Some backend messages encode everything as JSON in the content field:
+//   { "type": "question", "content": "...", "suggestions": [...] }
+//   { "type": "proposal", "title": "...", "description": "..." }
+// The JSON may be malformed (unescaped quotes from AI output), so we fall back to regex.
+// Returns { type, text, suggestions, title, description }.
+function parseMessageContent(content) {
+  if (!content) return { type: 'text', text: '', suggestions: [] }
+  // Try strict JSON parse first
+  try {
+    const parsed = JSON.parse(content)
+    if (parsed?.type === 'proposal') {
+      return { type: 'proposal', text: '', suggestions: [], title: parsed.title ?? '', description: parsed.description ?? '' }
+    }
+    if (parsed && typeof parsed.content === 'string') {
+      return { type: 'question', text: parsed.content, suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [], title: '', description: '' }
+    }
+  } catch {
+    // Malformed JSON — try regex extraction
+  }
+  // Check if it's a proposal by looking for "type":"proposal"
+  if (/"type"\s*:\s*"proposal"/.test(content)) {
+    const titleMatch = content.match(/"title"\s*:\s*"((?:[^"\\]|\\.)*)"/)
+    const descMatch = content.match(/"description"\s*:\s*"([\s\S]*?)"\s*}/)
+    const title = titleMatch ? titleMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : ''
+    const description = descMatch ? descMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : content
+    return { type: 'proposal', text: '', suggestions: [], title, description }
+  }
+  // Regex: extract the "content" value
+  const contentMatch = content.match(/"content"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"(?:suggestions|type)"|\s*"\s*})/)
+  if (contentMatch) {
+    const text = contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"')
+    const suggestionsMatch = content.match(/"suggestions"\s*:\s*\[([^\]]*)\]/)
+    const suggestions = suggestionsMatch
+      ? suggestionsMatch[1].match(/"([^"]+)"/g)?.map(s => s.slice(1, -1)) ?? []
+      : []
+    return { type: 'question', text, suggestions, title: '', description: '' }
+  }
+  return { type: 'text', text: content, suggestions: [], title: '', description: '' }
+}
+
+const latestMessageParsed = computed(() => {
+  if (!latestAssistantMessage.value) return { text: '', suggestions: [] }
+  return parseMessageContent(latestAssistantMessage.value.content)
+})
+
 const PHASE_ICONS = {
   actor_goal: UserIcon,
   main_scenario: ListOrderedIcon,
   extensions: ShieldAlertIcon,
   acceptance_criteria: ClipboardCheckIcon,
 };
+
+const messageSuggestions = computed(() => {
+  if (isViewingPastPhase.value) return [];
+  if (!latestAssistantMessage.value) return [];
+  if (waitingForResponse.value || isGenerating.value) return [];
+  if (latestAssistantMessage.value.message_type === "proposal") return [];
+  if (isConfirmationQuestion.value) return [];
+  return latestAssistantMessage.value.suggestions ?? latestMessageParsed.value.suggestions;
+});
+
+function sendSuggestion(text) {
+  emit("send", text);
+}
+
+// Streaming partial response from Hivemind
+const partialResponse = computed(() => props.session?.partial_response ?? "");
+const isGenerating = computed(() => props.session?.is_generating ?? false);
+
+watch(partialResponse, (val) => {
+  if (val) scrollToBottom();
+});
 </script>
 
 <template>
@@ -289,9 +361,13 @@ const PHASE_ICONS = {
                           ? 'bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 ring-2 ring-violet-300 dark:ring-violet-700'
                           : 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500',
                     ]"
-                    :disabled="idx >= currentPhaseIndex || advancePending"
+                    :disabled="idx > currentPhaseIndex || advancePending"
                     @click="
-                      idx < currentPhaseIndex && emit('advance-phase', phase.id)
+                      idx < currentPhaseIndex
+                        ? (viewingPhaseId = viewingPhaseId === phase.id ? null : phase.id)
+                        : idx === currentPhaseIndex
+                          ? (viewingPhaseId = null)
+                          : null
                     "
                   >
                     <span
@@ -518,6 +594,24 @@ const PHASE_ICONS = {
                               </li>
                             </ul>
                           </div>
+                          <!-- BDD Scenarios -->
+                          <div
+                            v-else-if="phase.id === 'bdd_scenarios'"
+                            class="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 space-y-2"
+                          >
+                            <div
+                              v-for="(scenario, si) in phaseData(phase.id).scenarios || []"
+                              :key="si"
+                              class="space-y-0.5"
+                            >
+                              <p class="font-semibold text-slate-600 dark:text-slate-300">{{ scenario.name }}</p>
+                              <ul class="list-none space-y-0">
+                                <li v-for="(step, i) in scenario.given" :key="'g'+i"><span class="text-slate-400">Given</span> {{ step }}</li>
+                                <li v-for="(step, i) in scenario.when" :key="'w'+i"><span class="text-slate-400">When</span> {{ step }}</li>
+                                <li v-for="(step, i) in scenario.then" :key="'t'+i"><span class="text-slate-400">Then</span> {{ step }}</li>
+                              </ul>
+                            </div>
+                          </div>
                         </template>
                         <!-- In progress -->
                         <div
@@ -552,6 +646,20 @@ const PHASE_ICONS = {
 
               <!-- Right column: Current phase interaction -->
               <div class="flex-1 flex flex-col min-w-0 min-h-0">
+                <!-- Viewing past phase banner -->
+                <div
+                  v-if="isViewingPastPhase"
+                  class="flex-shrink-0 flex items-center gap-2 px-6 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900 text-xs text-amber-700 dark:text-amber-400"
+                >
+                  <span>Viewing completed phase — read only</span>
+                  <button
+                    class="ml-auto hover:underline cursor-pointer"
+                    @click="viewingPhaseId = null"
+                  >
+                    Return to current phase →
+                  </button>
+                </div>
+
                 <!-- Current phase conversation -->
                 <div class="flex-1 overflow-y-auto px-6 py-5 space-y-4">
                   <!-- Previous Q&A in this phase (compact) -->
@@ -560,7 +668,10 @@ const PHASE_ICONS = {
                       v-if="msg.role === 'assistant'"
                       class="text-sm text-slate-500 dark:text-slate-400 border-l-2 border-slate-200 dark:border-slate-700 pl-3 py-1"
                     >
-                      <MarkdownContent :content="cleanContent(msg.content)" />
+                      <!-- Skip raw-JSON phase_result content in history; the structured card handles it -->
+                      <template v-if="msg.message_type !== 'phase_result'">
+                        <MarkdownContent :content="cleanContent(parseMessageContent(msg.content).text)" />
+                      </template>
                     </div>
                     <div
                       v-else
@@ -636,6 +747,94 @@ const PHASE_ICONS = {
                       </div>
                     </div>
 
+                    <!-- Phase result — structured data card (Bug #1 fix: don't show raw JSON) -->
+                    <div
+                      v-else-if="
+                        latestAssistantMessage.message_type === 'phase_result' &&
+                        latestAssistantMessage.phase_data
+                      "
+                      class="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700 p-5"
+                    >
+                      <div class="flex items-start gap-3">
+                        <SparklesIcon
+                          class="size-4 text-violet-400 mt-0.5 shrink-0"
+                        />
+                        <div class="flex-1 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                          <!-- Actor & Goal -->
+                          <template v-if="displayedPhase === 'actor_goal'">
+                            <h3 class="font-semibold">Actor &amp; Goal</h3>
+                            <p>
+                              As a
+                              <strong>{{ latestAssistantMessage.phase_data.actor }}</strong>,
+                              I want to
+                              <strong>{{ latestAssistantMessage.phase_data.goal }}</strong>.
+                            </p>
+                          </template>
+                          <!-- Main Scenario -->
+                          <template v-else-if="displayedPhase === 'main_scenario'">
+                            <h3 class="font-semibold">Main Success Scenario</h3>
+                            <ol class="list-decimal list-inside space-y-1">
+                              <li
+                                v-for="(step, i) in latestAssistantMessage.phase_data.main_success_scenario"
+                                :key="i"
+                              >{{ step }}</li>
+                            </ol>
+                          </template>
+                          <!-- Extensions -->
+                          <template v-else-if="displayedPhase === 'extensions'">
+                            <div v-if="latestAssistantMessage.phase_data.preconditions?.length" class="space-y-1">
+                              <h3 class="font-semibold">Preconditions</h3>
+                              <ul class="list-disc list-inside">
+                                <li v-for="(p, i) in latestAssistantMessage.phase_data.preconditions" :key="i">{{ p }}</li>
+                              </ul>
+                            </div>
+                            <div v-if="latestAssistantMessage.phase_data.extensions?.length" class="space-y-1 mt-2">
+                              <h3 class="font-semibold">Extensions</h3>
+                              <ul class="list-disc list-inside">
+                                <li v-for="(e, i) in latestAssistantMessage.phase_data.extensions" :key="i">{{ e }}</li>
+                              </ul>
+                            </div>
+                          </template>
+                          <!-- Acceptance Criteria -->
+                          <template v-else-if="displayedPhase === 'acceptance_criteria'">
+                            <h3 class="font-semibold">Acceptance Criteria</h3>
+                            <ul class="list-disc list-inside space-y-1">
+                              <li
+                                v-for="(c, i) in latestAssistantMessage.phase_data.acceptance_criteria || []"
+                                :key="i"
+                              >{{ c }}</li>
+                            </ul>
+                          </template>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Inline-JSON proposal (backend encodes proposal in content field) -->
+                    <div
+                      v-else-if="latestMessageParsed.type === 'proposal'"
+                      class="rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/20 p-6 space-y-4"
+                    >
+                      <div class="flex items-center gap-2">
+                        <SparklesIcon class="size-4 text-violet-500" />
+                        <span class="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wide">Final Proposal</span>
+                      </div>
+                      <div class="space-y-3">
+                        <p class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ latestMessageParsed.title }}</p>
+                        <div class="text-sm text-slate-600 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none">
+                          <MarkdownContent :content="latestMessageParsed.description" />
+                        </div>
+                      </div>
+                      <div v-if="hasActiveSession" class="flex items-center gap-3 pt-3 border-t border-violet-200 dark:border-violet-800">
+                        <Button variant="primary" :loading="acceptPending" @click="emit('accept')">
+                          <CheckIcon class="size-4" />
+                          Accept &amp; apply to issue
+                        </Button>
+                        <Button variant="secondary" :disabled="acceptPending" @click="inputRef?.focus()">
+                          Request changes
+                        </Button>
+                      </div>
+                    </div>
+
                     <!-- Regular question — rendered as a prompt card -->
                     <div
                       v-else
@@ -649,9 +848,7 @@ const PHASE_ICONS = {
                           class="text-sm text-slate-700 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none"
                         >
                           <MarkdownContent
-                            :content="
-                              cleanContent(latestAssistantMessage.content)
-                            "
+                            :content="cleanContent(latestMessageParsed.text)"
                           />
                         </div>
                       </div>
@@ -659,7 +856,7 @@ const PHASE_ICONS = {
                   </div>
 
                   <!-- User's pending answer + waiting indicator -->
-                  <template v-if="waitingForResponse">
+                  <template v-if="(waitingForResponse || isGenerating) && !isViewingPastPhase">
                     <!-- Show the user's last message that's waiting for a response -->
                     <div
                       v-for="msg in currentPhaseMessages.filter(
@@ -683,6 +880,8 @@ const PHASE_ICONS = {
                         </p>
                       </div>
                     </div>
+
+                    <!-- Spinner while waiting for drone response -->
                     <div class="flex items-center gap-2.5 py-4">
                       <Spinner class="size-4 text-violet-400" />
                       <span class="text-sm text-slate-400 dark:text-slate-500"
@@ -752,49 +951,65 @@ const PHASE_ICONS = {
                   </div>
 
                   <!-- Normal input row -->
-                  <div v-else class="flex items-end gap-2">
-                    <Button
-                      v-if="canGoBack"
-                      variant="secondary"
-                      :disabled="advancePending"
-                      @click="
-                        emit(
-                          'advance-phase',
-                          REFINEMENT_PHASES[currentPhaseIndex - 1].id,
-                        )
-                      "
+                  <div v-else class="space-y-2">
+                    <!-- Hint when user clicked "Make changes" -->
+                    <p
+                      v-if="forceShowInput"
+                      class="text-xs text-slate-500 dark:text-slate-400"
                     >
-                      <ArrowLeftIcon class="size-4" />
-                    </Button>
+                      Describe what you'd like to change...
+                    </p>
 
-                    <textarea
-                      ref="inputRef"
-                      v-model="messageInput"
-                      rows="2"
-                      placeholder="Your answer..."
-                      class="flex-1 resize-none rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-                      :disabled="sendPending"
-                      @keydown="onKeydown"
-                    />
-
-                    <Button
-                      variant="secondary"
-                      :disabled="!messageInput.trim() || sendPending"
-                      :loading="sendPending"
-                      @click="sendMessage"
+                    <!-- Suggestion chips from the AI's listed options -->
+                    <div
+                      v-if="messageSuggestions.length > 0"
+                      class="flex flex-wrap gap-2"
                     >
-                      <SendIcon class="size-4" />
-                    </Button>
+                      <button
+                        v-for="suggestion in messageSuggestions"
+                        :key="suggestion"
+                        class="rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 hover:border-violet-400 dark:hover:border-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 dark:hover:text-violet-300 transition-colors cursor-pointer"
+                        :disabled="sendPending"
+                        @click="sendSuggestion(suggestion)"
+                      >
+                        {{ suggestion }}
+                      </button>
+                    </div>
 
-                    <Button
-                      v-if="showNextPhase"
-                      variant="primary"
-                      :loading="advancePending"
-                      @click="emit('advance-phase', null)"
-                    >
-                      {{ REFINEMENT_PHASES[currentPhaseIndex + 1]?.label }}
-                      <ChevronRightIcon class="size-4" />
-                    </Button>
+                    <div class="flex items-end gap-2">
+                      <Button
+                        v-if="canGoBack"
+                        variant="secondary"
+                        :disabled="advancePending"
+                        @click="
+                          emit(
+                            'advance-phase',
+                            REFINEMENT_PHASES[currentPhaseIndex - 1].id,
+                          )
+                        "
+                      >
+                        <ArrowLeftIcon class="size-4" />
+                      </Button>
+
+                      <textarea
+                        ref="inputRef"
+                        v-model="messageInput"
+                        rows="2"
+                        :placeholder="messageSuggestions.length > 0 ? 'Or type your own answer...' : 'Your answer...'"
+                        class="flex-1 resize-none rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                        :disabled="sendPending"
+                        @keydown="onKeydown"
+                      />
+
+                      <Button
+                        variant="secondary"
+                        :disabled="!messageInput.trim() || sendPending"
+                        :loading="sendPending"
+                        @click="sendMessage"
+                      >
+                        <SendIcon class="size-4" />
+                      </Button>
+                    </div>
                   </div>
                   <p
                     v-if="!isConfirmationQuestion || waitingForResponse"
