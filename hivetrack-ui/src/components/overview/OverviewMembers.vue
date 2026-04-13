@@ -1,12 +1,13 @@
 <!--
-  OverviewMembers — project members list with remove action.
+  OverviewMembers — project members list with add/remove actions.
 -->
 <script setup>
 import { computed, ref } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
-import { UsersIcon, Trash2Icon } from 'lucide-vue-next'
+import { UsersIcon, PlusIcon, Trash2Icon } from 'lucide-vue-next'
 import Badge from '@/components/ui/Badge.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+import AddMemberModal from '@/components/project/AddMemberModal.vue'
 import { fetchProject, removeProjectMember } from '@/api/projects'
 
 const props = defineProps({
@@ -22,6 +23,7 @@ const { data: project } = useQuery({
 
 const members = computed(() => project.value?.members ?? [])
 
+const showAddMemberModal = ref(false)
 const memberToRemove = ref(null)
 
 const { mutate: doRemoveMember, isPending: removeMemberPending } = useMutation({
@@ -34,11 +36,18 @@ const { mutate: doRemoveMember, isPending: removeMemberPending } = useMutation({
 </script>
 
 <template>
-  <section v-if="members.length">
+  <section>
     <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
       <UsersIcon class="size-4 text-slate-500 dark:text-slate-400" />
       Members
-      <span class="text-xs font-normal text-slate-500 dark:text-slate-400">{{ members.length }}</span>
+      <span v-if="members.length" class="text-xs font-normal text-slate-500 dark:text-slate-400">{{ members.length }}</span>
+      <button
+        class="ml-auto rounded-md p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors cursor-pointer"
+        title="Add member"
+        @click="showAddMemberModal = true"
+      >
+        <PlusIcon class="size-4" />
+      </button>
     </h2>
     <div class="flex flex-wrap gap-2">
       <div
@@ -58,6 +67,15 @@ const { mutate: doRemoveMember, isPending: removeMemberPending } = useMutation({
       </div>
     </div>
   </section>
+
+  <!-- Add member modal -->
+  <AddMemberModal
+    :open="showAddMemberModal"
+    :slug="slug"
+    :existing-members="members"
+    @close="showAddMemberModal = false"
+    @added="showAddMemberModal = false"
+  />
 
   <ConfirmDialog
     v-if="memberToRemove"
