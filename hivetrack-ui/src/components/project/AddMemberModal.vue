@@ -52,7 +52,7 @@ async function loadUsers() {
   loadingUsers.value = true
   try {
     const data = await apiFetch('/api/v1/users')
-    allUsers.value = data.users ?? data ?? []
+    allUsers.value = data.items ?? data.users ?? data ?? []
   } catch {
     allUsers.value = []
   } finally {
