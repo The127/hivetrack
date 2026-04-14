@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,7 +15,11 @@ import (
 	"github.com/the127/hivetrack/internal/repositories"
 )
 
-const SubjectRefinementResponse = "hivemind-refinement.response"
+const (
+	SubjectRefinementResponse = "hivemind-refinement.response"
+	refinementStreamName      = "hivemind-refinement"
+	refinementConsumerName    = "hivetrack-refinement-consumer"
+)
 
 // RefinementResponse is the message received from Hivemind via NATS.
 type RefinementResponse struct {
@@ -52,11 +57,7 @@ func NewNatsSubscriber(js jetstream.JetStream, newRepo func() repositories.Refin
 // Start begins consuming refinement responses in the background.
 // Cancel the context to stop the subscriber.
 func (s *NatsSubscriber) Start(ctx context.Context) error {
-	consumer, err := s.js.CreateOrUpdateConsumer(ctx, "hivemind-refinement", jetstream.ConsumerConfig{
-		Durable:       "hivetrack-refinement-consumer",
-		FilterSubject: SubjectRefinementResponse,
-		AckPolicy:     jetstream.AckExplicitPolicy,
-	})
+	consumer, err := s.ensureConsumer(ctx)
 	if err != nil {
 		return fmt.Errorf("creating NATS consumer: %w", err)
 	}
@@ -69,6 +70,18 @@ func (s *NatsSubscriber) Start(ctx context.Context) error {
 					return
 				}
 				s.logger.Error("fetching NATS message", zap.Error(err))
+				// NATS may have lost the consumer (restart, data loss, manual delete).
+				// Re-create it so the subscriber self-heals instead of looping on a
+				// ghost reference forever.
+				if errors.Is(err, jetstream.ErrConsumerNotFound) || errors.Is(err, jetstream.ErrStreamNotFound) {
+					newConsumer, rerr := s.ensureConsumer(ctx)
+					if rerr != nil {
+						s.logger.Error("recreating NATS consumer", zap.Error(rerr))
+					} else {
+						s.logger.Info("recreated NATS consumer after loss")
+						consumer = newConsumer
+					}
+				}
 				time.Sleep(time.Second)
 				continue
 			}
@@ -96,6 +109,31 @@ func (s *NatsSubscriber) Start(ctx context.Context) error {
 	}()
 
 	return nil
+}
+
+// ensureConsumer creates-or-updates the refinement consumer, re-creating the
+// underlying stream first if NATS has lost it (e.g. after a restart with
+// ephemeral storage). Both operations are idempotent.
+func (s *NatsSubscriber) ensureConsumer(ctx context.Context) (jetstream.Consumer, error) {
+	cfg := jetstream.ConsumerConfig{
+		Durable:       refinementConsumerName,
+		FilterSubject: SubjectRefinementResponse,
+		AckPolicy:     jetstream.AckExplicitPolicy,
+	}
+	consumer, err := s.js.CreateOrUpdateConsumer(ctx, refinementStreamName, cfg)
+	if err == nil {
+		return consumer, nil
+	}
+	if !errors.Is(err, jetstream.ErrStreamNotFound) {
+		return nil, err
+	}
+	if _, serr := s.js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
+		Name:     refinementStreamName,
+		Subjects: []string{refinementStreamName + ".>"},
+	}); serr != nil {
+		return nil, fmt.Errorf("recreating stream: %w", serr)
+	}
+	return s.js.CreateOrUpdateConsumer(ctx, refinementStreamName, cfg)
 }
 
 func (s *NatsSubscriber) handleMessage(ctx context.Context, msg jetstream.Msg) error {
