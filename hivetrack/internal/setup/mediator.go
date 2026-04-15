@@ -10,8 +10,9 @@ import (
 )
 
 // Mediator registers all command and query handlers and the mediator singleton.
+// broker notifies real-time subscribers of refinement session changes.
 // publisher is optional — when non-nil, refinement commands that depend on NATS are registered.
-func Mediator(dc *ioc.DependencyCollection, publisher ...commands.RefinementPublisher) {
+func Mediator(dc *ioc.DependencyCollection, broker *events.RefinementBroker, publisher ...commands.RefinementPublisher) {
 	m := mediatr.NewMediator()
 
 	// Event handlers
@@ -47,10 +48,11 @@ func Mediator(dc *ioc.DependencyCollection, publisher ...commands.RefinementPubl
 	mediatr.RegisterHandler(m, commands.HandleDeleteComment)
 	// Refinement commands (require Hivemind/NATS)
 	if len(publisher) > 0 && publisher[0] != nil {
-		mediatr.RegisterHandler(m, commands.NewStartRefinementSessionHandler(publisher[0]))
-		mediatr.RegisterHandler(m, commands.NewSendRefinementMessageHandler(publisher[0]))
-		mediatr.RegisterHandler(m, commands.HandleAcceptRefinementProposal(publisher[0]))
-		mediatr.RegisterHandler(m, commands.NewAdvanceRefinementPhaseHandler(publisher[0]))
+		notify := broker.Publish
+		mediatr.RegisterHandler(m, commands.NewStartRefinementSessionHandler(publisher[0], notify))
+		mediatr.RegisterHandler(m, commands.NewSendRefinementMessageHandler(publisher[0], notify))
+		mediatr.RegisterHandler(m, commands.HandleAcceptRefinementProposal(publisher[0], notify))
+		mediatr.RegisterHandler(m, commands.NewAdvanceRefinementPhaseHandler(publisher[0], notify))
 	}
 
 	// Queries

@@ -43,15 +43,19 @@ type RefinementProposal struct {
 type NatsSubscriber struct {
 	js          jetstream.JetStream
 	newRepo     func() repositories.RefinementRepository
+	notify      func(uuid.UUID)
 	logger      *zap.Logger
 	tokenBuffer *TokenBuffer // may be nil
 }
 
 // NewNatsSubscriber creates a subscriber. newRepo is called per message to get a fresh repository.
-func NewNatsSubscriber(js jetstream.JetStream, newRepo func() repositories.RefinementRepository, logger *zap.Logger, buf *TokenBuffer) *NatsSubscriber {
+// notify is invoked with the issue ID after a message has been stored so real-time
+// subscribers (e.g. SSE streams) can refetch the session.
+func NewNatsSubscriber(js jetstream.JetStream, newRepo func() repositories.RefinementRepository, notify func(uuid.UUID), logger *zap.Logger, buf *TokenBuffer) *NatsSubscriber {
 	return &NatsSubscriber{
 		js:          js,
 		newRepo:     newRepo,
+		notify:      notify,
 		logger:      logger,
 		tokenBuffer: buf,
 	}
@@ -180,6 +184,7 @@ func (s *NatsSubscriber) handleMessage(ctx context.Context, msg jetstream.Msg) e
 	if err := repo.AddMessage(ctx, refinementMsg); err != nil {
 		return fmt.Errorf("storing refinement response: %w", err)
 	}
+	s.notify(resp.IssueID)
 
 	if s.tokenBuffer != nil {
 		s.tokenBuffer.ClearPartialResponse(resp.SessionID)
@@ -193,6 +198,8 @@ func (s *NatsSubscriber) handleMessage(ctx context.Context, msg jetstream.Msg) e
 				zap.String("session_id", resp.SessionID.String()),
 				zap.Error(err),
 			)
+		} else {
+			s.notify(resp.IssueID)
 		}
 	}
 

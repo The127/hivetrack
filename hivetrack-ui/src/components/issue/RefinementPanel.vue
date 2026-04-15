@@ -16,6 +16,8 @@ import {
   ListOrderedIcon,
   ShieldAlertIcon,
   ClipboardCheckIcon,
+  AlertTriangleIcon,
+  RefreshCwIcon,
 } from "lucide-vue-next";
 import Button from "@/components/ui/Button.vue";
 import MarkdownContent from "@/components/ui/MarkdownContent.vue";
@@ -29,6 +31,7 @@ const props = defineProps({
   open: { type: Boolean, required: true },
   session: { type: Object, default: null },
   loading: { type: Boolean, default: false },
+  startPending: { type: Boolean, default: false },
   sendPending: { type: Boolean, default: false },
   acceptPending: { type: Boolean, default: false },
   advancePending: { type: Boolean, default: false },
@@ -111,7 +114,19 @@ onUnmounted(() => document.removeEventListener("keydown", onEscape));
 const hasActiveSession = computed(
   () => props.session && props.session.status === "active",
 );
+const isFailed = computed(() => props.session?.status === "failed");
 const messages = computed(() => props.session?.messages ?? []);
+
+// Last error content from Hivemind (shown in the failed-session recovery view).
+const lastErrorMessage = computed(() => {
+  for (let i = messages.value.length - 1; i >= 0; i--) {
+    const m = messages.value[i];
+    if (m.role === "assistant" && /^error:/i.test(m.content?.trim() ?? "")) {
+      return m.content;
+    }
+  }
+  return null;
+});
 
 // Messages grouped by phase
 function messagesForPhase(phaseId) {
@@ -427,6 +442,42 @@ watch(partialResponse, (val) => {
               <Button variant="primary" @click="emit('start')">
                 <SparklesIcon class="size-4" />
                 Start refinement
+              </Button>
+            </div>
+
+            <!-- Failed session: surface the error and let the user start over -->
+            <div
+              v-else-if="isFailed"
+              class="flex flex-col items-center justify-center py-16 text-center px-8"
+            >
+              <AlertTriangleIcon
+                class="size-10 text-amber-400 dark:text-amber-500 mb-4"
+              />
+              <h3
+                class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2"
+              >
+                Refinement failed
+              </h3>
+              <p
+                v-if="lastErrorMessage"
+                class="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-md"
+              >
+                {{ lastErrorMessage }}
+              </p>
+              <p
+                v-else
+                class="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-md"
+              >
+                The refinement agent stopped responding. Start a new session to
+                try again.
+              </p>
+              <Button
+                variant="primary"
+                :loading="startPending"
+                @click="emit('start')"
+              >
+                <RefreshCwIcon class="size-4" />
+                Start new refinement
               </Button>
             </div>
 

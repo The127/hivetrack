@@ -85,11 +85,12 @@ func main() {
 	dc := ioc.NewDependencyCollection()
 	setup.Database(dc, db)
 	setup.Services(dc, cfg)
+	broker := setup.Events(dc)
 	if nc != nil {
-		pub, _ := setup.Nats(dc, nc, js)
-		setup.Mediator(dc, pub)
+		pub := setup.Nats(dc, nc, js, broker)
+		setup.Mediator(dc, broker, pub)
 	} else {
-		setup.Mediator(dc)
+		setup.Mediator(dc, broker)
 	}
 
 	dp := dc.BuildProvider()

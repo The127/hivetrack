@@ -6,12 +6,14 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/The127/mediatr"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
 	"github.com/the127/hivetrack/internal/commands"
+	"github.com/the127/hivetrack/internal/events"
 	"github.com/the127/hivetrack/internal/infrastructure"
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/queries"
@@ -19,11 +21,12 @@ import (
 
 type RefinementHandler struct {
 	mediator    mediatr.Mediator
+	broker      *events.RefinementBroker
 	tokenBuffer *infrastructure.TokenBuffer // nil when Hivemind is disabled
 }
 
-func NewRefinementHandler(m mediatr.Mediator, buf *infrastructure.TokenBuffer) *RefinementHandler {
-	return &RefinementHandler{mediator: m, tokenBuffer: buf}
+func NewRefinementHandler(m mediatr.Mediator, broker *events.RefinementBroker, buf *infrastructure.TokenBuffer) *RefinementHandler {
+	return &RefinementHandler{mediator: m, broker: broker, tokenBuffer: buf}
 }
 
 func (h *RefinementHandler) StartSession(w http.ResponseWriter, r *http.Request) {
@@ -180,6 +183,70 @@ func (h *RefinementHandler) AdvancePhase(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	RespondJSON(w, http.StatusOK, result)
+}
+
+// StreamSession opens a Server-Sent Events stream that notifies the client
+// whenever the refinement session for this issue changes. The payload is just
+// an opaque "updated" nudge — the client is expected to refetch the session
+// through GetSession on every tick. Polling on the client side remains as a
+// safety net in case a tick is missed.
+func (h *RefinementHandler) StreamSession(w http.ResponseWriter, r *http.Request) {
+	issueID, err := h.resolveIssueID(r)
+	if err != nil {
+		RespondError(w, err)
+		return
+	}
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	// Disable proxy buffering (nginx in particular) so events arrive live.
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+
+	ch, unsub := h.broker.Subscribe(issueID)
+	defer unsub()
+
+	writeEvent := func(payload string) bool {
+		if _, err := fmt.Fprint(w, payload); err != nil {
+			return false
+		}
+		flusher.Flush()
+		return true
+	}
+
+	// Initial tick: the client connected and should fetch state once right away.
+	if !writeEvent("data: updated\n\n") {
+		return
+	}
+
+	heartbeat := time.NewTicker(25 * time.Second)
+	defer heartbeat.Stop()
+
+	ctx := r.Context()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case _, open := <-ch:
+			if !open {
+				return
+			}
+			if !writeEvent("data: updated\n\n") {
+				return
+			}
+		case <-heartbeat.C:
+			if !writeEvent(": ping\n\n") {
+				return
+			}
+		}
+	}
 }
 
 // resolveIssueID resolves the issue UUID from route params (slug + number).

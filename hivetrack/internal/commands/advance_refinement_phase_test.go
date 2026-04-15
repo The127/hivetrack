@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -44,7 +45,7 @@ func TestAdvanceRefinementPhase_NextPhase(t *testing.T) {
 	db, issue, _, pub := setupAdvancePhaseTest(t)
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
 
-	handler := commands.NewAdvanceRefinementPhaseHandler(pub)
+	handler := commands.NewAdvanceRefinementPhaseHandler(pub, func(uuid.UUID) {})
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 
 	result, err := handler(ctx, commands.AdvanceRefinementPhaseCommand{
@@ -67,7 +68,7 @@ func TestAdvanceRefinementPhase_AllPhasesSequentially(t *testing.T) {
 	db, issue, _, pub := setupAdvancePhaseTest(t)
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
 
-	handler := commands.NewAdvanceRefinementPhaseHandler(pub)
+	handler := commands.NewAdvanceRefinementPhaseHandler(pub, func(uuid.UUID) {})
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 
 	expected := []string{"main_scenario", "extensions", "acceptance_criteria"}
@@ -87,7 +88,7 @@ func TestAdvanceRefinementPhase_AlreadyAtLastPhase(t *testing.T) {
 	// Set to last phase
 	require.NoError(t, db.Refinements().UpdateSessionPhase(context.Background(), session.ID, models.RefinementPhaseBddScenarios))
 
-	handler := commands.NewAdvanceRefinementPhaseHandler(pub)
+	handler := commands.NewAdvanceRefinementPhaseHandler(pub, func(uuid.UUID) {})
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 
 	_, err := handler(ctx, commands.AdvanceRefinementPhaseCommand{
@@ -104,7 +105,7 @@ func TestAdvanceRefinementPhase_Regression(t *testing.T) {
 	// Advance to extensions
 	require.NoError(t, db.Refinements().UpdateSessionPhase(context.Background(), session.ID, models.RefinementPhaseExtensions))
 
-	handler := commands.NewAdvanceRefinementPhaseHandler(pub)
+	handler := commands.NewAdvanceRefinementPhaseHandler(pub, func(uuid.UUID) {})
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 
 	result, err := handler(ctx, commands.AdvanceRefinementPhaseCommand{
@@ -124,7 +125,7 @@ func TestAdvanceRefinementPhase_InvalidTargetPhase(t *testing.T) {
 	db, issue, _, pub := setupAdvancePhaseTest(t)
 	actor := models.NewUser("sub1", "test@example.com", "test@example.com")
 
-	handler := commands.NewAdvanceRefinementPhaseHandler(pub)
+	handler := commands.NewAdvanceRefinementPhaseHandler(pub, func(uuid.UUID) {})
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 
 	_, err := handler(ctx, commands.AdvanceRefinementPhaseCommand{
@@ -154,7 +155,7 @@ func TestAdvanceRefinementPhase_NoActiveSession(t *testing.T) {
 	require.NoError(t, db.SaveChanges(context.Background()))
 
 	pub := &spyPublisher{}
-	handler := commands.NewAdvanceRefinementPhaseHandler(pub)
+	handler := commands.NewAdvanceRefinementPhaseHandler(pub, func(uuid.UUID) {})
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 
 	_, err := handler(ctx, commands.AdvanceRefinementPhaseCommand{
@@ -179,7 +180,7 @@ func TestAdvanceRefinementPhase_PublishesCorrectPhase(t *testing.T) {
 	msg.SessionID = session.ID
 	require.NoError(t, db.Refinements().AddMessage(context.Background(), msg))
 
-	handler := commands.NewAdvanceRefinementPhaseHandler(pub)
+	handler := commands.NewAdvanceRefinementPhaseHandler(pub, func(uuid.UUID) {})
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 
 	result, err := handler(ctx, commands.AdvanceRefinementPhaseCommand{

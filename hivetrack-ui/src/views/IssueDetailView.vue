@@ -311,6 +311,7 @@ const isTerminal = computed(() =>
       :open="refinement.isOpen.value"
       :session="refinement.session.value"
       :loading="refinement.sessionLoading.value"
+      :start-pending="refinement.startPending.value"
       :send-pending="refinement.sendPending.value"
       :accept-pending="refinement.acceptPending.value"
       :advance-pending="refinement.advancePending.value"

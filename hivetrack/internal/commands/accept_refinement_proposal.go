@@ -17,7 +17,9 @@ type AcceptRefinementProposalCommand struct {
 
 type AcceptRefinementProposalResult struct{}
 
-func HandleAcceptRefinementProposal(publisher RefinementPublisher) func(context.Context, AcceptRefinementProposalCommand) (*AcceptRefinementProposalResult, error) {
+// HandleAcceptRefinementProposal returns a handler that depends on a RefinementPublisher.
+// notify is invoked post-commit so real-time subscribers can refetch the session.
+func HandleAcceptRefinementProposal(publisher RefinementPublisher, notify func(uuid.UUID)) func(context.Context, AcceptRefinementProposalCommand) (*AcceptRefinementProposalResult, error) {
 	return func(ctx context.Context, cmd AcceptRefinementProposalCommand) (*AcceptRefinementProposalResult, error) {
 		db := repositories.GetDbContext(ctx)
 
@@ -71,6 +73,7 @@ func HandleAcceptRefinementProposal(publisher RefinementPublisher) func(context.
 		if err := db.SaveChanges(ctx); err != nil {
 			return nil, fmt.Errorf("saving changes: %w", err)
 		}
+		notify(cmd.IssueID)
 
 		// Signal Hivemind to clean up its session (best-effort, don't fail the accept)
 		_ = publisher.PublishRefinementAccept(ctx, session.ID)
