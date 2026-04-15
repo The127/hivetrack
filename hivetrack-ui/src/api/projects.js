@@ -21,3 +21,9 @@ export const deleteProject = (id) =>
 
 export const removeProjectMember = (slug, userId) =>
   apiFetch(`/api/v1/projects/${slug}/members/${userId}`, { method: 'DELETE' })
+
+export const addProjectMember = (slug, data) =>
+  apiFetch(`/api/v1/projects/${slug}/members`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
