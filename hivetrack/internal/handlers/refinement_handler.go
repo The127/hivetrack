@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/The127/mediatr"
@@ -13,17 +14,19 @@ import (
 
 	"github.com/the127/hivetrack/internal/commands"
 	"github.com/the127/hivetrack/internal/events"
+	"github.com/the127/hivetrack/internal/infrastructure"
 	"github.com/the127/hivetrack/internal/models"
 	"github.com/the127/hivetrack/internal/queries"
 )
 
 type RefinementHandler struct {
-	mediator mediatr.Mediator
-	broker   *events.RefinementBroker
+	mediator    mediatr.Mediator
+	broker      *events.RefinementBroker
+	tokenBuffer *infrastructure.TokenBuffer // nil when Hivemind is disabled
 }
 
-func NewRefinementHandler(m mediatr.Mediator, broker *events.RefinementBroker) *RefinementHandler {
-	return &RefinementHandler{mediator: m, broker: broker}
+func NewRefinementHandler(m mediatr.Mediator, broker *events.RefinementBroker, buf *infrastructure.TokenBuffer) *RefinementHandler {
+	return &RefinementHandler{mediator: m, broker: broker, tokenBuffer: buf}
 }
 
 func (h *RefinementHandler) StartSession(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +99,49 @@ func (h *RefinementHandler) GetSession(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("null"))
 		return
 	}
+	if h.tokenBuffer != nil {
+		result.PartialResponse = h.tokenBuffer.Get(result.ID)
+		result.IsGenerating = h.tokenBuffer.IsGenerating(result.ID)
+	}
 	RespondJSON(w, http.StatusOK, result)
+}
+
+// StreamToken receives a partial token chunk from Hivemind and appends it to
+// the in-memory buffer for the given session inbox.
+//
+// The inbox has the format "session-{uuid}" as set by the Hivemind runner.
+func (h *RefinementHandler) StreamToken(w http.ResponseWriter, r *http.Request) {
+	if h.tokenBuffer == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	inbox := mux.Vars(r)["inbox"]
+	sessionID, err := inboxToSessionID(inbox)
+	if err != nil {
+		RespondError(w, fmt.Errorf("%w: invalid inbox %q", models.ErrBadRequest, inbox))
+		return
+	}
+
+	var body struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Token == "" {
+		RespondError(w, models.ErrBadRequest)
+		return
+	}
+
+	h.tokenBuffer.Append(sessionID, body.Token)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// inboxToSessionID parses a session UUID from an inbox string like "session-{uuid}".
+func inboxToSessionID(inbox string) (uuid.UUID, error) {
+	const prefix = "session-"
+	if !strings.HasPrefix(inbox, prefix) {
+		return uuid.UUID{}, fmt.Errorf("inbox %q does not start with %q", inbox, prefix)
+	}
+	return uuid.Parse(strings.TrimPrefix(inbox, prefix))
 }
 
 func (h *RefinementHandler) AcceptProposal(w http.ResponseWriter, r *http.Request) {

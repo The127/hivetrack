@@ -17,13 +17,15 @@ type GetRefinementSessionQuery struct {
 }
 
 type RefinementSessionDetail struct {
-	ID           uuid.UUID                      `json:"id"`
-	IssueID      uuid.UUID                      `json:"issue_id"`
-	Status       models.RefinementSessionStatus `json:"status"`
-	CurrentPhase models.RefinementPhase         `json:"current_phase"`
-	Messages     []RefinementMessageDetail      `json:"messages"`
-	CreatedAt    time.Time                      `json:"created_at"`
-	UpdatedAt    time.Time                      `json:"updated_at"`
+	ID              uuid.UUID                      `json:"id"`
+	IssueID         uuid.UUID                      `json:"issue_id"`
+	Status          models.RefinementSessionStatus `json:"status"`
+	CurrentPhase    models.RefinementPhase         `json:"current_phase"`
+	Messages        []RefinementMessageDetail      `json:"messages"`
+	CreatedAt       time.Time                      `json:"created_at"`
+	UpdatedAt       time.Time                      `json:"updated_at"`
+	PartialResponse string                         `json:"partial_response"`
+	IsGenerating    bool                           `json:"is_generating"`
 }
 
 type RefinementMessageDetail struct {
@@ -34,6 +36,7 @@ type RefinementMessageDetail struct {
 	Phase       models.RefinementPhase       `json:"phase"`
 	Proposal    *models.RefinementProposal   `json:"proposal,omitempty"`
 	PhaseData   map[string]interface{}       `json:"phase_data,omitempty"`
+	Suggestions []string                     `json:"suggestions,omitempty"`
 	CreatedAt   time.Time                    `json:"created_at"`
 }
 
@@ -79,6 +82,7 @@ func HandleGetRefinementSession(ctx context.Context, q GetRefinementSessionQuery
 			Phase:       m.Phase,
 			Proposal:    m.Proposal,
 			PhaseData:   m.PhaseData,
+			Suggestions: m.Suggestions,
 			CreatedAt:   m.CreatedAt,
 		}
 	}

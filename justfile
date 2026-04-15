@@ -96,23 +96,90 @@ ui-dev:
 ui-build:
     cd hivetrack-ui && npm run build
 
-# Run Playwright E2E tests (requires Hivetrack backend, Hivemind runner, and mock drone running)
+# Start services needed for E2E tests (idempotent — skips already-running services)
+_e2e-services:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+    [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+    HIVEMIND_DIR="${HIVEMIND_DIR:-$HOME/code/github.com/The127/hivemind}"
+
+    # Start postgres + keyline
+    just dev-deps
+
+    # Start hivetrack backend
+    if ! lsof -i :8086 -sTCP:LISTEN -t >/dev/null 2>&1; then
+        echo "Starting hivetrack backend..."
+        just run >/tmp/hivetrack-e2e.log 2>&1 &
+        until lsof -i :8086 -sTCP:LISTEN -t >/dev/null 2>&1; do sleep 1; done
+        echo "Backend ready."
+    fi
+
+    # Start frontend dev server
+    if ! lsof -i :5173 -sTCP:LISTEN -t >/dev/null 2>&1; then
+        echo "Starting frontend dev server..."
+        (cd hivetrack-ui && nvm use 2>/dev/null || true && [ -d node_modules ] || npm install && npm run dev) >/tmp/hivetrack-ui-e2e.log 2>&1 &
+        until lsof -i :5173 -sTCP:LISTEN -t >/dev/null 2>&1; do sleep 1; done
+        echo "Frontend ready."
+    fi
+
+    # Start hivemind + a Claude drone registered for e2e-test (for integration tests)
+    if [ -f "$HIVEMIND_DIR/justfile" ]; then
+        if ! lsof -i :50051 -sTCP:LISTEN -t >/dev/null 2>&1; then
+            echo "Starting hivemind..."
+            docker compose -f "$HIVEMIND_DIR/compose.yml" up hivemind -d
+            until lsof -i :50051 -sTCP:LISTEN -t >/dev/null 2>&1; do sleep 1; done
+            echo "Hivemind ready."
+        fi
+        echo "Waiting for hivemind management API..."
+        until curl -sf http://localhost:8080/api/v1/drones >/dev/null 2>&1; do sleep 1; done
+        echo "Registering e2e drone for e2e-test project..."
+        E2E_TOKEN=$(curl -sf -X POST http://localhost:8080/api/v1/drones/tokens \
+          -H "Content-Type: application/json" \
+          -d '{"project_slug":"e2e-test","capabilities":["refinement"],"max_concurrency":1}' \
+          | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
+        echo "Starting Claude drone for e2e-test..."
+        just -f "$HIVEMIND_DIR/justfile" claude-drone "$E2E_TOKEN" "e2e-claude-drone" "localhost:50051" >/tmp/hivemind-e2e-drone.log 2>&1 &
+        echo "Drone started (PID $!)."
+    else
+        echo "Warning: HIVEMIND_DIR=$HIVEMIND_DIR not found — integration tests will be skipped."
+    fi
+
+# Run Playwright E2E tests — starts all required services if not already running
 ui-e2e:
     #!/usr/bin/env bash
     set -euo pipefail
+    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+    [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+    just _e2e-services
     cd hivetrack-ui
+    nvm use 2>/dev/null || true
     [ -d node_modules ] || npm install
     npx playwright install --with-deps chromium 2>/dev/null || true
     npm run e2e
 
-# Run Playwright E2E tests with interactive UI
+# Run Playwright E2E tests with interactive UI — starts all required services if not already running
 ui-e2e-ui:
     #!/usr/bin/env bash
     set -euo pipefail
+    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+    [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+    just _e2e-services
     cd hivetrack-ui
+    nvm use 2>/dev/null || true
     [ -d node_modules ] || npm install
     npx playwright install --with-deps chromium 2>/dev/null || true
     npm run e2e:ui
+
+# Open the Playwright HTML report from the last E2E run
+ui-e2e-report:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+    [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+    cd hivetrack-ui
+    nvm use 2>/dev/null || true
+    npx playwright show-report
 
 # Run frontend type checking
 ui-check:

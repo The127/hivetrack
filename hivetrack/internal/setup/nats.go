@@ -34,13 +34,19 @@ func Nats(dc *ioc.DependencyCollection, nc *nats.Conn, js jetstream.JetStream, b
 		return pub
 	})
 
+	buf := infrastructure.NewTokenBuffer()
+
+	ioc.RegisterSingleton(dc, func(_ *ioc.DependencyProvider) *infrastructure.TokenBuffer {
+		return buf
+	})
+
 	ioc.RegisterSingleton(dc, func(dp *ioc.DependencyProvider) *infrastructure.NatsSubscriber {
 		logger := ioc.GetDependency[*zap.Logger](dp)
 		sqlDB := ioc.GetDependency[*sql.DB](dp)
 		newRepo := func() repositories.RefinementRepository {
 			return postgres.NewDbContext(sqlDB).Refinements()
 		}
-		return infrastructure.NewNatsSubscriber(js, newRepo, broker.Publish, logger)
+		return infrastructure.NewNatsSubscriber(js, newRepo, broker.Publish, logger, buf)
 	})
 
 	return &refinementPublisherAdapter{pub: pub}

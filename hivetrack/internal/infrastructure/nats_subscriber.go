@@ -23,13 +23,14 @@ const (
 
 // RefinementResponse is the message received from Hivemind via NATS.
 type RefinementResponse struct {
-	SessionID uuid.UUID              `json:"session_id"`
-	IssueID   uuid.UUID              `json:"issue_id"`
-	Phase     string                 `json:"phase"`
-	Type      string                 `json:"type"` // "question", "proposal", or "phase_result"
-	Content   string                 `json:"content"`
-	Proposal  *RefinementProposal    `json:"proposal"`
-	PhaseData map[string]interface{} `json:"phase_data"`
+	SessionID   uuid.UUID              `json:"session_id"`
+	IssueID     uuid.UUID              `json:"issue_id"`
+	Phase       string                 `json:"phase"`
+	Type        string                 `json:"type"` // "question", "proposal", or "phase_result"
+	Content     string                 `json:"content"`
+	Proposal    *RefinementProposal    `json:"proposal"`
+	PhaseData   map[string]interface{} `json:"phase_data"`
+	Suggestions []string               `json:"suggestions"`
 }
 
 // RefinementProposal is the proposed title/description from Hivemind.
@@ -40,21 +41,23 @@ type RefinementProposal struct {
 
 // NatsSubscriber listens for Hivemind refinement responses and stores them.
 type NatsSubscriber struct {
-	js      jetstream.JetStream
-	newRepo func() repositories.RefinementRepository
-	notify  func(uuid.UUID)
-	logger  *zap.Logger
+	js          jetstream.JetStream
+	newRepo     func() repositories.RefinementRepository
+	notify      func(uuid.UUID)
+	logger      *zap.Logger
+	tokenBuffer *TokenBuffer // may be nil
 }
 
 // NewNatsSubscriber creates a subscriber. newRepo is called per message to get a fresh repository.
 // notify is invoked with the issue ID after a message has been stored so real-time
 // subscribers (e.g. SSE streams) can refetch the session.
-func NewNatsSubscriber(js jetstream.JetStream, newRepo func() repositories.RefinementRepository, notify func(uuid.UUID), logger *zap.Logger) *NatsSubscriber {
+func NewNatsSubscriber(js jetstream.JetStream, newRepo func() repositories.RefinementRepository, notify func(uuid.UUID), logger *zap.Logger, buf *TokenBuffer) *NatsSubscriber {
 	return &NatsSubscriber{
-		js:      js,
-		newRepo: newRepo,
-		notify:  notify,
-		logger:  logger,
+		js:          js,
+		newRepo:     newRepo,
+		notify:      notify,
+		logger:      logger,
+		tokenBuffer: buf,
 	}
 }
 
@@ -175,12 +178,17 @@ func (s *NatsSubscriber) handleMessage(ctx context.Context, msg jetstream.Msg) e
 		proposal,
 	)
 	refinementMsg.PhaseData = resp.PhaseData
+	refinementMsg.Suggestions = resp.Suggestions
 
 	repo := s.newRepo()
 	if err := repo.AddMessage(ctx, refinementMsg); err != nil {
 		return fmt.Errorf("storing refinement response: %w", err)
 	}
 	s.notify(resp.IssueID)
+
+	if s.tokenBuffer != nil {
+		s.tokenBuffer.ClearPartialResponse(resp.SessionID)
+	}
 
 	// On terminal agent errors (e.g. Claude 401), transition the session out
 	// of 'active' so the UI stops polling and the user can start a new one.
