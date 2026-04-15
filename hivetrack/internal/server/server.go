@@ -11,6 +11,7 @@ import (
 
 	"github.com/the127/hivetrack/internal/authentication"
 	"github.com/the127/hivetrack/internal/config"
+	"github.com/the127/hivetrack/internal/events"
 	"github.com/the127/hivetrack/internal/handlers"
 	"github.com/the127/hivetrack/internal/middlewares"
 	"github.com/the127/hivetrack/internal/repositories"
@@ -22,6 +23,7 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 	logger := ioc.GetDependency[*zap.Logger](dp)
 	verifier := ioc.GetDependency[*authentication.OIDCVerifier](dp)
 	med := ioc.GetDependency[mediatr.Mediator](dp)
+	refinementBroker := ioc.GetDependency[*events.RefinementBroker](dp)
 
 	// Wire the handlers package logger for error logging in RespondError
 	handlers.SetLogger(logger)
@@ -77,10 +79,11 @@ func New(dp *ioc.DependencyProvider) http.Handler {
 	protected.HandleFunc("/me/created-issues", issueH.GetMyCreatedIssues).Methods("GET")
 
 	// Refinement (Hivemind integration)
-	refinementH := handlers.NewRefinementHandler(med)
+	refinementH := handlers.NewRefinementHandler(med, refinementBroker)
 	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/start", refinementH.StartSession).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/message", refinementH.SendMessage).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/session", refinementH.GetSession).Methods("GET")
+	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/stream", refinementH.StreamSession).Methods("GET")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/accept", refinementH.AcceptProposal).Methods("POST")
 	protected.HandleFunc("/projects/{slug}/issues/{number}/refinement/advance-phase", refinementH.AdvancePhase).Methods("POST")
 

@@ -42,14 +42,18 @@ type RefinementProposal struct {
 type NatsSubscriber struct {
 	js      jetstream.JetStream
 	newRepo func() repositories.RefinementRepository
+	notify  func(uuid.UUID)
 	logger  *zap.Logger
 }
 
 // NewNatsSubscriber creates a subscriber. newRepo is called per message to get a fresh repository.
-func NewNatsSubscriber(js jetstream.JetStream, newRepo func() repositories.RefinementRepository, logger *zap.Logger) *NatsSubscriber {
+// notify is invoked with the issue ID after a message has been stored so real-time
+// subscribers (e.g. SSE streams) can refetch the session.
+func NewNatsSubscriber(js jetstream.JetStream, newRepo func() repositories.RefinementRepository, notify func(uuid.UUID), logger *zap.Logger) *NatsSubscriber {
 	return &NatsSubscriber{
 		js:      js,
 		newRepo: newRepo,
+		notify:  notify,
 		logger:  logger,
 	}
 }
@@ -176,6 +180,7 @@ func (s *NatsSubscriber) handleMessage(ctx context.Context, msg jetstream.Msg) e
 	if err := repo.AddMessage(ctx, refinementMsg); err != nil {
 		return fmt.Errorf("storing refinement response: %w", err)
 	}
+	s.notify(resp.IssueID)
 
 	// On terminal agent errors (e.g. Claude 401), transition the session out
 	// of 'active' so the UI stops polling and the user can start a new one.
@@ -185,6 +190,8 @@ func (s *NatsSubscriber) handleMessage(ctx context.Context, msg jetstream.Msg) e
 				zap.String("session_id", resp.SessionID.String()),
 				zap.Error(err),
 			)
+		} else {
+			s.notify(resp.IssueID)
 		}
 	}
 

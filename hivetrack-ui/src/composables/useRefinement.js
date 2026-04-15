@@ -1,5 +1,6 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { fetchEventSource } from '@microsoft/fetch-event-source'
 import {
   startRefinementSession,
   sendRefinementMessage,
@@ -7,6 +8,7 @@ import {
   acceptRefinementProposal,
   advanceRefinementPhase,
 } from '@/api/refinement'
+import { useAuth } from '@/composables/useAuth'
 
 export const REFINEMENT_PHASES = [
   { id: 'actor_goal', label: 'Actor & Goal' },
@@ -17,8 +19,10 @@ export const REFINEMENT_PHASES = [
 
 export function useRefinement(slug, number) {
   const queryClient = useQueryClient()
+  const { getAccessToken } = useAuth()
   const isOpen = ref(false)
   let pollInterval = null
+  let streamCtrl = null
 
   const sessionQueryKey = ['refinement-session', slug, number]
 
@@ -38,6 +42,7 @@ export function useRefinement(slug, number) {
     onSuccess: () => {
       refetchSession()
       startPolling()
+      startStream()
     },
   })
 
@@ -52,6 +57,7 @@ export function useRefinement(slug, number) {
     mutationFn: () => acceptRefinementProposal(slug.value, number.value),
     onSuccess: () => {
       stopPolling()
+      stopStream()
       isOpen.value = false
       refetchSession()
       queryClient.invalidateQueries({ queryKey: ['issue', slug.value, number.value] })
@@ -71,11 +77,13 @@ export function useRefinement(slug, number) {
   function open() {
     isOpen.value = true
     startPolling()
+    startStream()
   }
 
   function close() {
     isOpen.value = false
     stopPolling()
+    stopStream()
   }
 
   function startPolling() {
@@ -94,17 +102,53 @@ export function useRefinement(slug, number) {
     }
   }
 
+  function startStream() {
+    stopStream()
+    const ctrl = new AbortController()
+    streamCtrl = ctrl
+    const token = getAccessToken()
+    fetchEventSource(
+      `/api/v1/projects/${slug.value}/issues/${number.value}/refinement/stream`,
+      {
+        method: 'GET',
+        signal: ctrl.signal,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        openWhenHidden: true,
+        onmessage() {
+          refetchSession()
+        },
+        onerror(err) {
+          // Return a retry delay (ms) so the lib reconnects automatically.
+          // Polling is the safety net if this stays broken.
+          if (ctrl.signal.aborted) throw err
+          return 3000
+        },
+      },
+    ).catch(() => {
+      // Swallow — stream is best-effort, polling keeps data flowing.
+    })
+  }
+
+  function stopStream() {
+    if (streamCtrl) {
+      streamCtrl.abort()
+      streamCtrl = null
+    }
+  }
+
   watch(
     () => session.value?.status,
     (status) => {
       if (status === 'completed' || status === 'abandoned' || status === 'failed') {
         stopPolling()
+        stopStream()
       }
     },
   )
 
   onUnmounted(() => {
     stopPolling()
+    stopStream()
   })
 
   return {

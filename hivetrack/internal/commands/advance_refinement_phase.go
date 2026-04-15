@@ -19,7 +19,9 @@ type AdvanceRefinementPhaseResult struct {
 	Phase string `json:"phase"`
 }
 
-func NewAdvanceRefinementPhaseHandler(publisher RefinementPublisher) func(context.Context, AdvanceRefinementPhaseCommand) (*AdvanceRefinementPhaseResult, error) {
+// NewAdvanceRefinementPhaseHandler returns a handler that depends on a RefinementPublisher.
+// notify is invoked post-commit so real-time subscribers can refetch the session.
+func NewAdvanceRefinementPhaseHandler(publisher RefinementPublisher, notify func(uuid.UUID)) func(context.Context, AdvanceRefinementPhaseCommand) (*AdvanceRefinementPhaseResult, error) {
 	return func(ctx context.Context, cmd AdvanceRefinementPhaseCommand) (*AdvanceRefinementPhaseResult, error) {
 		db := repositories.GetDbContext(ctx)
 
@@ -51,6 +53,7 @@ func NewAdvanceRefinementPhaseHandler(publisher RefinementPublisher) func(contex
 		if err := db.Refinements().UpdateSessionPhase(ctx, session.ID, newPhase); err != nil {
 			return nil, fmt.Errorf("updating session phase: %w", err)
 		}
+		notify(cmd.IssueID)
 
 		// Load full message history
 		_, messages, err := db.Refinements().GetSessionWithMessages(ctx, session.ID)
