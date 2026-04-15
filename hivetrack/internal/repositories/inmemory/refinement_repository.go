@@ -36,6 +36,19 @@ func (r *RefinementRepository) GetActiveSession(_ context.Context, issueID uuid.
 	return nil, nil
 }
 
+func (r *RefinementRepository) GetLatestSession(_ context.Context, issueID uuid.UUID) (*models.RefinementSession, error) {
+	var latest *models.RefinementSession
+	for _, s := range r.sessions {
+		if s.IssueID != issueID {
+			continue
+		}
+		if latest == nil || s.CreatedAt.After(latest.CreatedAt) {
+			latest = s
+		}
+	}
+	return latest, nil
+}
+
 func (r *RefinementRepository) GetSessionWithMessages(_ context.Context, sessionID uuid.UUID) (*models.RefinementSession, []*models.RefinementMessage, error) {
 	session, ok := r.sessions[sessionID]
 	if !ok {
@@ -66,6 +79,19 @@ func (r *RefinementRepository) CompleteSession(_ context.Context, sessionID uuid
 		return models.ErrNotFound
 	}
 	session.Status = models.RefinementSessionCompleted
+	session.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *RefinementRepository) FailSession(_ context.Context, sessionID uuid.UUID) error {
+	session, ok := r.sessions[sessionID]
+	if !ok {
+		return models.ErrNotFound
+	}
+	if session.Status != models.RefinementSessionActive {
+		return models.ErrNotFound
+	}
+	session.Status = models.RefinementSessionFailed
 	session.UpdatedAt = time.Now()
 	return nil
 }

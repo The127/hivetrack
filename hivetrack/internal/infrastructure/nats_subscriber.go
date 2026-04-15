@@ -185,6 +185,17 @@ func (s *NatsSubscriber) handleMessage(ctx context.Context, msg jetstream.Msg) e
 		s.tokenBuffer.ClearPartialResponse(resp.SessionID)
 	}
 
+	// On terminal agent errors (e.g. Claude 401), transition the session out
+	// of 'active' so the UI stops polling and the user can start a new one.
+	if resp.Type == "error" {
+		if err := repo.FailSession(ctx, resp.SessionID); err != nil {
+			s.logger.Warn("failing refinement session",
+				zap.String("session_id", resp.SessionID.String()),
+				zap.Error(err),
+			)
+		}
+	}
+
 	s.logger.Info("stored refinement response",
 		zap.String("session_id", resp.SessionID.String()),
 		zap.String("type", resp.Type),

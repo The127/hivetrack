@@ -59,9 +59,9 @@ func HandleGetRefinementSession(ctx context.Context, q GetRefinementSessionQuery
 		return nil, fmt.Errorf("issue #%d: %w", q.IssueNumber, models.ErrNotFound)
 	}
 
-	session, err := db.Refinements().GetActiveSession(ctx, issue.GetId())
+	session, err := db.Refinements().GetLatestSession(ctx, issue.GetId())
 	if err != nil {
-		return nil, fmt.Errorf("getting active session: %w", err)
+		return nil, fmt.Errorf("getting latest session: %w", err)
 	}
 	if session == nil {
 		return nil, nil

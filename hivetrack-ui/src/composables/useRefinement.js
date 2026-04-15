@@ -97,7 +97,7 @@ export function useRefinement(slug, number) {
   watch(
     () => session.value?.status,
     (status) => {
-      if (status === 'completed' || status === 'abandoned') {
+      if (status === 'completed' || status === 'abandoned' || status === 'failed') {
         stopPolling()
       }
     },

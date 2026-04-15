@@ -305,8 +305,10 @@ type AuditLogRepository interface {
 type RefinementRepository interface {
 	CreateSession(ctx context.Context, session *models.RefinementSession) error
 	GetActiveSession(ctx context.Context, issueID uuid.UUID) (*models.RefinementSession, error)
+	GetLatestSession(ctx context.Context, issueID uuid.UUID) (*models.RefinementSession, error)
 	GetSessionWithMessages(ctx context.Context, sessionID uuid.UUID) (*models.RefinementSession, []*models.RefinementMessage, error)
 	AddMessage(ctx context.Context, msg *models.RefinementMessage) error
 	CompleteSession(ctx context.Context, sessionID uuid.UUID) error
+	FailSession(ctx context.Context, sessionID uuid.UUID) error
 	UpdateSessionPhase(ctx context.Context, sessionID uuid.UUID, phase models.RefinementPhase) error
 }
