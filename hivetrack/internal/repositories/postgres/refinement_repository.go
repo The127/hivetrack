@@ -47,6 +47,17 @@ func (r *RefinementRepository) GetActiveSession(ctx context.Context, issueID uui
 	return scanRefinementSession(row)
 }
 
+func (r *RefinementRepository) GetLatestSession(ctx context.Context, issueID uuid.UUID) (*models.RefinementSession, error) {
+	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
+		`SELECT id, issue_id, status, current_phase, created_at, updated_at
+		 FROM refinement_sessions
+		 WHERE issue_id = $1
+		 ORDER BY created_at DESC
+		 LIMIT 1`, issueID)
+
+	return scanRefinementSession(row)
+}
+
 func (r *RefinementRepository) GetSessionWithMessages(ctx context.Context, sessionID uuid.UUID) (*models.RefinementSession, []*models.RefinementMessage, error) {
 	// Get session
 	row := r.ctx.queryContext(ctx).QueryRowContext(ctx,
@@ -129,6 +140,23 @@ func (r *RefinementRepository) CompleteSession(ctx context.Context, sessionID uu
 		)
 		if err != nil {
 			return fmt.Errorf("completing refinement session: %w", err)
+		}
+		rows, _ := result.RowsAffected()
+		if rows == 0 {
+			return fmt.Errorf("refinement session %s: %w", sessionID, models.ErrNotFound)
+		}
+		return nil
+	})
+}
+
+func (r *RefinementRepository) FailSession(ctx context.Context, sessionID uuid.UUID) error {
+	return r.ctx.execDirect(ctx, func(tx *sql.Tx) error {
+		result, err := tx.ExecContext(ctx,
+			`UPDATE refinement_sessions SET status = 'failed', updated_at = $1 WHERE id = $2 AND status = 'active'`,
+			time.Now(), sessionID,
+		)
+		if err != nil {
+			return fmt.Errorf("failing refinement session: %w", err)
 		}
 		rows, _ := result.RowsAffected()
 		if rows == 0 {

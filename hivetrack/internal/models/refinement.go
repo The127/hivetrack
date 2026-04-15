@@ -14,6 +14,7 @@ const (
 	RefinementSessionActive    RefinementSessionStatus = "active"
 	RefinementSessionCompleted RefinementSessionStatus = "completed"
 	RefinementSessionAbandoned RefinementSessionStatus = "abandoned"
+	RefinementSessionFailed    RefinementSessionStatus = "failed"
 )
 
 type RefinementMessageRole string
