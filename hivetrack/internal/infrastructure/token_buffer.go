@@ -13,9 +13,9 @@ import (
 // Tokens are keyed by session UUID and accumulated until ClearPartialResponse
 // is called (which happens when the final structured message arrives).
 type TokenBuffer struct {
-	mu      sync.Mutex
-	tokens  map[uuid.UUID]*strings.Builder
-	active  map[uuid.UUID]bool
+	mu     sync.Mutex
+	tokens map[uuid.UUID]*strings.Builder
+	active map[uuid.UUID]bool
 }
 
 func NewTokenBuffer() *TokenBuffer {
