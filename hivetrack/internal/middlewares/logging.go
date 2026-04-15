@@ -17,6 +17,15 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
+func (rw *responseWriter) Flush() {
+	if f, ok := rw.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// Ensure responseWriter implements http.Flusher so SSE handlers can flush.
+var _ http.Flusher = (*responseWriter)(nil)
+
 // LoggingMiddleware logs each HTTP request with method, path, status and duration.
 // 5xx responses are logged at Error level, 4xx at Warn, everything else at Info.
 func LoggingMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
