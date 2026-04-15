@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/the127/hivetrack/internal/commands"
+	"github.com/the127/hivetrack/internal/events"
 	"github.com/the127/hivetrack/internal/infrastructure"
 	"github.com/the127/hivetrack/internal/repositories"
 	"github.com/the127/hivetrack/internal/repositories/postgres"
@@ -16,7 +17,9 @@ import (
 
 // Nats registers NATS-related singletons and returns a RefinementPublisher
 // for use in Mediator registration. Only call when hivemind is enabled.
-func Nats(dc *ioc.DependencyCollection, nc *nats.Conn, js jetstream.JetStream) commands.RefinementPublisher {
+// broker is used to notify real-time subscribers when the NATS consumer
+// stores an inbound refinement reply.
+func Nats(dc *ioc.DependencyCollection, nc *nats.Conn, js jetstream.JetStream, broker *events.RefinementBroker) commands.RefinementPublisher {
 	ioc.RegisterSingleton(dc, func(_ *ioc.DependencyProvider) *nats.Conn {
 		return nc
 	})
@@ -37,7 +40,7 @@ func Nats(dc *ioc.DependencyCollection, nc *nats.Conn, js jetstream.JetStream) c
 		newRepo := func() repositories.RefinementRepository {
 			return postgres.NewDbContext(sqlDB).Refinements()
 		}
-		return infrastructure.NewNatsSubscriber(js, newRepo, logger)
+		return infrastructure.NewNatsSubscriber(js, newRepo, broker.Publish, logger)
 	})
 
 	return &refinementPublisherAdapter{pub: pub}

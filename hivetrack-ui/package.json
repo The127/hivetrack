@@ -12,6 +12,7 @@
     "e2e:ui": "npx playwright test --ui"
   },
   "dependencies": {
+    "@microsoft/fetch-event-source": "^2.0.1",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/vue-query": "^5.56.0",
     "class-variance-authority": "^0.7.1",

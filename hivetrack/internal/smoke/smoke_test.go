@@ -63,7 +63,8 @@ func TestMain(m *testing.M) {
 	dc := ioc.NewDependencyCollection()
 	setup.Database(dc, db)
 	setup.Services(dc, cfg)
-	setup.Mediator(dc)
+	broker := setup.Events(dc)
+	setup.Mediator(dc, broker)
 	dp := dc.BuildProvider()
 
 	testServer = httptest.NewServer(server.New(dp))

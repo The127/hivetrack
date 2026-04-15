@@ -51,7 +51,7 @@ func TestStartRefinementSession_Success(t *testing.T) {
 	require.NoError(t, db.SaveChanges(context.Background()))
 
 	pub := &spyPublisher{}
-	handler := commands.NewStartRefinementSessionHandler(pub)
+	handler := commands.NewStartRefinementSessionHandler(pub, func(uuid.UUID) {})
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 	result, err := handler(ctx, commands.StartRefinementSessionCommand{
@@ -101,7 +101,7 @@ func TestStartRefinementSession_ConflictWhenActiveExists(t *testing.T) {
 	require.NoError(t, db.Refinements().CreateSession(context.Background(), session))
 
 	pub := &spyPublisher{}
-	handler := commands.NewStartRefinementSessionHandler(pub)
+	handler := commands.NewStartRefinementSessionHandler(pub, func(uuid.UUID) {})
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 	_, err := handler(ctx, commands.StartRefinementSessionCommand{
@@ -117,7 +117,7 @@ func TestStartRefinementSession_IssueNotFound(t *testing.T) {
 	require.NoError(t, db.Users().Upsert(context.Background(), actor))
 
 	pub := &spyPublisher{}
-	handler := commands.NewStartRefinementSessionHandler(pub)
+	handler := commands.NewStartRefinementSessionHandler(pub, func(uuid.UUID) {})
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 	_, err := handler(ctx, commands.StartRefinementSessionCommand{

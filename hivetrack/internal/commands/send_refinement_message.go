@@ -18,7 +18,8 @@ type SendRefinementMessageCommand struct {
 type SendRefinementMessageResult struct{}
 
 // NewSendRefinementMessageHandler returns a handler that depends on a RefinementPublisher.
-func NewSendRefinementMessageHandler(publisher RefinementPublisher) func(context.Context, SendRefinementMessageCommand) (*SendRefinementMessageResult, error) {
+// notify is invoked post-commit so real-time subscribers can refetch the session.
+func NewSendRefinementMessageHandler(publisher RefinementPublisher, notify func(uuid.UUID)) func(context.Context, SendRefinementMessageCommand) (*SendRefinementMessageResult, error) {
 	return func(ctx context.Context, cmd SendRefinementMessageCommand) (*SendRefinementMessageResult, error) {
 		db := repositories.GetDbContext(ctx)
 
@@ -36,6 +37,7 @@ func NewSendRefinementMessageHandler(publisher RefinementPublisher) func(context
 		if err := db.Refinements().AddMessage(ctx, msg); err != nil {
 			return nil, fmt.Errorf("storing user message: %w", err)
 		}
+		notify(cmd.IssueID)
 
 		// Load full message history
 		_, messages, err := db.Refinements().GetSessionWithMessages(ctx, session.ID)

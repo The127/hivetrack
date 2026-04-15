@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -37,7 +38,7 @@ func TestSendRefinementMessage_Success(t *testing.T) {
 	require.NoError(t, db.Refinements().CreateSession(context.Background(), session))
 
 	pub := &spyPublisher{}
-	handler := commands.NewSendRefinementMessageHandler(pub)
+	handler := commands.NewSendRefinementMessageHandler(pub, func(uuid.UUID) {})
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 	_, err := handler(ctx, commands.SendRefinementMessageCommand{
@@ -84,7 +85,7 @@ func TestSendRefinementMessage_NoActiveSession(t *testing.T) {
 	require.NoError(t, db.SaveChanges(context.Background()))
 
 	pub := &spyPublisher{}
-	handler := commands.NewSendRefinementMessageHandler(pub)
+	handler := commands.NewSendRefinementMessageHandler(pub, func(uuid.UUID) {})
 
 	ctx := testutil.ContextWithUser(testutil.ContextWithDb(db), actor)
 	_, err := handler(ctx, commands.SendRefinementMessageCommand{

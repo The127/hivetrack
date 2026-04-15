@@ -58,7 +58,8 @@ type StartRefinementSessionResult struct {
 }
 
 // NewStartRefinementSessionHandler returns a handler that depends on a RefinementPublisher.
-func NewStartRefinementSessionHandler(publisher RefinementPublisher) func(context.Context, StartRefinementSessionCommand) (*StartRefinementSessionResult, error) {
+// notify is invoked post-commit so real-time subscribers can refetch the session.
+func NewStartRefinementSessionHandler(publisher RefinementPublisher, notify func(uuid.UUID)) func(context.Context, StartRefinementSessionCommand) (*StartRefinementSessionResult, error) {
 	return func(ctx context.Context, cmd StartRefinementSessionCommand) (*StartRefinementSessionResult, error) {
 		db := repositories.GetDbContext(ctx)
 
@@ -91,6 +92,7 @@ func NewStartRefinementSessionHandler(publisher RefinementPublisher) func(contex
 		if err := db.Refinements().CreateSession(ctx, session); err != nil {
 			return nil, fmt.Errorf("creating refinement session: %w", err)
 		}
+		notify(cmd.IssueID)
 
 		// Publish initial request to NATS
 		if err := publisher.PublishRefinementRequest(ctx, RefinementPublishRequest{
