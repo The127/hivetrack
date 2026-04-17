@@ -40,6 +40,12 @@ func InitDeviceFlow(serverURL string) (*DeviceFlow, error) {
 	}, &daResp); err != nil {
 		return nil, fmt.Errorf("device authorization request: %w", err)
 	}
+	if daResp.Error != "" {
+		if daResp.ErrorDescription != "" {
+			return nil, fmt.Errorf("device authorization failed: %s: %s", daResp.Error, daResp.ErrorDescription)
+		}
+		return nil, fmt.Errorf("device authorization failed: %s", daResp.Error)
+	}
 
 	interval := daResp.Interval
 	if interval <= 0 {
@@ -168,6 +174,8 @@ type deviceAuthResponse struct {
 	VerificationURI         string `json:"verification_uri"`
 	VerificationURIComplete string `json:"verification_uri_complete"`
 	Interval                int    `json:"interval"`
+	Error                   string `json:"error"`
+	ErrorDescription        string `json:"error_description"`
 }
 
 type tokenResponse struct {
