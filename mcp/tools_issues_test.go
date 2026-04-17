@@ -84,56 +84,6 @@ func TestDeleteIssue_whenSlugMissing_returnsErrorWithoutCallingAPI(t *testing.T)
 	}
 }
 
-func TestRefineIssue_whenSlugAndNumberProvided_sendsPostToRefineEndpoint(t *testing.T) {
-	var called bool
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
-		if r.Method != http.MethodPost {
-			t.Errorf("expected POST, got %s", r.Method)
-		}
-		if r.URL.Path != "/api/v1/projects/my-proj/issues/5/refine" {
-			t.Errorf("expected /api/v1/projects/my-proj/issues/5/refine, got %s", r.URL.Path)
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer srv.Close()
-
-	handler := makeRefineIssue(testClient(srv.URL))
-	req := mcp.CallToolRequest{}
-	req.Params.Arguments = map[string]any{"slug": "my-proj", "number": float64(5)}
-
-	result, err := handler(context.Background(), req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !called {
-		t.Error("expected API to be called")
-	}
-	if result.IsError {
-		t.Errorf("expected success, got error")
-	}
-}
-
-func TestRefineIssue_whenSuccessful_confirmsIssueMarkedRefined(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer srv.Close()
-
-	handler := makeRefineIssue(testClient(srv.URL))
-	req := mcp.CallToolRequest{}
-	req.Params.Arguments = map[string]any{"slug": "proj", "number": float64(3)}
-
-	result, err := handler(context.Background(), req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	text := extractText(result)
-	if !contains(text, "refined") {
-		t.Errorf("expected refinement confirmation, got: %s", text)
-	}
-}
-
 func TestAddIssueLink_whenLinkTypeAndTargetProvided_sendsLinkBodyToLinksEndpoint(t *testing.T) {
 	var gotBody map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

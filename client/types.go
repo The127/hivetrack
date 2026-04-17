@@ -247,3 +247,94 @@ type BurndownData struct {
 	EndRemaining   int             `json:"end_remaining"`
 	Points         []BurndownPoint `json:"points"`
 }
+
+// Refinement types
+
+type RefinementSessionStatus string
+
+const (
+	RefinementSessionActive    RefinementSessionStatus = "active"
+	RefinementSessionCompleted RefinementSessionStatus = "completed"
+	RefinementSessionAbandoned RefinementSessionStatus = "abandoned"
+	RefinementSessionFailed    RefinementSessionStatus = "failed"
+)
+
+type RefinementPhase string
+
+const (
+	RefinementPhaseActorGoal          RefinementPhase = "actor_goal"
+	RefinementPhaseMainScenario       RefinementPhase = "main_scenario"
+	RefinementPhaseExtensions         RefinementPhase = "extensions"
+	RefinementPhaseAcceptanceCriteria RefinementPhase = "acceptance_criteria"
+	RefinementPhaseBddScenarios       RefinementPhase = "bdd_scenarios"
+)
+
+type RefinementMessageRole string
+
+const (
+	RefinementRoleUser      RefinementMessageRole = "user"
+	RefinementRoleAssistant RefinementMessageRole = "assistant"
+)
+
+type RefinementMessageType string
+
+const (
+	RefinementMessageTypeMessage     RefinementMessageType = "message"
+	RefinementMessageTypeProposal    RefinementMessageType = "proposal"
+	RefinementMessageTypePhaseResult RefinementMessageType = "phase_result"
+)
+
+type RefinementProposal struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+type RefinementMessageDetail struct {
+	ID          string                `json:"id"`
+	Role        RefinementMessageRole `json:"role"`
+	Content     string                `json:"content"`
+	MessageType RefinementMessageType `json:"message_type"`
+	Phase       RefinementPhase       `json:"phase"`
+	Proposal    *RefinementProposal   `json:"proposal,omitempty"`
+	PhaseData   map[string]any        `json:"phase_data,omitempty"`
+	Suggestions []string              `json:"suggestions,omitempty"`
+	CreatedAt   time.Time             `json:"created_at"`
+}
+
+type RefinementSessionDetail struct {
+	ID              string                    `json:"id"`
+	IssueID         string                    `json:"issue_id"`
+	Status          RefinementSessionStatus   `json:"status"`
+	CurrentPhase    RefinementPhase           `json:"current_phase"`
+	Messages        []RefinementMessageDetail `json:"messages"`
+	CreatedAt       time.Time                 `json:"created_at"`
+	UpdatedAt       time.Time                 `json:"updated_at"`
+	PartialResponse string                    `json:"partial_response"`
+	IsGenerating    bool                      `json:"is_generating"`
+}
+
+// Drone / Hivemind types
+
+type HivemindConfig struct {
+	GrpcURL string `json:"grpc_url"`
+}
+
+type Drone struct {
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	ProjectSlug    string   `json:"project_slug"`
+	Status         string   `json:"status"`
+	Capabilities   []string `json:"capabilities"`
+	MaxConcurrency int      `json:"max_concurrency"`
+	RegisteredAt   string   `json:"registered_at"`
+	LastSeenAt     *string  `json:"last_seen_at,omitempty"`
+}
+
+type CreateDroneTokenRequest struct {
+	Capabilities   []string `json:"capabilities"`
+	MaxConcurrency int      `json:"max_concurrency,omitempty"`
+}
+
+type CreateDroneTokenResult struct {
+	Token string `json:"token"`
+}

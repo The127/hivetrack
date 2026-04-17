@@ -113,6 +113,21 @@ func (c *Client) GetMyIssues(ctx context.Context) ([]IssueSummary, error) {
 	return resp.Items, nil
 }
 
+// GetMyCreatedIssues returns all issues created by the current user.
+func (c *Client) GetMyCreatedIssues(ctx context.Context) ([]IssueSummary, error) {
+	data, err := c.get(ctx, "/api/v1/me/created-issues", nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp struct {
+		Items []IssueSummary `json:"items"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("parsing issues: %w", err)
+	}
+	return resp.Items, nil
+}
+
 // CreateIssueRequest contains the fields for creating an issue.
 type CreateIssueRequest struct {
 	Title       string   `json:"title"`
@@ -193,11 +208,6 @@ func (c *Client) TriageIssue(ctx context.Context, slug string, number int, req T
 	return err
 }
 
-// RefineIssue marks an issue as refined.
-func (c *Client) RefineIssue(ctx context.Context, slug string, number int) error {
-	_, err := c.post(ctx, fmt.Sprintf("/api/v1/projects/%s/issues/%d/refine", slug, number), nil)
-	return err
-}
 
 // SplitIssueResult contains the new issues created from a split.
 type SplitIssueResult struct {
