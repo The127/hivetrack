@@ -781,6 +781,7 @@ watch(partialResponse, (val) => {
                         class="flex items-center gap-3 pt-3 border-t border-violet-200 dark:border-violet-800"
                       >
                         <Button
+                          v-if="isLastPhase"
                           variant="primary"
                           :loading="acceptPending"
                           @click="emit('accept')"
@@ -789,8 +790,17 @@ watch(partialResponse, (val) => {
                           Accept &amp; apply to issue
                         </Button>
                         <Button
+                          v-else
+                          variant="primary"
+                          :loading="advancePending"
+                          @click="emit('advance-phase', null)"
+                        >
+                          <CheckIcon class="size-4" />
+                          Confirm &amp; continue
+                        </Button>
+                        <Button
                           variant="secondary"
-                          :disabled="acceptPending"
+                          :disabled="acceptPending || advancePending"
                           @click="inputRef?.focus()"
                         >
                           Request changes
@@ -876,11 +886,15 @@ watch(partialResponse, (val) => {
                         </div>
                       </div>
                       <div v-if="hasActiveSession" class="flex items-center gap-3 pt-3 border-t border-violet-200 dark:border-violet-800">
-                        <Button variant="primary" :loading="acceptPending" @click="emit('accept')">
+                        <Button v-if="isLastPhase" variant="primary" :loading="acceptPending" @click="emit('accept')">
                           <CheckIcon class="size-4" />
                           Accept &amp; apply to issue
                         </Button>
-                        <Button variant="secondary" :disabled="acceptPending" @click="inputRef?.focus()">
+                        <Button v-else variant="primary" :loading="advancePending" @click="emit('advance-phase', null)">
+                          <CheckIcon class="size-4" />
+                          Confirm &amp; continue
+                        </Button>
+                        <Button variant="secondary" :disabled="acceptPending || advancePending" @click="inputRef?.focus()">
                           Request changes
                         </Button>
                       </div>
