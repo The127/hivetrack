@@ -253,6 +253,20 @@ mcp-test:
 mcp-inspect url="https://hivetrack.karo.gay": mcp-build
     npx @modelcontextprotocol/inspector -e HIVETRACK_URL={{url}} {{justfile_directory()}}/bin/hivetrack-mcp
 
+# ─── CLI (ht) ────────────────────────────────────────────────────────────────
+
+# Run the ht CLI (pass args with: just cli -- <args>)
+cli *args:
+    cd cli && {{go}} run ./cmd/ht {{args}}
+
+# Build the ht CLI binary
+cli-build:
+    cd cli && {{go}} build -o ../bin/ht ./cmd/ht
+
+# Run CLI tests
+cli-test:
+    cd cli && {{go}} test ./... -count=1
+
 # ─── Utilities ────────────────────────────────────────────────────────────────
 
 # Print the current version (from git tag or commit)
