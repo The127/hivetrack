@@ -106,18 +106,23 @@ func TestDeleteIssue(t *testing.T) {
 	}
 }
 
-func TestRefineIssue(t *testing.T) {
+func TestGetMyCreatedIssues(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != "/api/v1/projects/proj/issues/3/refine" {
-			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		if r.URL.Path != "/api/v1/me/created-issues" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
-		w.WriteHeader(http.StatusNoContent)
+		json.NewEncoder(w).Encode(map[string]any{
+			"items": []map[string]any{{"number": 7, "title": "Created by me", "type": "task", "status": "todo"}},
+		})
 	}))
 	defer srv.Close()
 
-	err := testClient(srv.URL).RefineIssue(context.Background(), "proj", 3)
+	items, err := testClient(srv.URL).GetMyCreatedIssues(context.Background())
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(items) != 1 || items[0].Number != 7 {
+		t.Errorf("expected 1 item with number 7, got %+v", items)
 	}
 }
 

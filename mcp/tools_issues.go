@@ -118,12 +118,6 @@ func registerIssueTools(s *server.MCPServer, client *Client) {
 		mcp.WithNumber("number", mcp.Required(), mcp.Description("Issue number")),
 	), makeDeleteIssue(client))
 
-	s.AddTool(mcp.NewTool("refine_issue",
-		mcp.WithDescription("Mark an issue as refined (ready for development)"),
-		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
-		mcp.WithNumber("number", mcp.Required(), mcp.Description("Issue number")),
-	), makeRefineIssue(client))
-
 	s.AddTool(mcp.NewTool("split_issue",
 		mcp.WithDescription("Split an issue into multiple smaller issues"),
 		mcp.WithString("slug", mcp.Required(), mcp.Description("Project slug")),
@@ -462,22 +456,6 @@ func makeDeleteIssue(client *Client) server.ToolHandlerFunc {
 			return errResult(err), nil
 		}
 		return textResult(fmt.Sprintf("Issue #%d deleted", number)), nil
-	}
-}
-
-func makeRefineIssue(client *Client) server.ToolHandlerFunc {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		args := request.GetArguments()
-		slug, _ := args["slug"].(string)
-		number := intArg(args, "number")
-		if slug == "" || number == 0 {
-			return errResult(errMissing("slug, number")), nil
-		}
-
-		if err := client.Typed().RefineIssue(ctx, slug, number); err != nil {
-			return errResult(err), nil
-		}
-		return textResult(fmt.Sprintf("Issue #%d marked as refined", number)), nil
 	}
 }
 
