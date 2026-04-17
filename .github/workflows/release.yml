@@ -85,9 +85,29 @@ jobs:
           name: mcp-${{ matrix.os }}-${{ matrix.arch }}
           path: bin/hivetrack-mcp-*
 
+  build-cli:
+    name: Build CLI (Linux/amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: cli/go.sum
+
+      - name: Build CLI binary
+        working-directory: cli
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=${{ github.ref_name }}" -o ../bin/ht ./cmd/ht
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli-binary
+          path: bin/ht
+
   release:
     name: Create Release
-    needs: [build-app, build-mcp]
+    needs: [build-app, build-mcp, build-cli]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
